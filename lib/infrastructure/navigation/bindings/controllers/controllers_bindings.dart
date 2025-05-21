@@ -1,0 +1,1 @@
+export 'package:aplikasi_pendataan_desa/infrastructure/navigation/bindings/controllers/home.controller.binding.dart'; 
