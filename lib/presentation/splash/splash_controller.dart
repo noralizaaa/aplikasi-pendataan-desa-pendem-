@@ -13,8 +13,8 @@ class SplashController extends GetxController {
     try {
       print('SplashController: Waiting for 3 seconds');
       await Future.delayed(const Duration(seconds: 3));
-      print('SplashController: Navigating to ${AppRoutes.prototype}');
-      Get.offNamed(AppRoutes.prototype);
+      print('SplashController: Navigating to ${AppRoutes.landingPage}');
+      Get.offNamed(AppRoutes.landingPage);
     } catch (e, stackTrace) {
       print('SplashController: Error navigating to PrototypeScreen: $e');
       print('StackTrace: $stackTrace');

@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 
-class PrototypeController extends GetxController {
+class LandingPageController extends GetxController {
   // Reactive variables to control visibility
   final isLogoVisible = false.obs;
   final isIllustrationVisible = false.obs;
