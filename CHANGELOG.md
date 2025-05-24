@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),  
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-05-25
+> Created by **Bayu Ardiyansyah**
+
+### 🎉 Added
+- **Authenticated User Model (`AuthUser`):**
+  - Introduced `AuthUser` model (`lib/models/auth_user.dart`) to represent properties of any authenticated user (admin or regular user), including `displayName`, `roleFromFirestore`, and `programId`.
+  - `AuthUser` is built from Firebase `User` objects and extended with data from Firestore `UserModel`.
+- **Admin Dashboard UI:**
+  - Implemented `AdminScreen` (`lib/presentation/admin/admin_view.dart`) with a new UI layout matching the provided design.
+  - Features a gradient header, search bar, and dynamic dashboard cards for various data collection programs.
+  - Designed with reusable color definitions for consistency.
+- **Admin Dashboard Model:**
+  - Created `DashboardItem` model (`lib/presentation/admin/admin_model.dart`) to structure data for dashboard cards (title, category, location, programId).
+  - Populated dashboard with static dummy data for initial display.
+- **Bottom Navigation for Admin:**
+  - Implemented a `BottomNavigationBar` in `AdminScreen` to switch between "Dashboard", "Form", and "Account" tabs.
+  - Added placeholder (dummy) pages: `AdminFormPage` (`lib/presentation/admin/formpage/admin_form_page.dart`) and `AdminAccountPage` (`lib/presentation/admin/Admin_Profile/admin_account_page.dart`).
+  - Utilized `IndexedStack` in `AdminScreen` to manage tab content, preserving state between switches.
+- **Firestore User Data Integration:**
+  - `LoginController` now attempts to fetch `UserModel` data from Firestore (`users` collection) for authenticated users to retrieve their `role`.
+  - Includes logic to create a default `UserModel` document in Firestore if one doesn't exist for a newly logged-in user.
+- **Logging for Authentication Flow:**
+  - Added extensive `print` statements throughout `LoginController` to provide detailed debug logs for authentication state changes, data loading, and navigation decisions.
+
+### 🛠️ Changed
+- **`LoginController` Refactoring:**
+  - Renamed `loggedInUser` to `loggedInAuthUser` and changed its type to `Rx<AuthUser?>`, aligning with the new `AuthUser` model.
+  - Adjusted `_loadAndSetAuthUser` to combine Firebase Auth user data with Firestore `UserModel` data into a comprehensive `AuthUser` object.
+  - Modified navigation logic in `_navigateToAppropriatePage` to use `AuthUser` properties (`displayName`, `roleFromFirestore`, `programId`).
+  - Consolidated fallback logic for login failures to consistently create a fallback `AuthUser` and navigate.
+- **`AdminController` Updates:**
+  - `AdminController` now retrieves `adminName`, `adminRole`, and `adminProgramId` directly from `LoginController`'s `loggedInAuthUser.value`.
+  - Managed `selectedPageIndex` for `BottomNavigationBar`.
+- **`UserController` and `UserProfileController` Adjustments:**
+  - Updated to receive `userRole` (string) as an argument from `LoginController` during navigation, providing the user's role consistently.
+- **`UserModel` (Firestore) Clarification:**
+  - Reaffirmed `lib/domain/auth/models/user_model.dart` as the sole `UserModel` for Firestore data operations (containing `uid`, `email`, `role`).
+  - Removed ambiguity and potential conflicts with other `UserModel` definitions by specifying `admin_model.dart` should *only* contain `DashboardItem`.
+- **Routing Configuration (`app_routes.dart`):**
+  - Adjusted `adminPage` route to no longer contain nested routes, as `IndexedStack` handles tab switching internally within `AdminScreen`.
+  - Added new routes for `AdminFormPage` and `AdminAccountPage` if external navigation is desired later.
+
+### 🐛 Fixed
+- **Persistent Auto-Login Issue:**
+  - Addressed persistent auto-login behavior by implementing explicit `Get.offAllNamed(AppRoutes.login)` in `LoginController.onInit()` if no user is detected by Firebase Auth.
+  - Included a temporary `_auth.signOut()` line (commented out) in `LoginController.onInit()` for forced session clearing during development.
+- **Firestore Permission Denied Errors:**
+  - Identified `PERMISSION_DENIED` errors from Firestore as a security rule issue, emphasizing the need to update Firestore Security Rules to allow authenticated read access to `users` and `forms` collections.
+  - Implemented robust error handling and fallback `AuthUser` creation in `LoginController` when Firestore data fetching fails.
+- **"Undefined getter" Errors:**
+  - **Crucially resolved persistent "The getter 'loggedInAuthUser' isn't defined for the type 'LoginController'." errors** by:
+    - Ensuring `login_controller.dart`'s code (specifically the `loggedInAuthUser` property) is consistently the correct and latest version on disk.
+    - Providing aggressive manual cleaning steps (`flutter clean`, `flutter pub get`, manual folder deletion, IDE restart) to overcome stubborn build/analyzer caching issues.
+    - Confirming `AdminController` correctly imports and accesses `loggedInAuthUser` from the global `LoginController` instance.
+  - Resolved "Undefined class 'DashboardItem'" errors by ensuring `admin_model.dart` contains *only* the `DashboardItem` class and its imports are correct.
+- **Google Play Services Warning:** Noted Google Play Services being out of date as a potential issue source.
+
+### 🚨 Issues
+- **Google Play Services Out of Date Warning:**
+  - `Google Play services out of date` warnings observed; recommend updating Google Play Services on emulator/device for optimal Firebase functionality.
+
+---
+
 ## [0.5.0] - 2025-05-25
 > Created by **Bayu Ardiyansyah**
 

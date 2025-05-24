@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'login_controller.dart'; // Pastikan path ini benar
+import 'login_controller.dart';
+import '../../infrastructure/navigation/routes.dart';
 
 class LoginScreen extends GetView<LoginController> {
   const LoginScreen({super.key});
 
   // Definisi Warna (agar mudah diubah)
-  // Mengubah pageBackgroundColor menjadi 0xFFF2FAFF tanpa opacity
   static const Color pageBackgroundColor = Color(0xFFF2FAFF);
   static const Color primaryTextColor = Colors.white;
   static const Color textFieldDefaultColor = Colors.black54;
@@ -16,17 +16,18 @@ class LoginScreen extends GetView<LoginController> {
 
   @override
   Widget build(BuildContext context) {
+    print('DEBUG: LoginScreen loaded. Current route: ${Get.currentRoute}, Previous route: ${Get.previousRoute}');
     return Scaffold(
       backgroundColor: pageBackgroundColor,
       appBar: AppBar(
-        // AppBar transparan tetap baik untuk latar belakang yang terang
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          // Warna panah kembali harus disesuaikan jika latar belakang terang
-          // Mengubahnya menjadi warna gelap agar terlihat kontras dengan background terang
-          icon: const Icon(Icons.arrow_back, color: Colors.black54), // Ubah warna ini
-          onPressed: () => Get.back(),
+          icon: const Icon(Icons.arrow_back, color: Colors.black54),
+          onPressed: () {
+            print('DEBUG: Back button pressed. Navigating to LandingPage.');
+            Get.offNamed(AppRoutes.landingPage);
+          },
         ),
       ),
       body: SafeArea(
@@ -42,17 +43,16 @@ class LoginScreen extends GetView<LoginController> {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  // Ubah warna teks ini agar terlihat di latar belakang terang
-                  color: Colors.black87, // Ubah warna ini
+                  color: Colors.black87,
                   height: 1.3,
                 ),
               ),
               const SizedBox(height: 50),
-              _buildUsernameField(context), // Memanggil helper method
+              _buildUsernameField(context),
               const SizedBox(height: 25),
-              _buildPasswordField(context), // Memanggil helper method
+              _buildPasswordField(context),
               const SizedBox(height: 60),
-              _buildLoginButton(),        // Memanggil helper method
+              _buildLoginButton(),
               const SizedBox(height: 20),
             ],
           ),
@@ -60,6 +60,7 @@ class LoginScreen extends GetView<LoginController> {
       ),
     );
   }
+
   Widget _buildUsernameField(BuildContext context) {
     return TextField(
       controller: controller.emailController,
@@ -88,6 +89,7 @@ class LoginScreen extends GetView<LoginController> {
       ),
     );
   }
+
   Widget _buildPasswordField(BuildContext context) {
     return Obx(
           () => TextField(
@@ -127,6 +129,7 @@ class LoginScreen extends GetView<LoginController> {
       ),
     );
   }
+
   Widget _buildLoginButton() {
     return Obx(
           () => SizedBox(
@@ -170,4 +173,4 @@ class LoginScreen extends GetView<LoginController> {
       ),
     );
   }
-} // Penutup kelas LoginScreen
+}

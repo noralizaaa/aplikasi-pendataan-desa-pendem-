@@ -1,24 +1,55 @@
-// lib/presentation/login/login_controller.dart
-
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// import 'package:cloud_firestore/cloud_firestore.dart'; // Uncomment jika Anda siap mengintegrasikan Firestore untuk role
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import '../../infrastructure/navigation/routes.dart'; // Pastikan path ini benar
-import '../../domain/auth/models/user_model.dart';   // Impor UserModel
+import '../../domain/auth/models/auth_user.dart'; // Pastikan path ini benar
+import '../../domain/auth/models/user_model.dart'; // Pastikan path ini benar
 
 class LoginController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  // final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Uncomment untuk Firestore
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-
-  final RxBool isLoading = false.obs;
   final RxBool isPasswordVisible = false.obs;
+  final RxBool isLoading = false.obs;
+  final RxBool isManualLogin = false.obs; // Untuk mencegah login otomatis
+  final Rx<AuthUser?> loggedInAuthUser = Rx<AuthUser?>(null);
 
-  // Menyimpan data user yang login, termasuk perannya
-  final Rx<UserModel?> loggedInUser = Rx<UserModel?>(null);
+  static int _loginAttemptCounter = 0;
+
+  @override
+  void onInit() async {
+    super.onInit();
+    print('DEBUG: LoginController onInit called.');
+
+    // Paksa logout dan tunggu hingga selesai
+    try {
+      await _auth.signOut();
+      print('DEBUG: Forcefully signed out on app start.');
+      loggedInAuthUser.value = null;
+
+      // Hanya navigasi jika belum di LoginScreen
+      if (Get.currentRoute != AppRoutes.login) {
+        await Get.offAllNamed(AppRoutes.login);
+      }
+    } catch (e) {
+      print('DEBUG: Error during force sign out on start: $e');
+    }
+
+    // Dengarkan authStateChanges setelah logout selesai
+    _auth.authStateChanges().listen((User? firebaseUser) async {
+      if (firebaseUser != null && isManualLogin.value) {
+        print('DEBUG: Auth State Changed - User ${firebaseUser.email} detected (Manual login). UID: ${firebaseUser.uid}');
+        await _loadAndSetAuthUser(firebaseUser);
+      } else {
+        print('DEBUG: Auth State Changed - No user detected or not manual login. Staying on LoginScreen.');
+        loggedInAuthUser.value = null;
+        // Tidak navigasi, biarkan tetap di LoginScreen
+      }
+    });
+  }
 
   @override
   void onClose() {
@@ -27,151 +58,137 @@ class LoginController extends GetxController {
     super.onClose();
   }
 
+  Future<void> _loadAndSetAuthUser(User firebaseUser) async {
+    print('DEBUG: _loadAndSetAuthUser for UID: ${firebaseUser.uid} started. Fetching Firestore data.');
+    try {
+      AuthUser tempAuthUser = AuthUser.fromFirebaseUser(firebaseUser);
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(firebaseUser.uid).get();
+
+      String? finalRoleFromFirestore;
+      String? finalProgramId;
+
+      if (userDoc.exists) {
+        UserModel firestoreUserModel = UserModel.fromFirestore(userDoc as DocumentSnapshot<Map<String, dynamic>>);
+        finalRoleFromFirestore = firestoreUserModel.role;
+        print('DEBUG: User document found in Firestore. Role: $finalRoleFromFirestore');
+      } else {
+        print('DEBUG: User document NOT found in Firestore for UID: ${firebaseUser.uid}. Assigning default role and creating doc.');
+        finalRoleFromFirestore = 'user';
+        finalProgramId = '000';
+        await _firestore.collection('users').doc(firebaseUser.uid).set(
+            UserModel(uid: firebaseUser.uid, email: firebaseUser.email, role: 'user').toFirestore());
+      }
+
+      loggedInAuthUser.value = tempAuthUser.copyWith(
+        roleFromFirestore: finalRoleFromFirestore,
+        programId: finalProgramId,
+      );
+
+      print('DEBUG: AuthUser set. DisplayName: ${loggedInAuthUser.value?.displayName}, Role: ${loggedInAuthUser.value?.roleFromFirestore}, ProgramId: ${loggedInAuthUser.value?.programId}');
+      _navigateToAppropriatePage(loggedInAuthUser.value!);
+    } catch (e) {
+      print('ERROR: Failed to load user data from Firestore: $e');
+      Get.snackbar(
+        'Error Data Pengguna',
+        'Gagal memuat data pengguna: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
+      loggedInAuthUser.value = AuthUser.fromFirebaseUser(firebaseUser).copyWith(
+        roleFromFirestore: 'error_user',
+        programId: '000',
+      );
+      print('DEBUG: Navigating with fallback AuthUser due to Firestore error.');
+      _navigateToAppropriatePage(loggedInAuthUser.value!);
+    }
+  }
+
+  Future<void> loginUser() async {
+    isLoading.value = true;
+    isManualLogin.value = true; // Tandai sebagai login manual
+    _loginAttemptCounter++;
+    print('DEBUG: Attempting login via UI. Counter: $_loginAttemptCounter');
+
+    final String email = emailController.text.trim();
+    final String password = passwordController.text.trim();
+
+    try {
+      if (email.isEmpty || password.isEmpty) {
+        print('DEBUG: Login input empty.');
+        Get.snackbar(
+          'Input Kosong',
+          'Silakan isi email dan password.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+        );
+        return;
+      }
+
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      print('DEBUG: Firebase login successful for ${userCredential.user?.email}. UID: ${userCredential.user?.uid}');
+      // Navigasi akan ditangani oleh authStateChanges
+    } on FirebaseAuthException catch (e) {
+      print('ERROR: FirebaseAuthException during UI login: ${e.code} - ${e.message}');
+      Get.snackbar(
+        'Login Gagal',
+        'Error: ${e.message}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      print('ERROR: Unexpected exception during UI login: ${e.toString()}');
+      Get.snackbar(
+        'Error',
+        'Terjadi kesalahan: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
+    } finally {
+      isLoading.value = false;
+      isManualLogin.value = false; // Reset setelah login selesai
+    }
+  }
+
+  void _navigateToAppropriatePage(AuthUser user) {
+    String actualDisplayName = user.displayName ?? 'Pendata Default';
+    String? userProgramId = user.programId;
+    String userRole = user.roleFromFirestore ?? 'Pengguna Umum';
+    bool hasAuthority = (user.roleFromFirestore == 'admin' || user.programId != '000');
+
+    print('DEBUG: _navigateToAppropriatePage - Final navigation parameters:');
+    print('DEBUG:   DisplayName: "$actualDisplayName"');
+    print('DEBUG:   Role: "$userRole"');
+    print('DEBUG:   ProgramId: "$userProgramId"');
+    print('DEBUG:   HasAuthority: $hasAuthority');
+
+    emailController.clear();
+    passwordController.clear();
+
+    if (user.roleFromFirestore == 'admin' || user.programId == 'admin') {
+      print('DEBUG: Routing to Admin Page.');
+      Get.offAllNamed(AppRoutes.adminPage);
+    } else {
+      print('DEBUG: Routing to User Page.');
+      Get.offAllNamed(AppRoutes.userPage);
+    }
+  }
+
   void togglePasswordVisibility() {
     isPasswordVisible.value = !isPasswordVisible.value;
   }
 
-  /// Mengambil peran pengguna dari backend/database.
-  /// Ganti metode ini dengan logika pengambilan peran dari Firestore Anda.
-  Future<String> _fetchUserRole(String uid) async {
-    // --- AWAL SIMULASI PENGAMBILAN ROLE ---
-    // Ini adalah simulasi. Dalam aplikasi nyata, Anda akan mengambil data ini
-    // dari Firestore atau backend Anda menggunakan UID pengguna.
-    // Contoh dengan Firestore (pastikan Anda sudah setup Firestore dan collection 'users'):
-    /*
-    try {
-      DocumentSnapshot<Map<String, dynamic>> userDoc =
-          await _firestore.collection('users').doc(uid).get();
-      if (userDoc.exists && userDoc.data() != null) {
-        // Menggunakan UserModel.fromFirestore untuk membuat objek UserModel
-        // UserModel tempUser = UserModel.fromFirestore(userDoc);
-        // return tempUser.role;
-        return (userDoc.data()!['role'] as String?) ?? 'user'; // Ambil role, default 'user'
-      }
-      return 'user'; // Default role jika dokumen tidak ada
-    } catch (e) {
-      print("Error fetching user role: $e");
-      return 'user'; // Default role jika terjadi error
-    }
-    */
-
-    // Untuk simulasi saat ini, kita tentukan peran berdasarkan email
-    // JANGAN GUNAKAN LOGIKA INI DI APLIKASI PRODUKSI!
-    if (emailController.text.toLowerCase().contains('admin')) {
-      return 'admin';
-    }
-    return 'user';
-    // --- AKHIR SIMULASI PENGAMBILAN ROLE ---
-  }
-
-  Future<void> loginUser() async {
-    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
-      Get.snackbar(
-        "Error",
-        "Username dan Password tidak boleh kosong",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-      return;
-    }
-
-    isLoading.value = true;
-    try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
-
-      if (userCredential.user != null) {
-        User firebaseUser = userCredential.user!;
-        // Ambil peran pengguna
-        String role = await _fetchUserRole(firebaseUser.uid);
-
-        // Buat dan simpan instance UserModel
-        loggedInUser.value = UserModel(
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          role: role,
-        );
-
-        Get.snackbar(
-          "Sukses",
-          "Login berhasil! Peran Anda: $role",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-
-        // Arahkan pengguna berdasarkan perannya
-        if (role == 'admin') {
-          Get.offAllNamed(AppRoutes.adminPage);
-        } else {
-          // Asumsikan selain admin adalah 'user' atau peran lain yang mengarah ke userPage
-          Get.offAllNamed(AppRoutes.userPage);
-        }
-      }
-    } on FirebaseAuthException catch (e) {
-      String errorMessage;
-      // Menggunakan kode error yang lebih baru dan umum dari Firebase Auth
-      switch (e.code) {
-        case 'user-not-found':
-        case 'wrong-password':
-        case 'INVALID_LOGIN_CREDENTIALS': // Mencakup user tidak ditemukan atau password salah
-          errorMessage = 'Username atau Password salah.';
-          break;
-        case 'invalid-email':
-          errorMessage = 'Format email tidak valid.';
-          break;
-        case 'user-disabled':
-          errorMessage = 'Akun ini telah dinonaktifkan.';
-          break;
-        case 'too-many-requests':
-          errorMessage = 'Terlalu banyak percobaan login. Coba lagi nanti.';
-          break;
-        case 'network-request-failed':
-          errorMessage = 'Gagal terhubung ke jaringan. Periksa koneksi internet Anda.';
-          break;
-        default:
-          errorMessage = 'Terjadi kesalahan login: ${e.message}';
-      }
-      Get.snackbar(
-        "Login Gagal",
-        errorMessage,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    } catch (e) {
-      Get.snackbar(
-        "Login Gagal",
-        "Terjadi kesalahan tidak diketahui: ${e.toString()}",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /// Fungsi untuk logout pengguna.
-  Future<void> logout() async {
-    isLoading.value = true;
-    try {
-      await _auth.signOut();
-      loggedInUser.value = null; // Bersihkan data pengguna yang login
-      Get.offAllNamed(AppRoutes.login); // Arahkan kembali ke halaman login
-    } catch (e) {
-      Get.snackbar(
-        "Logout Gagal",
-        "Terjadi kesalahan saat logout: ${e.toString()}",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    } finally {
-      isLoading.value = false;
-    }
+  void logout() async {
+    print('DEBUG: Logout initiated. Signing out from Firebase.');
+    await _auth.signOut();
+    loggedInAuthUser.value = null;
+    print('DEBUG: Redirecting to LoginScreen after logout.');
+    Get.offAllNamed(AppRoutes.login);
   }
 }
