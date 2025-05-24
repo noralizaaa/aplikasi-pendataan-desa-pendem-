@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),  
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-05-25
+> Created by **Bayu Ardiyansyah**
+
+### 🎉 Added
+- **User Profile Management Feature:**
+  - Implemented `UserProfileScreen` with a visually consistent design matching provided mockups, including a gradient header, profile avatar, and account information cards.
+  - Developed `UserProfileController` to manage user profile data (`username`, `role`, `programId`).
+  - Created `UserProfile` model (`user_profile_model.dart`) to structure user profile data.
+  - **Dynamic Default Username Generation:** `UserProfileController` now assigns sequential default usernames (e.g., 'Pendata 1', 'Pendata 2') if a username is not provided during navigation.
+  - **Dynamic Role/Authority Display:**
+    - `UserProfileController` attempts to fetch the role name from Firestore based on a `programId` passed during navigation (e.g., '001' for 'DC-Penduduk').
+    - If `programId` is '000' or not provided/found, a default "Tidak ada otoritas" role is fetched from Firestore (requires a document with `idForm: '000'` in the 'forms' collection).
+  - **Username Editing Functionality:** Users can now edit their username directly on the `UserProfileScreen` via a `TextField` and save changes (currently client-side, with a placeholder for backend persistence).
+- **New Routes and Bindings:**
+  - Added `UserProfileBinding` to `app_routes.dart` for proper initialization of `UserProfileController`.
+  - Registered `/user-profile` route in `AppRoutes` for navigation to the `UserProfileScreen`.
+
+### 🛠️ Changed
+- **Navigation from `UserScreen`:**
+  - The profile icon in `UserScreen` is now clickable and navigates to `UserProfileScreen` using the new `/user-profile` route.
+  - `UserScreen` now passes the `userName` and the associated `programId` (if available) as arguments to `UserProfileScreen` to facilitate dynamic profile display.
+- **`UserController` Enhancements:**
+  - `UserController` now receives and stores `userProgramId` from login arguments, which can be used to filter forms based on the user's authority/program access.
+  - Modified `WorkspaceFormData` logic in `UserController` to conditionally display forms based on `userHasAuthority` or `userProgramId` (e.g., only non-authority forms for ID '000', or forms matching the specific program ID).
+- **`LoginController` Logic:**
+  - Updated `signIn` method in `LoginController` to pass `userName` and `programId` (representing the user's role/authority ID) as arguments to `UserScreen` after authentication.
+  - Implemented fallback logic in `LoginController` to generate default usernames and a '000' `programId` if login fails or no explicit user data is available.
+- **Model Flexibility:**
+  - Modified `username` field in `UserProfile` model (`user_profile_model.dart`) from `final` to `String` to allow its value to be updated for the editing feature.
+
+### 🐛 Fixed
+- **Routing Mismatch:**
+  - Resolved the `Null check operator used on a null value` error occurring on profile icon click by correcting the route name from `'/user_profile'` to `AppRoutes.userProfile` (which resolves to `'/user-profile'`) in `UserScreen`, aligning with `app_routes.dart` definitions.
+- **Undefined Type Errors:**
+  - Addressed "Undefined name 'FormDataModel'" and "The name 'UserProfile' isn't a type" errors by ensuring correct `package:` import paths for `user_model.dart` and `user_profile_model.dart` in their respective controllers (`user_controller.dart` and `user_profile_controller.dart`).
+- **`UserProfile.fromMap` Syntax:**
+  - Corrected the `factory UserProfile.fromMap` constructor signature in `user_profile_model.dart` to `Map<String, dynamic> data`.
+- **Username Update Persistence:**
+  - Ensured `userProfile.refresh()` is called after updating the `username` in `UserProfileController` to trigger UI updates in `Obx` widgets.
+
+---
+
 ## [0.4.0] - 2025-05-24
 > Created by **Bayu Ardiyansyah**
 
