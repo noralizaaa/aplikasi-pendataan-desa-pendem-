@@ -14,12 +14,23 @@ import 'package:aplikasi_pendataan_desa/presentation/user/user_profile/user_prof
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+// Pastikan path ini benar dan menggunakan kapitalisasi folder yang KONSISTEN: 'Admin_Profile'
+import '../../presentation/admin/Admin_Profile/admin_account_controller.dart';
+// Impor untuk halaman profil admin yang diakses dari header (folder 'profil')
+import '../../presentation/admin/formpage/admin_form_controller.dart';
+import '../../presentation/admin/formpage/form_builder/admin_form_builder_controller.dart';
+import '../../presentation/admin/formpage/form_builder/admin_form_builder_page.dart';
+import '../../presentation/admin/profil/admin_profil_controller.dart';
+import '../../presentation/admin/profil/admin_profil_page.dart';
+// Impor untuk splash controller
 import '../../presentation/splash/splash_controller.dart';
 
 // Definisikan LoginBinding
 class LoginBinding extends Bindings {
   @override
   void dependencies() {
+    // Menggunakan Get.put dengan permanent:true agar LoginController selalu tersedia
+    // setelah login, ini umum untuk manajemen sesi.
     Get.put<LoginController>(LoginController(), permanent: true);
   }
 }
@@ -45,6 +56,23 @@ class AdminBinding extends Bindings {
   @override
   void dependencies() {
     Get.lazyPut<AdminController>(() => AdminController());
+    Get.lazyPut<AdminAccountController>(() => AdminAccountController()); // Untuk tab Account
+    Get.lazyPut<AdminFormController>(() => AdminFormController());    // <-- UNTUK TAB FORM
+  }
+}
+
+class AdminFormBuilderBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<AdminFormBuilderController>(() => AdminFormBuilderController());
+  }
+}
+
+// Definisikan AdminProfilBinding untuk halaman profil admin yang diakses dari header
+class AdminProfilBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<AdminProfilController>(() => AdminProfilController());
   }
 }
 
@@ -56,24 +84,26 @@ class UserBinding extends Bindings {
   }
 }
 
-// Definisikan UserProfileBinding (optional, but good practice if UserProfileScreen gets a controller later)
-class UserProfileBinding extends Bindings { // <-- NEW: UserProfileBinding
+// Definisikan UserProfileBinding
+class UserProfileBinding extends Bindings {
   @override
   void dependencies() {
-    // If UserProfileScreen needs a controller, register it here
-    // Get.lazyPut<UserProfileController>(() => UserProfileController());
+    // Jika UserProfileScreen membutuhkan controller, daftarkan di sini.
+    // Contoh: Get.lazyPut<UserProfileController>(() => UserProfileController());
   }
 }
 
-
+// Enum untuk lingkungan (opsional, tapi baik untuk konfigurasi)
 enum Environments { DEVELOPMENT, QAS, PRODUCTION }
 
 class ConfigEnvironments {
   static Map<String, String> getEnvironments() {
+    // Anda bisa mengubah ini berdasarkan build flavor atau variabel lingkungan
     return {'env': Environments.DEVELOPMENT.name};
   }
 }
 
+// Widget badge untuk lingkungan (opsional)
 class EnvironmentsBadge extends StatelessWidget {
   final Widget child;
   const EnvironmentsBadge({super.key, required this.child});
@@ -81,29 +111,30 @@ class EnvironmentsBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var env = ConfigEnvironments.getEnvironments()['env'];
-    if (env == null) {
-      return SizedBox(child: child);
+    if (env == null || env == Environments.PRODUCTION.name) {
+      return SizedBox(child: child); // Tidak menampilkan badge untuk produksi
     }
-    return env != Environments.PRODUCTION.name
-        ? Banner(
+    return Banner(
       location: BannerLocation.topStart,
       message: env,
-      color: env == Environments.QAS.name ? Colors.blue : Colors.purple,
+      color: env == Environments.QAS.name ? Colors.blue : Colors.purple, // Warna berbeda untuk QAS dan DEV
       child: child,
-    )
-        : SizedBox(child: child);
+    );
   }
 }
 
+// Definisi nama rute dan halaman
 class AppRoutes {
   static const String splash = '/splash';
   static const String login = '/login';
   static const String landingPage = '/landing-page';
   static const String adminPage = '/admin-page';
   static const String userPage = '/user-page';
-  static const String userProfile = '/user-profile'; // <-- NEW: User Profile Route
+  static const String userProfile = '/user-profile';
+  static const String adminProfil = '/admin-profil';
+  static const String adminFormBuilder = '/admin-form-builder';
 
-  static String initialRoute = splash;
+  static String initialRoute = splash; // Rute awal aplikasi
 
   static List<GetPage> routes = [
     GetPage(
@@ -122,19 +153,29 @@ class AppRoutes {
       binding: LandingPageBinding(),
     ),
     GetPage(
-      name: adminPage,
+      name: adminPage, // Rute untuk AdminScreen yang berisi tab-tab
       page: () => const AdminScreen(),
-      binding: AdminBinding(),
+      binding: AdminBinding(), // AdminBinding mendaftarkan AdminController dan AdminAccountController
     ),
     GetPage(
       name: userPage,
       page: () => const UserScreen(),
       binding: UserBinding(),
     ),
-    GetPage( // <-- NEW: User Profile GetPage
+    GetPage(
       name: userProfile,
       page: () => const UserProfileScreen(),
-      binding: UserProfileBinding(), // Optional: add a binding if UserProfileScreen has a controller
+      binding: UserProfileBinding(),
+    ),
+    GetPage(
+      name: adminProfil, // Rute untuk halaman profil admin yang diakses dari header
+      page: () => const AdminProfilPage(),
+      binding: AdminProfilBinding(), // Menggunakan binding khusus AdminProfilBinding
+    ),
+    GetPage(
+      name: adminFormBuilder,
+      page: () => const AdminFormBuilderPage(),
+      binding: AdminFormBuilderBinding(), // <-- GUNAKAN BINDING DI SINI
     ),
   ];
 }

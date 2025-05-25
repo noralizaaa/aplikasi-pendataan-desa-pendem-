@@ -51,6 +51,7 @@ dev_dependencies:
   get: any
   cloud_firestore: any
   cupertino_icons: any
+  uid: any
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

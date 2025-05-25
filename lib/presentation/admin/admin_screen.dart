@@ -1,263 +1,232 @@
-// lib/presentation/admin/admin_view.dart
+// lib/presentation/admin/admin_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-// CORRECTED IMPORTS:
-import 'package:aplikasi_pendataan_desa/presentation/admin/admin_controller.dart'; // Import AdminController
-import 'package:aplikasi_pendataan_desa/presentation/admin/admin_model.dart'; // Import DashboardItem
-import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_page.dart'; // Import AdminFormPage
-import 'package:aplikasi_pendataan_desa/presentation/admin/Admin_Profile/admin_account_page.dart'; // Import AdminAccountPage (using your specified path)
+import 'package:aplikasi_pendataan_desa/presentation/admin/admin_controller.dart';
+import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_page.dart';
+import 'package:aplikasi_pendataan_desa/presentation/admin/Admin_Profile/admin_account_page.dart';
 
-// No need for AppRoutes import here for internal tab switching with IndexedStack
+// Import AppRoutes
+import '../../../infrastructure/navigation/routes.dart'; // Sesuaikan path jika perlu
+// Import FormItem model
+import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart';
+
 
 class AdminScreen extends GetView<AdminController> {
   const AdminScreen({super.key});
 
-  // Definisi Warna (konsisten dengan desain Anda)
   static const Color pageBackgroundColor = Color(0xFFF2FAFF);
-  static const Color primaryHeaderColor = Color(0xFFFFCC80); // Oranye terang
-  static const Color accentHeaderColor = Color(0xFFFF9800); // Oranye lebih gelap
-  static const Color iconColor = Color(0xFFF57C00); // Warna ikon profil/search
-  static const Color cardBackgroundColor = Colors.white; // Warna dasar card
-  static const Color bottomNavIconColor = Color(0xFFF57C00); // Warna ikon bottom nav
+  static const Color primaryHeaderColor = Color(0xFFFFCC80);
+  static const Color accentHeaderColor = Color(0xFFFF9800);
+  static const Color iconColor = Color(0xFFF57C00);
+  static const Color cardBackgroundColor = Colors.white;
+  static const Color bottomNavIconColor = Color(0xFFF57C00);
 
-  // List of widgets for the IndexedStack (bottom navigation tabs)
-  // Each element here corresponds to a tab in the BottomNavigationBar
   List<Widget> get _pages => [
-    _DashboardContent(controller: controller), // The actual dashboard UI
-    const AdminFormPage(), // Dummy Form Page
-    const AdminAccountPage(), // Dummy Account Page
+    _DashboardContentOnly(controller: controller),
+    const AdminFormPage(),
+    const AdminAccountPage(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    // Ensure the controller is put (usually handled by binding, but explicit for clarity)
-    // Get.put(AdminController()); // This is typically handled by AdminBinding in app_routes.dart
-    // No need to put it here if binding is set up correctly.
-
     return Scaffold(
       backgroundColor: pageBackgroundColor,
-      // >>> MAIN CHANGE: Use IndexedStack in the body <<<
-      body: Obx(
-            () => IndexedStack(
-          index: controller.selectedPageIndex.value, // Controls which page is visible
-          children: _pages, // The list of pages/widgets for each tab
-        ),
+      body: Column(
+        children: [
+          Container(
+            height: 200.0,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [primaryHeaderColor, accentHeaderColor],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 40.0, left: 24.0, right: 24.0, bottom: 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Obx(() => Text(
+                        'Hello, ${controller.adminName.value.isNotEmpty ? controller.adminName.value : 'Admin'}',
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      )),
+                      InkWell(
+                        onTap: () {
+                          Get.toNamed(AppRoutes.adminProfil);
+                        },
+                        borderRadius: BorderRadius.circular(28),
+                        child: CircleAvatar(
+                          radius: 28,
+                          backgroundColor: Colors.white.withOpacity(0.3),
+                          child: const Icon(Icons.person, size: 30, color: AdminScreen.iconColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 5,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search...',
+                        hintStyle: TextStyle(color: Colors.grey[600]),
+                        border: InputBorder.none,
+                        icon: Icon(Icons.search, color: Colors.grey[600]),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Obx(
+                  () => IndexedStack(
+                index: controller.selectedPageIndex.value,
+                children: _pages,
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: Obx(() => BottomNavigationBar(
         currentIndex: controller.selectedPageIndex.value,
-        onTap: controller.onPageChanged, // Update the selectedPageIndex in controller
+        onTap: controller.onPageChanged,
         selectedItemColor: bottomNavIconColor,
         unselectedItemColor: Colors.grey,
         showUnselectedLabels: true,
-        type: BottomNavigationBarType.fixed, // Ensures labels are always visible
+        type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list_alt),
-            label: 'Form',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Account',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
+          BottomNavigationBarItem(icon: Icon(Icons.assessment_outlined), label: 'Form'),
+          BottomNavigationBarItem(icon: Icon(Icons.account_circle_rounded), label: 'Account'),
         ],
       )),
     );
   }
 }
 
-// Extracted Dashboard content into a separate StatelessWidget for clarity
-// This widget contains the header, search bar, and dashboard cards.
-class _DashboardContent extends StatelessWidget {
-  final AdminController controller; // Pass the controller to access its data/methods
-  const _DashboardContent({required this.controller});
 
-  // Re-use color definitions from AdminScreen
-  static const Color pageBackgroundColor = AdminScreen.pageBackgroundColor;
-  static const Color primaryHeaderColor = AdminScreen.primaryHeaderColor;
-  static const Color accentHeaderColor = AdminScreen.accentHeaderColor;
-  static const Color iconColor = AdminScreen.iconColor;
-  static const Color cardBackgroundColor = AdminScreen.cardBackgroundColor;
+class _DashboardContentOnly extends StatelessWidget {
+  final AdminController controller;
+  const _DashboardContentOnly({required this.controller});
+
+  static const Color cardBgColor = AdminScreen.cardBackgroundColor;
+  static const Color titleColor = Colors.black87;
+  static const Color subtitleColor = Colors.black54;
+  static const Color dateColor = Colors.grey;
+  static const Color iconDetailColor = AdminScreen.iconColor;
+
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: <Widget>[
-        // Header Kustom (Area Orange Atas) - This part remains the same
-        SliverAppBar(
-          expandedHeight: 200.0,
-          floating: false,
-          pinned: true,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          flexibleSpace: FlexibleSpaceBar(
-            background: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [primaryHeaderColor, accentHeaderColor],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.only(top: 40.0, left: 24.0, right: 24.0, bottom: 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Obx(() => Text(
-                          'Hello, ${controller.adminName}',
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        )),
-                        InkWell(
-                          onTap: () {
-                            // Example: Navigate to Admin Profile or User Profile (if admin is also a user)
-                            // Get.toNamed(AppRoutes.adminProfile); // Create this route if needed
-                            Get.snackbar('Profil Admin', 'Aksi profil admin');
-                          },
-                          borderRadius: BorderRadius.circular(28),
-                          child: CircleAvatar(
-                            radius: 28,
-                            backgroundColor: Colors.white.withOpacity(0.3),
-                            child: Icon(Icons.person, size: 30, color: iconColor),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            spreadRadius: 1,
-                            blurRadius: 5,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Search Form',
-                          hintStyle: TextStyle(color: Colors.grey[600]),
-                          border: InputBorder.none,
-                          icon: Icon(Icons.search, color: Colors.grey[600]),
-                          suffixIcon: Icon(Icons.search, color: iconColor),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+    return Obx(() {
+      // PERBAIKAN DI SINI: Gunakan controller.isLoading.value
+      if (controller.isLoading.value) {
+        return const Center(child: CircularProgressIndicator(color: AdminScreen.accentHeaderColor));
+      }
+      // Menggunakan controller.dashboardForms (nama ini sudah benar dari AdminController terakhir)
+      if (controller.dashboardForms.isEmpty) {
+        return _buildNoFormsAvailableMessage();
+      }
+      return RefreshIndicator(
+        onRefresh: () => controller.fetchFormsForDashboard(),
+        color: AdminScreen.accentHeaderColor,
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+          itemCount: controller.dashboardForms.length,
+          itemBuilder: (context, index) {
+            final formItem = controller.dashboardForms[index];
+            return _buildFormItemCard(formItem, context);
+          },
         ),
-
-        // Dashboard Items List - This part remains the same
-        SliverList(
-          delegate: SliverChildListDelegate([
-            const SizedBox(height: 20),
-            Obx(() {
-              if (controller.isLoading.value) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (controller.dashboardItems.isEmpty) {
-                return _buildNoFormsMessage();
-              }
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  children: controller.dashboardItems.map((item) =>
-                      _buildDashboardCard(item)
-                  ).toList(),
-                ),
-              );
-            }),
-            const SizedBox(height: 20),
-          ]),
-        ),
-      ],
-    );
+      );
+    });
   }
 
-  // Helper method to build a dashboard card
-  Widget _buildDashboardCard(DashboardItem item) {
+  Widget _buildFormItemCard(FormItem item, BuildContext context) {
+    int totalQuestions = item.sections.fold(0, (sum, section) => sum + section.questions.length);
+    String formattedDate = "${item.createdAt.toLocal().day}/${item.createdAt.toLocal().month}/${item.createdAt.toLocal().year}";
+
     return Card(
       elevation: 3,
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: cardBackgroundColor,
+      color: cardBgColor,
       child: InkWell(
         onTap: () {
           Get.snackbar(
-            'Item Dipilih',
-            'Anda memilih: ${item.title} (${item.programId})',
+            'Form Dipilih',
+            'Form: ${item.title}\nID: ${item.id}',
             snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.blueAccent,
-            colorText: Colors.white,
           );
         },
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.article_outlined, size: 16, color: Colors.black54),
-                        const SizedBox(width: 5),
-                        Text(
-                          item.category,
-                          style: const TextStyle(fontSize: 14, color: Colors.black54),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on_outlined, size: 16, color: Colors.grey),
-                        const SizedBox(width: 5),
-                        Text(
-                          item.location,
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              Text(
+                item.title,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: titleColor),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: accentHeaderColor,
-                  borderRadius: BorderRadius.circular(8),
+              if (item.description.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  item.description,
+                  style: const TextStyle(fontSize: 14, color: subtitleColor),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                 ),
+              ],
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Dibuat: $formattedDate',
+                        style: const TextStyle(fontSize: 11, color: dateColor),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Total Pertanyaan: $totalQuestions',
+                        style: const TextStyle(fontSize: 11, color: dateColor),
+                      ),
+                    ],
+                  ),
+                  Icon(Icons.arrow_forward_ios_rounded, size: 18, color: iconDetailColor.withOpacity(0.7)),
+                ],
               ),
             ],
           ),
@@ -266,26 +235,25 @@ class _DashboardContent extends StatelessWidget {
     );
   }
 
-  // Static message when no forms are available
-  Widget _buildNoFormsMessage() {
+  Widget _buildNoFormsAvailableMessage() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.dashboard_outlined, size: 80, color: Colors.grey),
+            Icon(Icons.note_add_outlined, size: 80, color: Colors.grey.shade400),
             const SizedBox(height: 20),
-            const Text(
-              'Tidak ada item dashboard yang tersedia.',
+            Text(
+              'Belum ada form yang dibuat.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black54),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
             ),
             const SizedBox(height: 10),
-            const Text(
-              'Silakan hubungi administrator untuk konfigurasi dashboard.',
+            Text(
+              'Silakan buat form baru pada tab "Form".',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
             ),
           ],
         ),

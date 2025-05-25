@@ -1,62 +1,81 @@
 // lib/presentation/admin/admin_controller.dart
 
 import 'package:get/get.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Untuk Firestore
 import 'package:aplikasi_pendataan_desa/presentation/login/login_controller.dart';
-import 'package:aplikasi_pendataan_desa/infrastructure/navigation/routes.dart';
-import 'package:aplikasi_pendataan_desa/presentation/admin/admin_model.dart';
-import 'package:flutter/material.dart';
-import 'package:aplikasi_pendataan_desa/domain/auth/models/auth_user.dart'; // Ini penting untuk AuthUser
+// Import FormItem model dari lokasi yang benar
+import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart'; // <-- PASTIKAN INI ADA
+// Import AuthUser model (sudah ada)
+import 'package:aplikasi_pendataan_desa/domain/auth/models/auth_user.dart';
+// HAPUS import 'package:aplikasi_pendataan_desa/presentation/admin/admin_model.dart'; // Tidak lagi menggunakan DashboardItem
 
 class AdminController extends GetxController {
-  final LoginController _loginController = Get.find<LoginController>();
+  late final LoginController _loginController;
 
-  // =====================================================================
-  // DIAGNOSTIC CODE START: Ini akan menyebabkan error yang JELAS jika salah
-  // =====================================================================
-  AdminController() {
-    try {
-      // Akses properti loggedInAuthUser di sini
-      var test = _loginController.loggedInAuthUser; // <-- ERROR UTAMA YANG INGIN KITA JELASKAN
-      print("AdminController: _loginController.loggedInAuthUser found: ${test != null}");
-    } catch (e) {
-      print("AdminController: ERROR - _loginController.loggedInAuthUser NOT found during init: $e");
-      // Jika Anda ingin menghentikan kompilasi lebih awal, aktifkan ini:
-      // throw Exception("Critical: LoginController does not expose loggedInAuthUser");
-    }
-  }
-  // =====================================================================
-  // DIAGNOSTIC CODE END
-  // =====================================================================
+  final RxString adminName = 'Admin'.obs;
 
-  String? get userEmail => _loginController.loggedInAuthUser.value?.email;
-  String get adminName => _loginController.loggedInAuthUser.value?.displayName ?? 'Admin';
-  String get adminRole => _loginController.loggedInAuthUser.value?.roleFromFirestore ?? 'Role Tidak Diketahui';
-  String? get adminProgramId => _loginController.loggedInAuthUser.value?.programId;
-
-  final RxList<DashboardItem> dashboardItems = <DashboardItem>[].obs;
-  final RxBool isLoading = false.obs;
+  // Menggunakan FormItem untuk dashboard
+  final RxList<FormItem> dashboardForms = <FormItem>[].obs; // <-- TIPE DAN NAMA DIUBAH
+  // isLoading akan digunakan untuk status loading daftar form di dashboard
+  final RxBool isLoading = true.obs; // Default true agar loading tampil saat pertama kali
   final RxInt selectedPageIndex = 0.obs;
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // Path koleksi tempat form disimpan (HARUS SAMA dengan di AdminFormBuilderController)
+  static const String _formsCollectionPath = 'adminForms'; // <-- PASTIKAN INI NAMA KOLEKSI FORM ANDA
 
   @override
   void onInit() {
     super.onInit();
-    _loadDashboardItems();
+    _loginController = Get.find<LoginController>();
+
+    ever(_loginController.loggedInAuthUser, (AuthUser? authUser) {
+      adminName.value = authUser?.displayName ?? 'Admin';
+      // Jika diperlukan, panggil fetchFormsForDashboard() di sini jika dashboard bergantung pada role
+      // fetchFormsForDashboard();
+    });
+    adminName.value = _loginController.loggedInAuthUser.value?.displayName ?? 'Admin';
+
+    fetchFormsForDashboard(); // Memuat daftar form untuk dashboard
   }
 
-  void _loadDashboardItems() {
+  Future<void> fetchFormsForDashboard() async {
     isLoading.value = true;
-    dashboardItems.assignAll([
-      DashboardItem(title: 'Dashboard Pendataan Penduduk', category: 'Pendataan Penduduk', location: 'Desa Tulung Rejo', programId: '001'),
-      DashboardItem(title: 'Dashboard Pendataan TPS3R', category: 'Pendataan TPS3R', location: 'Desa Tulung Rejo', programId: '002'),
-      DashboardItem(title: 'Dashboard Pendataan Bank Sampah', category: 'Pendataan TPS3R', location: 'Desa Tulung Rejo', programId: '003'),
-      DashboardItem(title: 'Dashboard Pendataan Desa', category: 'Pendataan TPS3R', location: 'Desa Tulung Rejo', programId: '004'),
-    ]);
-    isLoading.value = false;
+    try {
+      print("DEBUG AdminController: Fetching forms from '$_formsCollectionPath'...");
+      final snapshot = await _firestore
+          .collection(_formsCollectionPath) // Menggunakan path koleksi form yang benar
+          .orderBy('createdAt', descending: true) // Urutkan berdasarkan tanggal terbaru
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        // Mapping dokumen Firestore ke objek FormItem
+        dashboardForms.assignAll(
+            snapshot.docs.map((doc) => FormItem.fromFirestore(doc)).toList());
+      } else {
+        dashboardForms.clear(); // Kosongkan jika tidak ada data
+      }
+      print("DEBUG AdminController: Fetched ${dashboardForms.length} forms for dashboard.");
+    } catch (e) {
+      print("Error loading forms for dashboard: $e");
+      // Tampilkan Snackbar error di sini jika GetX sudah siap
+      // Get.snackbar("Error Dashboard", "Gagal memuat daftar form: ${e.toString()}");
+      dashboardForms.clear();
+    } finally {
+      // Pastikan controller belum di-dispose sebelum mengubah isLoading
+      if(!isClosed) {
+        isLoading.value = false;
+      }
+    }
   }
 
   void onPageChanged(int index) {
     selectedPageIndex.value = index;
   }
+
+  String? get userEmail => _loginController.loggedInAuthUser.value?.email;
+  String get adminRole => _loginController.loggedInAuthUser.value?.roleFromFirestore ?? 'Role Tidak Diketahui';
+  String? get adminProgramId => _loginController.loggedInAuthUser.value?.programId;
 
   void logout() {
     _loginController.logout();
