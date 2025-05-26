@@ -8,7 +8,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.12.0] - 2025-05-27
+## [0.12.1] - 2025-05-27
+> Created by Bayu Ardiyansyah
+
+> Enhanced Admin Dashboard with BI Features, Advanced Date Filtering, and Improved UI Consistency
+
+### 🎉 Added
+-   **Comprehensive BI Dashboard (`_DashboardContentOnly`):**
+  -   Integrated key performance indicators: **Total Submissions**, **Active Users**, **Submissions per Form**, and **Form Access Overview**.
+  -   Implemented a **date range filter** allowing administrators to analyze data within specific timeframes.
+-   **Form Access Overview Section:**
+  -   Added a new section to the dashboard displaying each available form along with the **count of users who have access** to that specific form.
+  -   This provides quick insights into access management per form.
+-   **Dummy Data for Trend Chart:**
+  -   When no real submission trend data is available, a **placeholder chart with "Data Dummy" label** is displayed, giving a visual representation and indicating the absence of live data.
+-   **New Data Fetching Methods (`AdminController`):**
+  -   `_fetchFormAccessCounts()`: Fetches the number of `managedAccounts` for each form.
+  -   `_fetchTotalSubmissions()`: Calculates total submissions across all forms.
+  -   `_fetchTotalActiveUsers()`: Counts all registered users.
+  -   `_fetchFormSubmissionCounts()`: Retrieves submission counts per individual form.
+  -   `_fetchSubmissionTrend()`: Gathers data for submission trends over time.
+
+### 🛠️ Changed
+-   **Dashboard UI Overhaul:**
+  -   **Date Filter Section (`_buildDateFilterSection`):** Redesigned for a more modern and elegant appearance with an `InkWell` styled to look like a card, subtle borders, and shadows. Date format for display is now `dd MMMYYYY` for better readability.
+  -   **Date Picker Dialog Theming:** Customized the `showDateRangePicker`'s `builder` property in `AdminController` to align its colors (header, selected dates, text) and shape (rounded dialog corners) with the app's primary and accent colors.
+  -   **Metric Card Styling:** Enhanced **Total Submissions** and **Active Users** metric cards with improved elevation, rounded corners, and clear icon/text styling.
+  -   **Form Submission & Access Item Styling:** Individual items in "Submissions per Form" and "Form Access Overview" sections are given a clean, card-like appearance with subtle shadows and consistent typography.
+-   **`AdminController` Logic Refinements:**
+  -   `WorkspaceDashboardData()`: Orchestrates fetching all dashboard-related data concurrently for efficiency.
+  -   `_applyDashboardFilter()`: Now intelligently filters `formSubmissions` and `submissionTrend` based on the selected date range, recalculating `totalSubmissions` accordingly.
+  -   `_filterSubmissionTrendByDate()`: Filters the `submissionTrend` data based on the applied date range.
+-   **Code Structure:**
+  -   Moved `_DummyChartPainter` class definition outside of `_DashboardContentOnly` to resolve "Classes can't be declared inside other classes" error, improving code organization.
+
+### 🐛 Fixed
+-   **`DateFormat` Not Defined:** Resolved by ensuring `package:intl/intl.dart` is correctly imported in `admin_controller.dart`.
+-   **Firestore Permission Denied (Dashboard Data):** Addressed `permission-denied` errors by explicitly allowing `read` access to the `submissions` subcollection within `adminForms/{formId}` in Firestore Security Rules.
+-   **`_buildDateFilterSection` Syntax:** Corrected a syntax error with a misplaced parenthesis in the `Row` widget within `_buildDateFilterSection`.
+-   **`_DummyChartPainter` Definition:** Corrected class definition location and associated errors (`CustomPainter isn't a type`, `covariant` keyword misuse) by placing `_DummyChartPainter` as a top-level class.
+
+---
+
+## [0.12.0] - 2025-05-26
 > Form Builder Functionality Enhancements and Stability Fixes
 
 ### 🎉 Added
