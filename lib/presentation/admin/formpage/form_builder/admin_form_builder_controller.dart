@@ -1,5 +1,3 @@
-// lib/presentation/admin/formpage/form_builder/admin_form_builder_controller.dart
-
 import 'dart:async'; // Untuk Timer
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,16 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:uid/uid.dart'; // Untuk ID unik lokal
 
 import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart';
-// Pastikan path ini benar menuju definisi AppRoutes Anda
-// Jika AppRoutes ada di lib/routes/app_routes.dart, pathnya mungkin:
-// import 'package:aplikasi_pendataan_desa/routes/app_routes.dart';
-import '../../../../infrastructure/navigation/routes.dart'; // Asumsi path ini benar
+import '../../../../infrastructure/navigation/routes.dart';
 
 class AdminFormBuilderController extends GetxController {
   final RxString formTitle = ''.obs;
   final RxString formDescription = ''.obs;
   final RxList<FormSection> sections = <FormSection>[].obs;
-  final RxBool isBusy = false.obs; // Flag untuk loading atau saving
+  final RxBool isBusy = false.obs;
 
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
@@ -25,19 +20,16 @@ class AdminFormBuilderController extends GetxController {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  String? _currentFormId; // Firestore Document ID jika sedang mengedit
-  DateTime? _originalCreatedAt; // Untuk menyimpan createdAt asli saat mengedit
+  String? _currentFormId;
+  DateTime? _originalCreatedAt;
 
-  // Nama koleksi Firestore untuk menyimpan form
   static const String _formsCollectionPath = 'adminForms';
 
-  // Getter untuk mengetahui apakah sedang dalam mode edit
   bool get isEditMode => _currentFormId != null && _currentFormId!.isNotEmpty;
 
   @override
   void onInit() {
     super.onInit();
-    // Listener untuk sinkronisasi judul form dari TextField ke RxString
     titleController.addListener(() {
       formTitle.value = titleController.text;
     });
@@ -45,13 +37,11 @@ class AdminFormBuilderController extends GetxController {
       formDescription.value = descriptionController.text;
     });
 
-    // Periksa argumen untuk mode edit atau buat form baru
     if (Get.arguments != null && Get.arguments is String) {
       _currentFormId = Get.arguments as String;
       if (_currentFormId!.isNotEmpty) {
         _loadFormForEditing(_currentFormId!);
       } else {
-        // Argumen ada tapi string kosong, anggap form baru
         _initializeNewForm();
       }
     } else {
@@ -71,18 +61,17 @@ class AdminFormBuilderController extends GetxController {
     formDescription.value = '';
     titleController.text = '';
     descriptionController.text = '';
-    sections.clear(); // Bersihkan section yang mungkin ada
-    addSection(); // Mulai dengan satu bagian default untuk form baru
+    sections.clear();
+    addSection(); // Mulai dengan satu bagian default
     _currentFormId = null;
     _originalCreatedAt = null;
-    update(); // Trigger update jika diperlukan setelah clear dan add
+    update();
   }
 
   Future<void> _loadFormForEditing(String formId) async {
     isBusy.value = true;
     try {
       final docSnapshot = await _db.collection(_formsCollectionPath).doc(formId).get();
-
       if (docSnapshot.exists) {
         final formItem = FormItem.fromFirestore(docSnapshot);
         formTitle.value = formItem.title;
@@ -91,26 +80,23 @@ class AdminFormBuilderController extends GetxController {
         titleController.text = formItem.title;
         descriptionController.text = formItem.description;
         _originalCreatedAt = formItem.createdAt;
-        // _currentFormId sudah di-set dari argumen
         Get.snackbar('Informasi', 'Form "${formItem.title}" berhasil dimuat.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.blueGrey, colorText: Colors.white);
       } else {
         Get.snackbar('Error', 'Form dengan ID "$formId" tidak ditemukan.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade300, colorText: Colors.white);
-        _initializeNewForm(); // Kembali ke state form baru jika tidak ditemukan
+        _initializeNewForm();
       }
     } catch (e) {
-      Get.snackbar('Error Memuat Form', 'Gagal: ${e.toString()}', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade400, colorText: Colors.white);
-      print('Error loading form for editing: $e');
-      _initializeNewForm(); // Kembali ke state form baru jika ada error
+      Get.snackbar('Error Memuat Form', 'Gagal memuat: ${e.toString()}', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade400, colorText: Colors.white);
+      _initializeNewForm();
     } finally {
       isBusy.value = false;
     }
   }
 
-  // --- Manajemen Bagian (Sections) ---
   void addSection() {
     sections.add(FormSection(
-      id: UId.getId(), // ID unik lokal untuk bagian
-      title: 'Bagian ${sections.length + 1}',
+      id: UId.getId(),
+      title: '', // Judul akan diisi pengguna, UI akan menampilkan Romawi jika kosong
       questions: [],
     ));
   }
@@ -118,7 +104,6 @@ class AdminFormBuilderController extends GetxController {
   void updateSectionTitle(String sectionId, String title) {
     final index = sections.indexWhere((s) => s.id == sectionId);
     if (index != -1) {
-      // Membuat objek baru untuk memastikan reaktivitas GetX
       sections[index] = sections[index].copyWith(title: title);
     }
   }
@@ -137,42 +122,54 @@ class AdminFormBuilderController extends GetxController {
     }
   }
 
-  // --- Manajemen Pertanyaan dalam Bagian ---
   void addQuestionToSection(String sectionId, QuestionType type) {
-    final sectionIndex = sections.indexWhere((s) => s.id == sectionId);
-    if (sectionIndex != -1) {
+    final sectionIndexInList = sections.indexWhere((s) => s.id == sectionId); // 0-based index
+    if (sectionIndexInList != -1) {
+      final currentSection = sections[sectionIndexInList];
+      // Nomor pertanyaan berikutnya dalam bagian ini (1-based)
+      int nextQuestionNumberInThisSection = currentSection.questions.length + 1;
+      // Nomor bagian (1-based) untuk awalan kode
+      int sectionNumberForCode = sectionIndexInList + 1;
+
+      // Kode otomatis: [NomorBagian][NomorUrutPertanyaanDalamBagian, 2 digit]
+      // Contoh: Bagian 1, Pertanyaan 1 -> 101; Bagian 3, Pertanyaan 12 -> 312
+      String suggestedCode = '$sectionNumberForCode${nextQuestionNumberInThisSection.toString().padLeft(2, '0')}';
+
       final newQuestion = FormQuestion(
-        id: UId.getId(), // ID unik lokal untuk pertanyaan
-        questionText: '', // Biarkan kosong agar diisi pengguna
+        id: UId.getId(),
+        code: suggestedCode, // Kode otomatis berdasarkan nomor bagian dan urutan pertanyaan
+        questionText: '',
         type: type,
         options: (type == QuestionType.multipleChoice || type == QuestionType.checkboxes || type == QuestionType.dropdown)
             ? ['Opsi 1'] // Opsi default awal
             : [],
         isRequired: false,
         conditionalJumps: [],
-        validation: ValidationRule(), // Inisialisasi default jika perlu
+        validation: ValidationRule(),
+        dependentOptions: null,
       );
-      final currentSection = sections[sectionIndex];
-      // Buat list pertanyaan baru untuk memastikan reaktivitas
       final updatedQuestions = List<FormQuestion>.from(currentSection.questions)..add(newQuestion);
-      sections[sectionIndex] = currentSection.copyWith(questions: updatedQuestions);
+      sections[sectionIndexInList] = currentSection.copyWith(questions: updatedQuestions);
     }
   }
 
-  // Metode helper internal untuk update properti pertanyaan
   void _updateQuestionProperty(String sectionId, String questionId, FormQuestion Function(FormQuestion currentQ) updater) {
     final sectionIndex = sections.indexWhere((s) => s.id == sectionId);
     if (sectionIndex != -1) {
       final section = sections[sectionIndex];
       final questionList = section.questions;
-      final questionIndex = questionList.indexWhere((q) => q.id == questionId);
-      if (questionIndex != -1) {
-        final updatedQuestion = updater(questionList[questionIndex]);
+      final questionIndexInOriginalList = questionList.indexWhere((q) => q.id == questionId);
+      if (questionIndexInOriginalList != -1) {
+        final updatedQuestion = updater(questionList[questionIndexInOriginalList]);
         final newQuestionsList = List<FormQuestion>.from(questionList);
-        newQuestionsList[questionIndex] = updatedQuestion;
+        newQuestionsList[questionIndexInOriginalList] = updatedQuestion;
         sections[sectionIndex] = section.copyWith(questions: newQuestionsList);
       }
     }
+  }
+
+  void updateQuestionCode(String sectionId, String questionId, String newCode) {
+    _updateQuestionProperty(sectionId, questionId, (q) => q.copyWith(code: newCode.trim()));
   }
 
   void updateQuestionText(String sectionId, String questionId, String text) {
@@ -224,9 +221,30 @@ class AdminFormBuilderController extends GetxController {
     }
   }
 
-  void updateValidation(String sectionId, String questionId, ValidationRule? validation) {
-    _updateQuestionProperty(sectionId, questionId, (q) => q.copyWith(validation: validation, setValidationNull: validation == null));
+  void updateValidation(String sectionId, String questionId, ValidationRule? newValidationRule) {
+    _updateQuestionProperty(sectionId, questionId, (q) {
+      // If newValidationRule is completely empty (all fields null or default/none), then set validation to null.
+      bool isNewRuleEffectivelyEmpty = newValidationRule == null ||
+          (newValidationRule.minLength == null &&
+              newValidationRule.maxLength == null &&
+              newValidationRule.minValue == null &&
+              newValidationRule.maxValue == null &&
+              (newValidationRule.regex == null || newValidationRule.regex!.isEmpty) &&
+              (newValidationRule.predefinedRule == null || newValidationRule.predefinedRule!.isEmpty)); // 'none' is handled by copyWith
+
+      ValidationRule? ruleToSet = newValidationRule;
+      if (ruleToSet != null) {
+        // Example: If a predefinedRule is chosen (and it's not 'custom'),
+        // you might want to clear the custom regex.
+        // For now, we let both coexist, validation execution logic would prioritize.
+        // if (ruleToSet.predefinedRule != null && ruleToSet.predefinedRule!.isNotEmpty && ruleToSet.predefinedRule != 'custom_regex_identifier_if_any') {
+        //   ruleToSet = ruleToSet.copyWith(regex: null, setRegexNull: true);
+        // }
+      }
+      return q.copyWith(validation: ruleToSet, setValidationNull: isNewRuleEffectivelyEmpty);
+    });
   }
+
 
   void addConditionalJump(String sectionId, String questionId, ConditionalJump jump) {
     _updateQuestionProperty(sectionId, questionId, (q) {
@@ -247,36 +265,83 @@ class AdminFormBuilderController extends GetxController {
     _updateQuestionProperty(sectionId, questionId, (q) =>
         q.copyWith(
           repeatable: repeatable,
-          repeatCount: repeatable ? (count ?? q.repeatCount ?? 1) : null,
+          repeatCount: repeatable ? (count ?? q.repeatCount) : null,
           setRepeatCountNull: !repeatable,
         )
     );
   }
 
+  List<FormQuestion> getPotentialParentQuestions(String? currentSectionIdToExclude, String currentQuestionIdToExclude) {
+    final List<FormQuestion> potentialParents = [];
+    for (var section in sections) {
+      for (var question in section.questions) {
+        if (question.id == currentQuestionIdToExclude) continue;
+        if ((question.type == QuestionType.dropdown ||
+            question.type == QuestionType.multipleChoice ||
+            question.type == QuestionType.checkboxes) &&
+            question.options.isNotEmpty) {
+          potentialParents.add(question);
+        }
+      }
+    }
+    return potentialParents;
+  }
 
-  // --- Simpan Form ---
+  FormQuestion? findQuestionById(String questionId) {
+    for (var section in sections) {
+      for (var q_item in section.questions) {
+        if (q_item.id == questionId) return q_item;
+      }
+    }
+    return null;
+  }
+
+  void setParentQuestionForDependency(String sectionId, String questionId, String? newParentQuestionId) {
+    _updateQuestionProperty(sectionId, questionId, (q) {
+      if (newParentQuestionId == null || newParentQuestionId.isEmpty) {
+        return q.copyWith(dependentOptions: null, setDependentOptionsNull: true);
+      }
+      final newConfig = (q.dependentOptions?.parentQuestionId == newParentQuestionId
+          ? q.dependentOptions
+          : DependentOptionsConfig(parentQuestionId: newParentQuestionId, optionMapping: {}))!
+          .copyWith(parentQuestionId: newParentQuestionId);
+      return q.copyWith(dependentOptions: newConfig, setDependentOptionsNull: false);
+    });
+  }
+
+  void updateMappingForParentOption(String sectionId, String questionId, String parentOptionValue, List<String> childOptions) {
+    _updateQuestionProperty(sectionId, questionId, (q) {
+      if (q.dependentOptions == null || q.dependentOptions!.parentQuestionId.isEmpty) return q;
+
+      final newMapping = Map<String, List<String>>.from(q.dependentOptions!.optionMapping);
+      newMapping[parentOptionValue] = childOptions;
+      return q.copyWith(dependentOptions: q.dependentOptions!.copyWith(optionMapping: newMapping));
+    });
+  }
+
+  void removeMappingForParentOption(String sectionId, String questionId, String parentOptionValue) {
+    _updateQuestionProperty(sectionId, questionId, (q) {
+      if (q.dependentOptions == null) return q;
+      final newMapping = Map<String, List<String>>.from(q.dependentOptions!.optionMapping);
+      newMapping.remove(parentOptionValue);
+      return q.copyWith(dependentOptions: q.dependentOptions!.copyWith(optionMapping: newMapping));
+    });
+  }
+
   Future<void> saveForm() async {
-    print("DEBUG: saveForm() dipanggil.");
-
     if (formTitle.value.trim().isEmpty) {
-      print("DEBUG: Judul form kosong, proses dihentikan.");
       Get.snackbar('Input Error', 'Judul form tidak boleh kosong.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white);
       return;
     }
     if (_auth.currentUser == null) {
-      print("DEBUG: User tidak login, proses dihentikan.");
       Get.snackbar('Autentikasi Error', 'Anda harus login untuk menyimpan form.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade400, colorText: Colors.white);
       return;
     }
 
     isBusy.value = true;
-    print("DEBUG: isBusy diatur ke true, memulai proses simpan.");
     try {
       String formIdToSave = _currentFormId ?? _db.collection(_formsCollectionPath).doc().id;
       final DateTime createdAtValue = isEditMode ? (_originalCreatedAt ?? DateTime.now()) : DateTime.now();
-
-      print("DEBUG: Form ID untuk disimpan: $formIdToSave");
-      print("DEBUG: Judul Form: ${formTitle.value.trim()}");
 
       final formToSave = FormItem(
         id: formIdToSave,
@@ -287,14 +352,9 @@ class AdminFormBuilderController extends GetxController {
         sections: sections.map((s) => s.cleanUpQuestionsBeforeSave()).toList(),
       );
 
-      print("DEBUG: Data form yang akan disimpan: ${formToSave.toFirestore()}");
-
       await _db.collection(_formsCollectionPath).doc(formIdToSave).set(formToSave.toFirestore());
 
-      print("DEBUG: Form berhasil disimpan ke Firestore.");
-
       const snackbarDuration = Duration(seconds: 3);
-
       Get.snackbar(
         'Berhasil',
         isEditMode ? 'Form "${formToSave.title}" berhasil diperbarui!' : 'Form "${formToSave.title}" berhasil dibuat!',
@@ -307,57 +367,27 @@ class AdminFormBuilderController extends GetxController {
         isDismissible: true,
         mainButton: TextButton(
           onPressed: () {
-            if (Get.isSnackbarOpen) {
-              Get.closeCurrentSnackbar();
-            }
-            // Jika ingin navigasi saat OK ditekan juga, panggil _navigateBackIfPossible di sini.
-            // Tapi hati-hati dengan Timer yang juga akan memanggilnya.
+            if (Get.isSnackbarOpen) Get.closeCurrentSnackbar();
           },
           child: const Text('OK', style: TextStyle(color: Colors.white)),
         ),
       );
 
-      Timer(snackbarDuration, () {
-        _navigateBackIfPossible();
-      });
+      Timer(snackbarDuration, _navigateBackIfPossible);
 
     } catch (e) {
-      print("DEBUG: Error saat menyimpan form: $e");
-      Get.snackbar('Error Simpan Form', 'Gagal: ${e.toString()}', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade400, colorText: Colors.white);
-      if(!isClosed) {
-        isBusy.value = false; // Set false juga di catch jika error
-      }
+      Get.snackbar('Error Simpan Form', 'Gagal menyimpan: ${e.toString()}', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade400, colorText: Colors.white);
+      if(!isClosed) isBusy.value = false;
     }
-    // finally { // 'finally' akan dijalankan bahkan jika ada return di try atau catch
-    //   // Jika Get.back() berhasil, controller mungkin sudah di-dispose.
-    //   // Menyetel isBusy di sini bisa menyebabkan error jika controller sudah 'closed'.
-    //   // Lebih baik set isBusy = false di akhir blok try (setelah navigasi) dan di blok catch.
-    //   // Namun, jika navigasi gagal atau Snackbar masih tampil, isBusy harus false.
-    //   // Pendekatan paling aman adalah di akhir try dan di catch.
-    //   // Jika navigasi dihandle oleh Timer, maka set isBusy = false setelah timer atau di akhir try.
-    //   // Untuk sekarang, kita biarkan isBusy di-set false setelah navigasi atau setelah error.
-    // }
   }
 
   void _navigateBackIfPossible() {
-    if (Get.isSnackbarOpen) {
-      Get.closeCurrentSnackbar(); // Tutup snackbar jika masih ada
-    }
-    // Tutup dialog atau bottom sheet lain yang mungkin masih terbuka
-    // Get.back(closeOverlays: true) bisa menutup snackbar juga, jadi hati-hati urutannya
-    if (Get.isOverlaysOpen) { // Lebih umum daripada isDialogOpen atau isBottomSheetOpen
-      Get.back(closeOverlays: true);
-    }
+    if (Get.isSnackbarOpen) Get.closeCurrentSnackbar();
+    if (Get.isOverlaysOpen) Get.back(closeOverlays: true);
 
     if (Get.currentRoute == AppRoutes.adminFormBuilder) {
       Get.back();
-      print("DEBUG: Get.back() dipanggil dari _navigateBackIfPossible.");
-    } else {
-      print("DEBUG: Tidak memanggil Get.back() karena rute saat ini bukan adminFormBuilder. Rute saat ini: ${Get.currentRoute}");
     }
-    if(!isClosed) { // Pastikan controller belum di-dispose
-      isBusy.value = false; // Set isBusy false setelah semua selesai
-      print("DEBUG: isBusy diatur ke false setelah navigasi/timer.");
-    }
+    if(!isClosed) isBusy.value = false;
   }
 }

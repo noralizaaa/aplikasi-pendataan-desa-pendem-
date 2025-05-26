@@ -1,5 +1,3 @@
-// lib/presentation/admin/formpage/admin_form_builder_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/form_builder/admin_form_builder_controller.dart';
@@ -9,21 +7,34 @@ import 'package:aplikasi_pendataan_desa/presentation/admin/admin_screen.dart'; /
 class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
   const AdminFormBuilderPage({Key? key}) : super(key: key);
 
-  // Warna dari AdminScreen untuk konsistensi
   static const Color appBarForegroundColor = Colors.white;
-  // Warna aksen untuk elemen aktif seperti border fokus, switch, tombol utama
-  static const Color accentThemeColor = AdminScreen.accentHeaderColor; // Color(0xFFFF9800)
-  // Warna netral untuk label TextField saat tidak fokus
-  static const Color neutralLabelColor = Colors.grey; // Atau Colors.grey.shade600
-  // Warna border TextField saat tidak fokus
-  static const Color defaultTextFieldBorderColor = Colors.black26; // Lebih lembut dari Colors.grey
-  // Warna latar belakang utama halaman
-  static const Color pageBgColor = AdminScreen.pageBackgroundColor; // Color(0xFFF2FAFF)
-  // Warna latar belakang untuk Card
+  static const Color accentThemeColor = AdminScreen.accentHeaderColor;
+  static const Color neutralLabelColor = Colors.grey;
+  static const Color defaultTextFieldBorderColor = Colors.black26;
+  static const Color pageBgColor = AdminScreen.pageBackgroundColor;
   static const Color cardBgColor = Colors.white;
 
+  // Helper function to convert integer to Roman numeral
+  String _toRoman(int number) {
+    if (number < 1 || number > 3999) {
+      return number.toString(); // Fallback for numbers out of typical Roman numeral range
+    }
+    const List<String> romanNumerals = [
+      "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"
+    ];
+    const List<int> values = [
+      1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1
+    ];
+    String result = "";
+    for (int i = 0; i < values.length; i++) {
+      while (number >= values[i]) {
+        result += romanNumerals[i];
+        number -= values[i];
+      }
+    }
+    return result;
+  }
 
-  // Helper untuk InputDecoration yang modern dan elegan
   InputDecoration _modernInputDecoration({
     required String labelText,
     String? hintText,
@@ -33,8 +44,8 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
   }) {
     return InputDecoration(
       labelText: labelText,
-      labelStyle: TextStyle(color: neutralLabelColor.withOpacity(0.9), fontSize: isDense ? 14 : 15), // Label saat tidak fokus
-      floatingLabelStyle: const TextStyle(color: accentThemeColor, fontWeight: FontWeight.w500), // Label saat fokus/terisi
+      labelStyle: TextStyle(color: neutralLabelColor.withOpacity(0.9), fontSize: isDense ? 14 : 15),
+      floatingLabelStyle: const TextStyle(color: accentThemeColor, fontWeight: FontWeight.w500),
       hintText: hintText ?? 'Masukkan $labelText...',
       hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
       prefixIcon: prefixIcon,
@@ -48,10 +59,10 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10.0),
-        borderSide: const BorderSide(color: accentThemeColor, width: 1.8), // Border fokus
+        borderSide: const BorderSide(color: accentThemeColor, width: 1.8),
       ),
       filled: true,
-      fillColor: cardBgColor, // Latar belakang TextField
+      fillColor: cardBgColor,
       contentPadding: contentPadding ?? (isDense
           ? const EdgeInsets.symmetric(horizontal: 12, vertical: 12)
           : const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
@@ -60,8 +71,6 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
 
   @override
   Widget build(BuildContext context) {
-    // Get.put(AdminFormBuilderController()); // DIHAPUS - Sudah dihandle oleh binding
-
     return Scaffold(
       backgroundColor: pageBgColor,
       appBar: AppBar(
@@ -115,12 +124,9 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
         ),
       ),
       body: Obx(() {
-        // Kondisi loading awal: jika sedang sibuk, BUKAN mode edit (artinya form baru), dan belum ada section
         final bool showInitialLoaderForNewForm = controller.isBusy.value &&
-            !controller.isEditMode && // Menggunakan getter isEditMode dari controller
+            !controller.isEditMode &&
             controller.sections.isEmpty;
-
-        // Kondisi loading jika SEDANG mode edit dan isBusy true (artinya sedang memuat data form)
         final bool showLoaderForEditing = controller.isBusy.value && controller.isEditMode;
 
         if (showInitialLoaderForNewForm || showLoaderForEditing) {
@@ -132,7 +138,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
           children: [
             _buildFormHeader(),
             const SizedBox(height: 24),
-            Obx(() => Column( // Bungkus dengan Obx jika sections adalah RxList
+            Obx(() => Column(
               children: controller.sections.asMap().entries.map((entry) {
                 final sectionIndex = entry.key;
                 final section = entry.value;
@@ -204,6 +210,19 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
   }
 
   Widget _buildSectionCard(FormSection section, int sectionIndex) {
+    // sectionIndex adalah 0-based
+    String romanNumeral = _toRoman(sectionIndex + 1);
+    String displaySectionTitle;
+
+    if (section.title.trim().isEmpty) {
+      displaySectionTitle = 'Bagian $romanNumeral';
+    } else {
+      displaySectionTitle = '$romanNumeral ${section.title.trim()}';
+    }
+
+    String titleForDialog = section.title.trim().isEmpty ? "Bagian $romanNumeral" : section.title.trim();
+
+
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
       elevation: 2,
@@ -211,14 +230,14 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
       clipBehavior: Clip.antiAlias,
       color: cardBgColor,
       child: ExpansionTile(
-        key: ValueKey(section.id),
-        initiallyExpanded: sectionIndex == 0 || section.questions.isNotEmpty,
+        key: ValueKey(section.id), // Use section.id for stable key
+        initiallyExpanded: sectionIndex == 0 || section.questions.isNotEmpty || section.title.isNotEmpty,
         backgroundColor: cardBgColor,
         collapsedBackgroundColor: cardBgColor,
         iconColor: accentThemeColor,
         collapsedIconColor: Colors.grey.shade700,
         title: Text(
-          'Bagian ${sectionIndex + 1}: ${section.title.isEmpty ? "Bagian Baru" : section.title}',
+          displaySectionTitle,
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
           overflow: TextOverflow.ellipsis,
         ),
@@ -239,7 +258,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                         onPressed: () {
                           Get.defaultDialog(
                               title: "Konfirmasi Hapus Bagian",
-                              middleText: "Anda yakin ingin menghapus bagian '${section.title.isEmpty ? "Tanpa Judul" : section.title}'?",
+                              middleText: "Anda yakin ingin menghapus bagian '$titleForDialog'?",
                               textConfirm: "Hapus",
                               textCancel: "Batal",
                               confirmTextColor: Colors.white,
@@ -255,7 +274,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                   controller: TextEditingController(text: section.title)
                     ..selection = TextSelection.fromPosition(TextPosition(offset: section.title.length)),
                   onChanged: (text) => controller.updateSectionTitle(section.id, text),
-                  decoration: _modernInputDecoration(labelText: 'Judul Bagian', isDense: true),
+                  decoration: _modernInputDecoration(labelText: 'Judul Bagian (Contoh: Keterangan Rumah Tangga)', hintText: 'Kosongkan untuk hanya menampilkan nomor Romawi', isDense: true),
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 12),
@@ -274,7 +293,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     child: Center(child: Text("Belum ada pertanyaan di bagian ini.", style: TextStyle(color: Colors.grey.shade600))),
                   ),
-                Column( // Pastikan ini Column jika ada banyak pertanyaan
+                Column(
                   children: section.questions.asMap().entries.map((entry) {
                     final questionIndex = entry.key;
                     final question = entry.value;
@@ -291,14 +310,26 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     );
   }
 
-  Widget _buildQuestionCard(String sectionId, int currentSectionIndex, FormQuestion question, int questionIndexInThisSection) {
+  Widget _buildQuestionCard(String sectionId, int sectionIndexOverall, FormQuestion question, int questionIndexInSection) {
+    // sectionIndexOverall adalah 0-based index dari section
+    // questionIndexInSection adalah 0-based index dari pertanyaan di dalam section tersebut
+    String displayCode = question.code != null && question.code!.isNotEmpty ? "(${question.code}) " : "";
+    String questionTypeString = question.type.toShortString();
+    if (questionTypeString.isNotEmpty) {
+      questionTypeString = (questionTypeString[0].toUpperCase() + questionTypeString.substring(1));
+    }
+
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16.0, top: 8.0),
       padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10.0),
-        border: Border.all(color: Colors.grey.shade200, width: 1.0),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10.0),
+          border: Border.all(color: Colors.grey.shade200, width: 1.0),
+          boxShadow: [
+            BoxShadow(color: Colors.grey.shade100, blurRadius: 3, offset: const Offset(0,1))
+          ]
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,7 +340,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
             children: [
               Expanded(
                 child: Text(
-                  'Pertanyaan ${questionIndexInThisSection + 1} (${question.type.toShortString().capitalizeFirst ?? question.type.toShortString()})',
+                  'Pertanyaan ${questionIndexInSection + 1} $displayCode($questionTypeString)',
                   style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade700, fontWeight: FontWeight.w600),
                   softWrap: true,
                   overflow: TextOverflow.ellipsis,
@@ -334,12 +365,26 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: TextEditingController(text: question.code ?? '')
+              ..selection = TextSelection.fromPosition(TextPosition(offset: (question.code ?? '').length)),
+            onChanged: (text) => controller.updateQuestionCode(sectionId, question.id, text),
+            decoration: _modernInputDecoration(
+                labelText: 'Kode Pertanyaan',
+                hintText: 'Otomatis: ${sectionIndexOverall + 1}XX atau sesuaikan',
+                isDense: true,
+                prefixIcon: Padding(padding: const EdgeInsets.all(10.0), child: Icon(Icons.tag, size: 18, color: Colors.grey.shade500))
+            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 12),
           TextField(
             controller: TextEditingController(text: question.questionText)
               ..selection = TextSelection.fromPosition(TextPosition(offset: question.questionText.length)),
             onChanged: (text) => controller.updateQuestionText(sectionId, question.id, text),
             decoration: _modernInputDecoration(labelText: 'Teks Pertanyaan', isDense: true,
-                prefixIcon: Padding(padding: const EdgeInsets.all(8.0), child: Icon(Icons.help_outline_rounded, size: 18, color: Colors.grey.shade500))
+                prefixIcon: Padding(padding: const EdgeInsets.all(10.0), child: Icon(Icons.help_outline_rounded, size: 18, color: Colors.grey.shade500))
             ),
             maxLines: null,
             style: const TextStyle(fontSize: 15),
@@ -353,6 +398,11 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
             _buildTextValidationSection(sectionId, question),
           if (question.type == QuestionType.date)
             _buildDateValidationSection(sectionId, question),
+
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: _buildPredefinedRuleDropdown(sectionId, question),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -392,10 +442,13 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
           ),
           _buildRepeatableSetting(sectionId, question),
           _buildConditionalJumpSetting(sectionId, question),
+          if (question.type == QuestionType.dropdown)
+            _buildDependentOptionsConfigurator(sectionId, question),
         ],
       ),
     );
   }
+
 
   Widget _buildOptionsSection(String sectionId, FormQuestion question) {
     InputDecoration optionInputDecoration(String hint) {
@@ -465,85 +518,156 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
   Widget _buildExpansionTileForSettings(String title, List<Widget> children, {bool initiallyExpanded = false}) {
     return ExpansionTile(
       title: Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade700)),
-      tilePadding: const EdgeInsets.symmetric(horizontal: 0),
-      childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      tilePadding: const EdgeInsets.symmetric(horizontal: 0), // Remove default padding
+      childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8), // Padding for children
       initiallyExpanded: initiallyExpanded,
       iconColor: accentThemeColor,
       collapsedIconColor: Colors.grey.shade600,
-      shape: const RoundedRectangleBorder(side: BorderSide.none),
-      collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
+      shape: const Border(top: BorderSide.none, bottom: BorderSide.none), // No border when expanded
+      collapsedShape: const Border(top: BorderSide.none, bottom: BorderSide.none), // No border when collapsed
       children: children,
     );
   }
 
   Widget _buildTextValidationSection(String sectionId, FormQuestion question) {
+    bool isValidationNotEmpty = question.validation != null &&
+        (question.validation!.minLength != null ||
+            question.validation!.maxLength != null ||
+            (question.validation!.regex != null && question.validation!.regex!.isNotEmpty));
+
     return _buildExpansionTileForSettings(
-      'Pengaturan Validasi Teks',
+      'Pengaturan Validasi Teks/Paragraf',
       [
         TextField(
-          controller: TextEditingController(text: question.validation?.minLength?.toString()),
+          controller: TextEditingController(text: question.validation?.minLength?.toString() ?? ''),
           keyboardType: TextInputType.number,
           decoration: _modernInputDecoration(labelText: 'Panjang Min.', hintText: 'Opsional', isDense: true),
-          onChanged: (value) { controller.updateValidation(sectionId,question.id, ValidationRule(minLength: int.tryParse(value), maxLength: question.validation?.maxLength, regex: question.validation?.regex)); },
+          onChanged: (value) { controller.updateValidation(sectionId,question.id, (question.validation ?? ValidationRule()).copyWith(minLength: int.tryParse(value), setMinLengthNull: value.isEmpty)); },
         ),
         const SizedBox(height: 8),
         TextField(
-          controller: TextEditingController(text: question.validation?.maxLength?.toString()),
+          controller: TextEditingController(text: question.validation?.maxLength?.toString() ?? ''),
           keyboardType: TextInputType.number,
           decoration: _modernInputDecoration(labelText: 'Panjang Max.', hintText: 'Opsional', isDense: true),
-          onChanged: (value) { controller.updateValidation(sectionId,question.id, ValidationRule(minLength: question.validation?.minLength, maxLength: int.tryParse(value), regex: question.validation?.regex)); },
+          onChanged: (value) { controller.updateValidation(sectionId,question.id, (question.validation ?? ValidationRule()).copyWith(maxLength: int.tryParse(value), setMaxLengthNull: value.isEmpty)); },
         ),
         const SizedBox(height: 8),
         TextField(
-          controller: TextEditingController(text: question.validation?.regex),
-          decoration: _modernInputDecoration(labelText: 'Pola Regex', hintText: 'Opsional, e.g. ^[A-Z]+\$', isDense: true),
-          onChanged: (value) { controller.updateValidation(sectionId, question.id, ValidationRule(minLength: question.validation?.minLength, maxLength: question.validation?.maxLength, regex: value.isEmpty ? null : value)); },
+          controller: TextEditingController(text: question.validation?.regex ?? ''),
+          decoration: _modernInputDecoration(labelText: 'Pola Regex Kustom', hintText: 'Opsional, e.g. ^[A-Z]+\$', isDense: true),
+          onChanged: (value) { controller.updateValidation(sectionId, question.id, (question.validation ?? ValidationRule()).copyWith(regex: value.isEmpty ? null : value, setRegexNull: value.isEmpty)); },
         ),
       ],
-      initiallyExpanded: question.validation != null && (question.validation!.minLength != null || question.validation!.maxLength != null || question.validation!.regex != null),
+      initiallyExpanded: isValidationNotEmpty,
     );
   }
 
   Widget _buildNumberValidationSection(String sectionId, FormQuestion question) {
+    bool isValidationNotEmpty = question.validation != null &&
+        (question.validation!.minValue != null ||
+            question.validation!.maxValue != null);
     return _buildExpansionTileForSettings(
       'Pengaturan Validasi Angka',
       [
         TextField(
-          controller: TextEditingController(text: question.validation?.minValue?.toString()),
+          controller: TextEditingController(text: question.validation?.minValue?.toString() ?? ''),
           keyboardType: TextInputType.number,
           decoration: _modernInputDecoration(labelText: 'Nilai Min.', hintText: 'Opsional', isDense: true),
-          onChanged: (value) { controller.updateValidation(sectionId, question.id, ValidationRule(minValue: num.tryParse(value), maxValue: question.validation?.maxValue)); },
+          onChanged: (value) { controller.updateValidation(sectionId, question.id, (question.validation ?? ValidationRule()).copyWith(minValue: num.tryParse(value), setMinValueNull: value.isEmpty)); },
         ),
         const SizedBox(height: 8),
         TextField(
-          controller: TextEditingController(text: question.validation?.maxValue?.toString()),
+          controller: TextEditingController(text: question.validation?.maxValue?.toString() ?? ''),
           keyboardType: TextInputType.number,
           decoration: _modernInputDecoration(labelText: 'Nilai Max.', hintText: 'Opsional', isDense: true),
-          onChanged: (value) { controller.updateValidation(sectionId, question.id, ValidationRule(minValue: question.validation?.minValue, maxValue: num.tryParse(value))); },
+          onChanged: (value) { controller.updateValidation(sectionId, question.id, (question.validation ?? ValidationRule()).copyWith(maxValue: num.tryParse(value), setMaxValueNull: value.isEmpty)); },
         ),
       ],
-      initiallyExpanded: question.validation != null && (question.validation!.minValue != null || question.validation!.maxValue != null),
+      initiallyExpanded: isValidationNotEmpty,
     );
   }
 
   Widget _buildDateValidationSection(String sectionId, FormQuestion question) {
+    // Add specific date validation fields here if needed in the future.
+    // For now, it's mostly covered by predefined rules or general validation if any.
+    bool isValidationNotEmpty = question.validation != null &&
+        (question.validation!.predefinedRule == 'pastDateOnly' ||
+            question.validation!.predefinedRule == 'futureDateOnly');
     return _buildExpansionTileForSettings(
       'Pengaturan Validasi Tanggal',
       [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text('Fitur validasi tanggal (Min/Max) akan segera hadir.', style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontStyle: FontStyle.italic)),
+          child: Text('Gunakan "Pola Validasi Umum" di bawah untuk validasi tanggal (misal: Hanya Tanggal Lalu).', style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontStyle: FontStyle.italic)),
         )
       ],
+      initiallyExpanded: isValidationNotEmpty,
     );
   }
+
+  Widget _buildPredefinedRuleDropdown(String sectionId, FormQuestion question) {
+    final Map<String, String> predefinedRulesDisplay = {
+      'none': 'Tidak Ada Pola Khusus',
+      'lettersOnly': 'Hanya Huruf',
+      'numbersOnly': 'Hanya Angka',
+      'alphanumeric': 'Huruf & Angka',
+      'email': 'Format Email',
+      'url': 'Format URL',
+      'phone': 'Nomor Telepon (ID)',
+      'nik': 'NIK (16 Digit Angka)',
+      'noKK': 'No. KK (16 Digit Angka)',
+      // Add more as needed
+    };
+    if (question.type == QuestionType.date) {
+      predefinedRulesDisplay['pastDateOnly'] = 'Hanya Tanggal Lalu';
+      predefinedRulesDisplay['futureDateOnly'] = 'Hanya Tanggal Akan Datang';
+    }
+
+
+    String? currentRule = question.validation?.predefinedRule;
+    if (currentRule != null && !predefinedRulesDisplay.containsKey(currentRule)) {
+      currentRule = 'none'; // Default if rule from db is not in our map
+    }
+    if (currentRule == null || currentRule.isEmpty) currentRule = 'none';
+
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 0.0, bottom: 8.0), // Reduced top padding
+      child: DropdownButtonFormField<String>(
+        value: currentRule,
+        decoration: _modernInputDecoration(
+          labelText: 'Pola Validasi Umum',
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        ),
+        items: predefinedRulesDisplay.entries.map((entry) {
+          return DropdownMenuItem<String>(
+            value: entry.key,
+            child: Text(entry.value, style: const TextStyle(fontSize: 14)),
+          );
+        }).toList(),
+        onChanged: (value) {
+          controller.updateValidation(
+              sectionId,
+              question.id,
+              (question.validation ?? ValidationRule()).copyWith(
+                  predefinedRule: (value == 'none' || value == null || value.isEmpty) ? null : value,
+                  setPredefinedRuleNull: (value == 'none' || value == null || value.isEmpty)
+              )
+          );
+        },
+        isExpanded: true,
+      ),
+    );
+  }
+
 
   Widget _buildRepeatableSetting(String sectionId, FormQuestion question) {
     return _buildExpansionTileForSettings(
       'Pengaturan Ulang Pertanyaan',
       [
         CheckboxListTile(
-          title: const Text("Dapat diulang (misal, isian harian)?", style: TextStyle(fontSize: 14)),
+          title: const Text("Dapat diulang?", style: TextStyle(fontSize: 14)),
           value: question.repeatable,
           onChanged: (bool? value) { controller.updateQuestionRepeatable(sectionId, question.id, value ?? false); },
           controlAffinity: ListTileControlAffinity.leading,
@@ -557,7 +681,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
             child: TextField(
               controller: TextEditingController(text: question.repeatCount?.toString() ?? ''),
               keyboardType: TextInputType.number,
-              decoration: _modernInputDecoration(labelText: 'Jumlah Maks. Pengulangan', hintText: 'Opsional', isDense: true),
+              decoration: _modernInputDecoration(labelText: 'Jumlah Maks. Pengulangan', hintText: 'Kosongkan untuk tanpa batas', isDense: true),
               onChanged: (value) { controller.updateQuestionRepeatable(sectionId, question.id, true, count: int.tryParse(value)); },
             ),
           ),
@@ -567,9 +691,15 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
   }
 
   Widget _buildConditionalJumpSetting(String sectionId, FormQuestion question) {
-    if (!(question.type == QuestionType.multipleChoice || question.type == QuestionType.checkboxes || question.type == QuestionType.dropdown) && question.options.isEmpty) {
+    bool canHaveJumps = question.type == QuestionType.multipleChoice ||
+        question.type == QuestionType.checkboxes ||
+        question.type == QuestionType.dropdown ||
+        (question.options.isNotEmpty);
+
+    if (!canHaveJumps) {
       return const SizedBox.shrink();
     }
+
     return _buildExpansionTileForSettings(
       'Logika Bersyarat (Lompat)',
       [
@@ -580,38 +710,53 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
           ),
         ...question.conditionalJumps.asMap().entries.map((entry) {
           final jump = entry.value; String jumpToTargetText = "...";
+
           if (jump.jumpToQuestionId == 'END_OF_FORM') jumpToTargetText = 'Akhir Form';
-          else if (jump.jumpToQuestionId == 'END_OF_SECTION' || jump.jumpToSectionId != null) jumpToTargetText = 'Bagian Selanjutnya atau Akhir Bagian';
-          else if (jump.jumpToQuestionId.isNotEmpty) {
-            bool targetFound = false;
-            for (var sec in controller.sections) {
-              if (jump.jumpToSectionId == sec.id && jump.jumpToQuestionId == 'END_OF_SECTION') {
-                jumpToTargetText = 'Bagian: ${sec.title.isNotEmpty ? sec.title : "Tanpa Judul"}';
-                targetFound = true;
-                break;
+          else if (jump.jumpToQuestionId == 'END_OF_SECTION') {
+            if (jump.jumpToSectionId != null) {
+              final targetSection = controller.sections.firstWhereOrNull((s) => s.id == jump.jumpToSectionId);
+              String targetSectionRoman = "";
+              if (targetSection != null) {
+                int targetSectionIndex = controller.sections.indexOf(targetSection);
+                targetSectionRoman = _toRoman(targetSectionIndex + 1);
               }
-              for (var q in sec.questions) {
-                if (q.id == jump.jumpToQuestionId) {
-                  jumpToTargetText = 'P: ${q.questionText.length > 20 ? q.questionText.substring(0,17)+'...' : q.questionText}';
+              jumpToTargetText = targetSection != null ? 'Awal Bagian: $targetSectionRoman ${targetSection.title.isNotEmpty ? (targetSection.title.length > 15 ? targetSection.title.substring(0,12)+'...' : targetSection.title) : "Tanpa Judul"}' : 'Bagian Selanjutnya';
+            } else {
+              jumpToTargetText = 'Bagian Selanjutnya / Akhir Bagian Ini';
+            }
+          } else if (jump.jumpToQuestionId.isNotEmpty) {
+            bool targetFound = false;
+            for (var sec_idx = 0; sec_idx < controller.sections.length; sec_idx++) {
+              var sec = controller.sections[sec_idx];
+              for (var q_idx = 0; q_idx < sec.questions.length; q_idx++) {
+                var q_item = sec.questions[q_idx];
+                if (q_item.id == jump.jumpToQuestionId) {
+                  String qCodeDisplay = q_item.code != null && q_item.code!.isNotEmpty ? q_item.code! : "${_toRoman(sec_idx + 1)}.${q_idx + 1}";
+                  jumpToTargetText = 'P: $qCodeDisplay - ${q_item.questionText.length > 20 ? q_item.questionText.substring(0,17)+'...' : q_item.questionText}';
                   targetFound = true;
                   break;
                 }
               }
               if (targetFound) break;
             }
-            if (!targetFound && jump.jumpToQuestionId.isNotEmpty) {
-              jumpToTargetText = 'ID: ${jump.jumpToQuestionId}';
+            if (!targetFound) {
+              jumpToTargetText = 'ID Pertanyaan: ${jump.jumpToQuestionId} (Mungkin terhapus)';
             }
           }
 
-
           return ListTile(
             dense: true, contentPadding: EdgeInsets.zero,
-            title: Text('Jika: "${jump.conditionValue}"', style: const TextStyle(fontSize: 14)),
+            title: Text('Jika jawaban: "${jump.conditionValue}"', style: const TextStyle(fontSize: 14)),
             subtitle: Text('Lompat ke: $jumpToTargetText', style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
             trailing: IconButton(
               icon: Icon(Icons.remove_circle_outline_rounded, color: Colors.red.shade300, size: 20),
-              onPressed: () => controller.removeConditionalJump(sectionId, question.id, jump.jumpToQuestionId.isNotEmpty ? jump.jumpToQuestionId : jump.jumpToSectionId!),
+              onPressed: () {
+                String idToRemove = jump.jumpToQuestionId;
+                if (jump.jumpToQuestionId == 'END_OF_SECTION' && jump.jumpToSectionId != null) {
+                  idToRemove = jump.jumpToSectionId!;
+                }
+                controller.removeConditionalJump(sectionId, question.id, idToRemove);
+              },
               splashRadius: 18, padding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
             ),
           );
@@ -630,37 +775,50 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     );
   }
 
+
   void _showAddConditionalJumpDialog(String sectionId, FormQuestion question) {
     final TextEditingController conditionController = TextEditingController();
-    String? selectedTargetId;
+    String? selectedTargetCompositeValue; // e.g., 'question_xyz', 'section_start_abc', 'end_of_form'
+
 
     List<DropdownMenuItem<String>> allJumpTargets = [
-      const DropdownMenuItem(value: null, enabled: false, child: Text('Pilih Tujuan Lompat:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey))),
+      const DropdownMenuItem(value: "HEADER_TARGET", enabled: false, child: Text('Pilih Tujuan Lompat:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey))),
     ];
 
     for (int i = 0; i < controller.sections.length; i++) {
       final sec = controller.sections[i];
-      String sectionTitle = 'Bagian ${i + 1}: ${sec.title.isNotEmpty ? (sec.title.length > 25 ? sec.title.substring(0, 22) + '...' : sec.title) : "Tanpa Judul"}';
+      String sectionRoman = _toRoman(i + 1);
+      String sectionTitle = '$sectionRoman: ${sec.title.isNotEmpty ? (sec.title.length > 20 ? sec.title.substring(0, 17) + '...' : sec.title) : "Tanpa Judul"}';
+
+
       allJumpTargets.add(DropdownMenuItem(
-        value: 'section_${sec.id}',
-        child: Text(sectionTitle, style: const TextStyle(fontWeight: FontWeight.w500)),
+        value: 'section_start_${sec.id}',
+        child: Text("Lompat ke Awal Bagian $sectionTitle", style: const TextStyle(fontWeight: FontWeight.w500)),
       ));
+
       for (int j = 0; j < sec.questions.length; j++) {
         final q = sec.questions[j];
-        if (q.id == question.id) continue;
+        String questionCodeDisplay = q.code != null && q.code!.isNotEmpty ? q.code! : "$sectionRoman.${j+1}";
         allJumpTargets.add(DropdownMenuItem(
-          value: q.id,
+          value: 'question_${q.id}',
           child: Padding(
             padding: const EdgeInsets.only(left: 16.0),
-            child: Text('  P${i + 1}.${j + 1}: ${q.questionText.length > 25 ? q.questionText.substring(0, 22) + '...' : q.questionText}'),
+            child: Text('  P $questionCodeDisplay: ${q.questionText.length > 25 ? q.questionText.substring(0, 22) + '...' : q.questionText}'),
           ),
         ));
       }
     }
-    allJumpTargets.add(DropdownMenuItem(
-      value: 'END_OF_FORM',
-      child: Text('Akhir Form (Selesai)', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.green.shade700)),
+
+    allJumpTargets.add(const DropdownMenuItem(
+      value: 'end_of_current_section',
+      child: Text('Akhir Bagian Ini (Lanjut Bagian Berikutnya)', style: TextStyle(fontStyle: FontStyle.italic)),
     ));
+
+    allJumpTargets.add(const DropdownMenuItem(
+      value: 'end_of_form',
+      child: Text('Akhir Form (Selesai)', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.green)),
+    ));
+
 
     Get.dialog(
       AlertDialog(
@@ -671,21 +829,33 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Jika jawaban untuk pertanyaan ini adalah:', style: const TextStyle(fontSize: 14)),
+              Text('Jika jawaban untuk "${question.questionText.length > 30 ? question.questionText.substring(0,27) + "..." : question.questionText}" adalah:', style: const TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
-              TextField(
-                controller: conditionController,
-                decoration: _modernInputDecoration(labelText: 'Nilai Jawaban Pemicu', hintText: 'Contoh: Ya, Tidak, >10', isDense: true),
-              ),
+
+              if (question.options.isNotEmpty)
+                DropdownButtonFormField<String>(
+                  decoration: _modernInputDecoration(labelText: 'Nilai Jawaban Pemicu', isDense: true),
+                  items: question.options.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(),
+                  onChanged: (val) => conditionController.text = val ?? '',
+                  hint: const Text('Pilih dari opsi'),
+                )
+              else
+                TextField(
+                  controller: conditionController,
+                  decoration: _modernInputDecoration(labelText: 'Nilai Jawaban Pemicu', hintText: 'Contoh: Ya, Tidak, >10', isDense: true),
+                ),
+
               const SizedBox(height: 16),
               const Text('Maka lompat ke:', style: TextStyle(fontSize: 14)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                decoration: _modernInputDecoration(labelText: 'Pilih Pertanyaan/Bagian Tujuan', isDense: true)
+                decoration: _modernInputDecoration(labelText: 'Pilih Tujuan', isDense: true)
                     .copyWith(contentPadding: const EdgeInsets.fromLTRB(12, 14, 12, 14)),
-                value: selectedTargetId,
-                items: allJumpTargets.where((item) => item.enabled).toList(),
-                onChanged: (value) { selectedTargetId = value; },
+                value: selectedTargetCompositeValue,
+                items: allJumpTargets.where((item) => item.value != "HEADER_TARGET").toList(),
+                onChanged: (valueWithPrefix) {
+                  selectedTargetCompositeValue = valueWithPrefix;
+                },
                 isExpanded: true,
                 hint: const Text('Pilih tujuan...'),
               ),
@@ -698,15 +868,28 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
             style: ElevatedButton.styleFrom(backgroundColor: accentThemeColor, foregroundColor: Colors.white),
             onPressed: () {
               final conditionValue = conditionController.text.trim();
-              if (conditionValue.isNotEmpty && selectedTargetId != null) {
-                String jumpToQId = ''; String? jumpToSId;
-                if (selectedTargetId!.startsWith('section_')) {
-                  jumpToSId = selectedTargetId!.substring(8); jumpToQId = 'END_OF_SECTION';
-                } else if (selectedTargetId == 'END_OF_FORM') {
+              if (conditionValue.isNotEmpty && selectedTargetCompositeValue != null && selectedTargetCompositeValue != "HEADER_TARGET") {
+                String jumpToQId = '';
+                String? jumpToSId;
+
+                List<String> parts = selectedTargetCompositeValue!.split('_');
+                String type = parts.first;
+
+
+                if (type == 'question' && parts.length > 1) {
+                  jumpToQId = parts.sublist(1).join('_'); // Handle IDs that might contain underscores
+                } else if (type == 'section' && parts.length > 2 && parts[1] == 'start') {
+                  jumpToSId = parts.sublist(2).join('_'); // Handle IDs that might contain underscores
+                  jumpToQId = 'END_OF_SECTION';
+                } else if (selectedTargetCompositeValue == 'end_of_current_section') {
+                  jumpToQId = 'END_OF_SECTION';
+                } else if (selectedTargetCompositeValue == 'end_of_form') {
                   jumpToQId = 'END_OF_FORM';
                 } else {
-                  jumpToQId = selectedTargetId!;
+                  Get.snackbar('Peringatan', 'Tujuan lompat tidak valid atau format ID salah.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white);
+                  return;
                 }
+
                 controller.addConditionalJump(sectionId, question.id, ConditionalJump(conditionValue: conditionValue, jumpToQuestionId: jumpToQId, jumpToSectionId: jumpToSId));
                 Get.back();
               } else {
@@ -717,6 +900,257 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
           ),
         ],
       ),
+    );
+  }
+
+
+  Widget _buildDependentOptionsConfigurator(String sectionId, FormQuestion question) {
+    final potentialParents = controller.getPotentialParentQuestions(sectionId, question.id);
+    FormQuestion? selectedParentQuestion;
+
+    if (question.dependentOptions?.parentQuestionId != null &&
+        question.dependentOptions!.parentQuestionId.isNotEmpty) {
+      selectedParentQuestion = controller.findQuestionById(question.dependentOptions!.parentQuestionId);
+    }
+
+    return _buildExpansionTileForSettings(
+      'Opsi Bergantung (Cascading)',
+      [
+        if (potentialParents.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: DropdownButtonFormField<String?>(
+              value: question.dependentOptions?.parentQuestionId,
+              decoration: _modernInputDecoration(labelText: 'Bergantung pada Pertanyaan (Induk)', isDense: true),
+              hint: const Text('Pilih Pertanyaan Induk'),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text("Tidak Bergantung / Hapus Ketergantungan", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+                ),
+                ...potentialParents.map((parentQ) {
+                  String parentSectionTitle = "Lain Bagian";
+                  String parentSectionRoman = "";
+                  int parentSectionIndex = controller.sections.indexWhere((s) => s.questions.any((qInS) => qInS.id == parentQ.id));
+                  if (parentSectionIndex != -1) {
+                    final sec = controller.sections[parentSectionIndex];
+                    parentSectionRoman = _toRoman(parentSectionIndex + 1);
+                    parentSectionTitle = sec.title.isNotEmpty ? sec.title : "Bagian $parentSectionRoman";
+                  }
+                  String parentQCodeDisplay = parentQ.code != null && parentQ.code!.isNotEmpty ? parentQ.code! : "N/A";
+
+                  return DropdownMenuItem<String?>(
+                    value: parentQ.id,
+                    child: Text(
+                      '$parentQCodeDisplay - ${parentQ.questionText.length > 15 ? parentQ.questionText.substring(0, 12) + "..." : parentQ.questionText} (di: $parentSectionTitle)',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+              ],
+              onChanged: (String? newParentId) {
+                controller.setParentQuestionForDependency(sectionId, question.id, newParentId);
+              },
+              isExpanded: true,
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(
+              'Tidak ada pertanyaan lain dengan opsi yang bisa dijadikan induk dalam form ini.',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+          ),
+        const SizedBox(height: 16),
+        if (selectedParentQuestion != null && selectedParentQuestion.options.isNotEmpty) ...[
+          Text(
+            'Atur opsi untuk pertanyaan ini berdasarkan jawaban dari "${selectedParentQuestion.code != null && selectedParentQuestion.code!.isNotEmpty ? selectedParentQuestion.code! + " - " : ""}${selectedParentQuestion.questionText}":',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade800),
+          ),
+          const SizedBox(height: 8),
+          if (selectedParentQuestion.options.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text('Pertanyaan Induk yang dipilih tidak memiliki opsi yang telah ditentukan.', style: TextStyle(color: Colors.orange.shade700)),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: selectedParentQuestion.options.length,
+              itemBuilder: (context, index) {
+                final parentOption = selectedParentQuestion!.options[index];
+                final currentChildOptions = question.dependentOptions?.optionMapping[parentOption] ?? [];
+                return _buildParentOptionMappingTile(
+                  sectionId,
+                  question.id,
+                  parentOption,
+                  currentChildOptions,
+                );
+              },
+            ),
+        ] else if (question.dependentOptions?.parentQuestionId != null && question.dependentOptions!.parentQuestionId.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(
+                (selectedParentQuestion == null)
+                    ? 'Pertanyaan Induk yang dipilih (ID: ${question.dependentOptions!.parentQuestionId}) tidak ditemukan.'
+                    : 'Pertanyaan Induk "${selectedParentQuestion.questionText}" tidak memiliki opsi yang ditentukan.',
+                style: TextStyle(color: Colors.orange.shade700, fontSize: 13)
+            ),
+          )
+      ],
+      initiallyExpanded: question.dependentOptions != null && question.dependentOptions!.parentQuestionId.isNotEmpty,
+    );
+  }
+
+  Widget _buildParentOptionMappingTile(String sectionId, String questionId, String parentOptionValue, List<String> currentChildOptions) {
+    return Card(
+      elevation: 0.5,
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: Colors.grey.shade200)
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Jika jawaban Induk adalah: "$parentOptionValue"', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+            const SizedBox(height: 6),
+            Text(
+              'Opsi untuk pertanyaan ini: ${currentChildOptions.isEmpty ? "(Belum diatur - akan menggunakan opsi standar pertanyaan ini)" : currentChildOptions.join(", ")}',
+              style: TextStyle(fontSize: 13, color: currentChildOptions.isEmpty ? Colors.grey.shade600 : Colors.black87),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                icon: Icon(Icons.edit_note_rounded, size: 20, color: accentThemeColor.withOpacity(0.8)),
+                label: Text('Atur Opsi Anak', style: TextStyle(fontSize: 13, color: accentThemeColor.withOpacity(0.9), fontWeight: FontWeight.w500)),
+                style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap
+                ),
+                onPressed: () {
+                  _showEditChildOptionsDialog(sectionId, questionId, parentOptionValue, List<String>.from(currentChildOptions));
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditChildOptionsDialog(String sectionId, String questionId, String parentOptionValue, List<String> initialChildOptions) {
+    final List<TextEditingController> optionControllers =
+    initialChildOptions.map((opt) => TextEditingController(text: opt)).toList();
+
+    if (optionControllers.isEmpty) {
+      optionControllers.add(TextEditingController());
+    }
+
+    Get.dialog(
+      AlertDialog(
+        title: Text('Atur Opsi Anak untuk Induk: "$parentOptionValue"', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        content: StatefulBuilder(builder: (BuildContext context, StateSetter setStateDialog) {
+          return SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Daftar opsi yang akan muncul jika jawaban pertanyaan induk adalah \"$parentOptionValue\":", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+                const SizedBox(height: 15),
+                Expanded(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: optionControllers.length,
+                    itemBuilder: (ctx, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: optionControllers[index],
+                                decoration: _modernInputDecoration(labelText: 'Opsi Anak ${index + 1}', isDense: true)
+                                    .copyWith(
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    fillColor: Colors.grey.shade50
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.remove_circle_outline_rounded, color: Colors.red.shade300, size: 22),
+                              onPressed: () {
+                                setStateDialog(() {
+                                  optionControllers[index].dispose();
+                                  optionControllers.removeAt(index);
+                                  if (optionControllers.isEmpty) {
+                                    optionControllers.add(TextEditingController());
+                                  }
+                                });
+                              },
+                              splashRadius: 18,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    icon: Icon(Icons.add_circle_rounded, color: accentThemeColor.withOpacity(0.8), size: 20),
+                    label: Text('Tambah Opsi Anak Lagi', style: TextStyle(color: accentThemeColor.withOpacity(0.9), fontSize: 14)),
+                    onPressed: () {
+                      setStateDialog(() {
+                        optionControllers.add(TextEditingController());
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        actions: [
+          OutlinedButton(
+            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+            onPressed: () {
+              optionControllers.forEach((c) => c.dispose()); Get.back();
+            },
+            style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.grey.shade300)),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+            label: const Text('Simpan Opsi Ini'),
+            style: ElevatedButton.styleFrom(backgroundColor: accentThemeColor, foregroundColor: Colors.white),
+            onPressed: () {
+              final newChildOptions = optionControllers
+                  .map((c) => c.text.trim())
+                  .where((text) => text.isNotEmpty)
+                  .toList();
+              controller.updateMappingForParentOption(sectionId, questionId, parentOptionValue, newChildOptions);
+              optionControllers.forEach((c) => c.dispose());
+              Get.back();
+            },
+          ),
+        ],
+      ),
+      barrierDismissible: false,
     );
   }
 
@@ -761,7 +1195,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                           case QuestionType.multipleChoice: iconData = Icons.radio_button_checked_rounded; typeName = "Pilihan Ganda"; break;
                           case QuestionType.checkboxes: iconData = Icons.check_box_rounded; typeName = "Kotak Centang"; break;
                           case QuestionType.dropdown: iconData = Icons.arrow_drop_down_circle_rounded; typeName = "Dropdown"; break;
-                          default: iconData = Icons.help_rounded; typeName = "Lainnya";
+                        // default: iconData = Icons.help_rounded; typeName = "Lainnya"; // Should not happen with enum
                         }
                         return InkWell(
                           onTap: () {

@@ -1,5 +1,3 @@
-// lib/presentation/admin/formpage/admin_form_model.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Enum untuk tipe pertanyaan yang didukung
@@ -21,7 +19,7 @@ extension QuestionTypeExtension on QuestionType {
       case 'multiplechoice': return QuestionType.multipleChoice;
       case 'checkboxes': return QuestionType.checkboxes;
       case 'dropdown': return QuestionType.dropdown;
-      default: return QuestionType.text;
+      default: return QuestionType.text; // Default to text if unknown
     }
   }
 }
@@ -32,6 +30,7 @@ class ValidationRule {
   final num? minValue;
   final num? maxValue;
   final String? regex;
+  final String? predefinedRule; // e.g., "lettersOnly", "numbersOnly", "alphanumeric", "email"
 
   ValidationRule({
     this.minLength,
@@ -39,6 +38,7 @@ class ValidationRule {
     this.minValue,
     this.maxValue,
     this.regex,
+    this.predefinedRule,
   });
 
   factory ValidationRule.fromMap(Map<String, dynamic> map) {
@@ -48,30 +48,28 @@ class ValidationRule {
       minValue: map['minValue'] as num?,
       maxValue: map['maxValue'] as num?,
       regex: map['regex'] as String?,
+      predefinedRule: map['predefinedRule'] as String?,
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      if (minLength != null) 'minLength': minLength,
-      if (maxLength != null) 'maxLength': maxLength,
-      if (minValue != null) 'minValue': minValue,
-      if (maxValue != null) 'maxValue': maxValue,
-      if (regex != null) 'regex': regex,
-    };
+    final map = <String, dynamic>{};
+    if (minLength != null) map['minLength'] = minLength;
+    if (maxLength != null) map['maxLength'] = maxLength;
+    if (minValue != null) map['minValue'] = minValue;
+    if (maxValue != null) map['maxValue'] = maxValue;
+    if (regex != null && regex!.isNotEmpty) map['regex'] = regex;
+    if (predefinedRule != null && predefinedRule!.isNotEmpty) map['predefinedRule'] = predefinedRule;
+    return map;
   }
 
   ValidationRule copyWith({
-    int? minLength,
-    int? maxLength,
-    num? minValue,
-    num? maxValue,
-    String? regex,
-    bool setMinLengthNull = false, // Flag untuk menghapus nilai
-    bool setMaxLengthNull = false,
-    bool setMinValueNull = false,
-    bool setMaxValueNull = false,
-    bool setRegexNull = false,
+    int? minLength, bool setMinLengthNull = false,
+    int? maxLength, bool setMaxLengthNull = false,
+    num? minValue, bool setMinValueNull = false,
+    num? maxValue, bool setMaxValueNull = false,
+    String? regex, bool setRegexNull = false,
+    String? predefinedRule, bool setPredefinedRuleNull = false,
   }) {
     return ValidationRule(
       minLength: setMinLengthNull ? null : (minLength ?? this.minLength),
@@ -79,13 +77,14 @@ class ValidationRule {
       minValue: setMinValueNull ? null : (minValue ?? this.minValue),
       maxValue: setMaxValueNull ? null : (maxValue ?? this.maxValue),
       regex: setRegexNull ? null : (regex ?? this.regex),
+      predefinedRule: setPredefinedRuleNull ? null : (predefinedRule ?? this.predefinedRule),
     );
   }
 }
 
 class ConditionalJump {
   final String conditionValue;
-  final String jumpToQuestionId; // Bisa ID pertanyaan, 'END_OF_SECTION', atau 'END_OF_FORM'
+  final String jumpToQuestionId;
   final String? jumpToSectionId;
 
   ConditionalJump({
@@ -103,11 +102,12 @@ class ConditionalJump {
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = <String, dynamic>{
       'conditionValue': conditionValue,
       'jumpToQuestionId': jumpToQuestionId,
-      if (jumpToSectionId != null) 'jumpToSectionId': jumpToSectionId,
     };
+    if (jumpToSectionId != null) map['jumpToSectionId'] = jumpToSectionId;
+    return map;
   }
 
   ConditionalJump copyWith({
@@ -124,8 +124,50 @@ class ConditionalJump {
   }
 }
 
+class DependentOptionsConfig {
+  final String parentQuestionId;
+  final Map<String, List<String>> optionMapping;
+
+  DependentOptionsConfig({
+    required this.parentQuestionId,
+    this.optionMapping = const {},
+  });
+
+  factory DependentOptionsConfig.fromMap(Map<String, dynamic> map) {
+    return DependentOptionsConfig(
+      parentQuestionId: map['parentQuestionId'] as String? ?? '',
+      optionMapping: (map['optionMapping'] as Map<String, dynamic>?)?.map(
+            (key, value) {
+          if (value is List) {
+            return MapEntry(key, List<String>.from(value.map((e) => e.toString())));
+          }
+          return MapEntry(key, <String>[]);
+        },
+      ) ?? {},
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'parentQuestionId': parentQuestionId,
+      'optionMapping': optionMapping,
+    };
+  }
+
+  DependentOptionsConfig copyWith({
+    String? parentQuestionId,
+    Map<String, List<String>>? optionMapping,
+  }) {
+    return DependentOptionsConfig(
+      parentQuestionId: parentQuestionId ?? this.parentQuestionId,
+      optionMapping: optionMapping ?? this.optionMapping,
+    );
+  }
+}
+
 class FormQuestion {
   final String id;
+  final String? code;
   final String questionText;
   final QuestionType type;
   final List<String> options;
@@ -135,9 +177,11 @@ class FormQuestion {
   final List<ConditionalJump> conditionalJumps;
   final bool repeatable;
   final int? repeatCount;
+  final DependentOptionsConfig? dependentOptions;
 
   FormQuestion({
     required this.id,
+    this.code,
     required this.questionText,
     required this.type,
     this.options = const [],
@@ -147,11 +191,13 @@ class FormQuestion {
     this.conditionalJumps = const [],
     this.repeatable = false,
     this.repeatCount,
+    this.dependentOptions,
   });
 
   factory FormQuestion.fromMap(Map<String, dynamic> map) {
     return FormQuestion(
       id: map['id'] as String? ?? '',
+      code: map['code'] as String?,
       questionText: map['questionText'] as String? ?? 'Pertanyaan Tanpa Teks',
       type: QuestionTypeExtension.fromString(map['type'] as String? ?? 'text'),
       options: List<String>.from(map['options'] as List<dynamic>? ?? []),
@@ -165,49 +211,57 @@ class FormQuestion {
           .toList() ?? [],
       repeatable: map['repeatable'] as bool? ?? false,
       repeatCount: map['repeatCount'] as int?,
+      dependentOptions: map['dependentOptions'] != null
+          ? DependentOptionsConfig.fromMap(map['dependentOptions'] as Map<String, dynamic>)
+          : null,
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = <String, dynamic>{
       'id': id,
       'questionText': questionText,
       'type': type.toShortString(),
       'options': options,
       'isRequired': isRequired,
       'hasOtherOption': hasOtherOption,
-      if (validation != null) 'validation': validation!.toMap(),
       'conditionalJumps': conditionalJumps.map((j) => j.toMap()).toList(),
       'repeatable': repeatable,
-      if (repeatCount != null) 'repeatCount': repeatCount,
     };
+    if (code != null && code!.isNotEmpty) map['code'] = code;
+    if (validation != null && validation!.toMap().isNotEmpty) map['validation'] = validation!.toMap();
+    if (repeatCount != null) map['repeatCount'] = repeatCount;
+    if (dependentOptions != null) map['dependentOptions'] = dependentOptions!.toMap();
+    return map;
   }
 
   FormQuestion copyWith({
     String? id,
+    String? code, bool setCodeNull = false,
     String? questionText,
     QuestionType? type,
     List<String>? options,
     bool? isRequired,
     bool? hasOtherOption,
-    ValidationRule? validation,
-    bool setValidationNull = false,
+    ValidationRule? validation, bool setValidationNull = false,
     List<ConditionalJump>? conditionalJumps,
     bool? repeatable,
-    int? repeatCount,
-    bool setRepeatCountNull = false,
+    int? repeatCount, bool setRepeatCountNull = false,
+    DependentOptionsConfig? dependentOptions, bool setDependentOptionsNull = false,
   }) {
     return FormQuestion(
       id: id ?? this.id,
+      code: setCodeNull ? null : (code ?? this.code),
       questionText: questionText ?? this.questionText,
       type: type ?? this.type,
-      options: options ?? this.options,
+      options: options ?? List<String>.from(this.options),
       isRequired: isRequired ?? this.isRequired,
       hasOtherOption: hasOtherOption ?? this.hasOtherOption,
       validation: setValidationNull ? null : (validation ?? this.validation),
-      conditionalJumps: conditionalJumps ?? this.conditionalJumps,
+      conditionalJumps: conditionalJumps ?? List<ConditionalJump>.from(this.conditionalJumps),
       repeatable: repeatable ?? this.repeatable,
       repeatCount: setRepeatCountNull ? null : (repeatCount ?? this.repeatCount),
+      dependentOptions: setDependentOptionsNull ? null : (dependentOptions ?? this.dependentOptions),
     );
   }
 }
@@ -228,7 +282,7 @@ class FormSection {
   factory FormSection.fromMap(Map<String, dynamic> map) {
     return FormSection(
       id: map['id'] as String? ?? '',
-      title: map['title'] as String? ?? 'Bagian Tanpa Judul',
+      title: map['title'] as String? ?? '', // Allow empty title to be handled by UI
       description: map['description'] as String?,
       questions: (map['questions'] as List<dynamic>?)
           ?.map((q) => FormQuestion.fromMap(q as Map<String, dynamic>))
@@ -237,12 +291,13 @@ class FormSection {
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final map = <String, dynamic>{
       'id': id,
       'title': title,
-      if (description != null) 'description': description,
       'questions': questions.map((q) => q.toMap()).toList(),
     };
+    if (description != null) map['description'] = description;
+    return map;
   }
 
   FormSection copyWith({
@@ -256,19 +311,20 @@ class FormSection {
       id: id ?? this.id,
       title: title ?? this.title,
       description: setDescriptionNull ? null : (description ?? this.description),
-      questions: questions ?? this.questions,
+      questions: questions ?? List<FormQuestion>.from(this.questions),
     );
   }
 
-  // Metode untuk membersihkan pertanyaan yang teksnya kosong sebelum disimpan
   FormSection cleanUpQuestionsBeforeSave() {
-    final validQuestions = questions.where((q) => q.questionText.trim().isNotEmpty).toList();
+    final validQuestions = questions
+        .where((q) => q.questionText.trim().isNotEmpty || (q.code != null && q.code!.trim().isNotEmpty))
+        .toList();
     return copyWith(questions: validQuestions);
   }
 }
 
 class FormItem {
-  final String id; // Ini akan menjadi Firestore Document ID
+  final String id;
   final String title;
   final String description;
   final DateTime createdAt;
@@ -287,7 +343,7 @@ class FormItem {
   factory FormItem.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return FormItem(
-      id: doc.id, // Menggunakan ID dokumen Firestore
+      id: doc.id,
       title: data['title'] as String? ?? 'Tanpa Judul',
       description: data['description'] as String? ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -300,7 +356,6 @@ class FormItem {
 
   Map<String, dynamic> toFirestore() {
     return {
-      // ID tidak perlu dimasukkan di sini karena akan menjadi ID dokumen
       'title': title,
       'description': description,
       'createdAt': Timestamp.fromDate(createdAt),
