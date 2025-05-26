@@ -28,26 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.12.0] - 2025-05-27
-> Peningkatan Fungsionalitas dan Stabilitas Form Builder oleh Tim Riset & Gemini
-
-### 🎉 Added
--   **Penomoran Romawi untuk Judul Bagian:** Bagian (sections) dalam form builder sekarang menampilkan indeksnya sebagai angka Romawi diikuti oleh judul yang ditentukan pengguna (misalnya, "I. KETERANGAN TEMPAT").
--   **Panduan Validasi Nomor Telepon Indonesia:** Diberikan panduan format dan contoh Regex (`^(\+62|0)8[0-9]{8,11}$`) untuk validasi "No HP" melalui fitur "Pola Regex Kustom".
-
-### 🛠️ Changed
--   **Logika Pemilihan Induk untuk Dropdown Bertingkat:** Logika untuk mengidentifikasi pertanyaan yang dapat menjadi induk (parent) dalam pengaturan dropdown bertingkat (cascading) telah disempurnakan. Pertanyaan induk (misalnya, "102 RW") sekarang diwajibkan untuk memiliki daftar "Opsi Pilihan" utamanya sendiri yang terisi agar dapat dipilih sebagai Induk untuk pertanyaan berikutnya (misalnya, "103 RT").
--   **Stabilitas Dialog Opsi Anak Dinamis (`_showEditChildOptionsDialog`):** Melakukan refactoring signifikan pada manajemen siklus hidup `TextEditingController` di dalam dialog "Atur Opsi Anak" untuk dropdown bertingkat. Ini termasuk strategi `dispose` yang disesuaikan (misalnya, penggunaan `WidgetsBinding.instance.addPostFrameCallback` dan penyesuaian waktu `dispose` saat menyimpan setelah menghapus opsi) untuk meningkatkan stabilitas.
-
-### 🐛 Fixed
--   Mengatasi error runtime kritis (`A TextEditingController was used after being disposed.` dan `_dependents.isEmpty: is not true.`) yang terjadi ketika pengguna mengurangi, menambah, atau menyimpan perubahan pada opsi anak di dalam dialog "Atur Opsi Anak" untuk konfigurasi dropdown bertingkat.
--   Meningkatkan ketahanan penanganan `TextEditingController` selama modifikasi daftar dinamis dalam dialog.
-
-### 📝 Notes & Guidance
--   **Grup Pertanyaan Berulang (Repeatable Groups/Rosters):** Mengklarifikasi bahwa fitur "Dapat diulang?" saat ini berlaku untuk pengulangan pertanyaan individual. Untuk kasus pengulangan *grup* pertanyaan (misalnya, pertanyaan 204-208 berdasarkan jawaban pertanyaan 203 "Jumlah orang yang bekerja?"), telah diuraikan solusi workaround seperti "Membuat Set Pertanyaan Tetap dengan Logika Bersyarat" atau menggunakan field "Paragraph", mengingat belum adanya fitur "repeatable group/roster" secara langsung.
-
----
-
 ## [0.11.0] - 2025-05-26
 > Created by Bayu Ardiyansyah
 
