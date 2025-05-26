@@ -1,7 +1,7 @@
-// Path: lib/presentation/admin/Admin_Profile/admin_account_model.dart
-
+// lib/presentation/admin/Admin_Profile/admin_account_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// This class is for the "Kategori Manajemen Akun" display (FormItem is used for actual forms)
 class AccountCategoryItem {
   final String id;
   final String title;
@@ -35,7 +35,8 @@ class AccountCategoryItem {
 }
 
 // lib/presentation/admin/Admin_Profile/admin_account_model.dart
-class AdminAccountModel { // Pastikan nama kelasnya persis seperti ini
+// This class will be used for displaying individual user accounts in AllAccountPage
+class AdminAccountModel {
   final String uid;
   final String username;
   final String email;
@@ -63,10 +64,9 @@ class AdminAccountModel { // Pastikan nama kelasnya persis seperti ini
   Map<String, dynamic> toMap() {
     return {
       'username': username,
-      'email': email,
+      'email': email, // Keep email in map for potential updates, though it's not directly editable in UI
       'role': role,
-      'photoURL': photoURL,
+      'photoURL': photoURL, // Include photoURL if you manage it
     };
   }
 }
-

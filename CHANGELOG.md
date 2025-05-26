@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),  
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+---
+
+## [0.12.0] - 2025-05-27
+> Form Builder Functionality Enhancements and Stability Fixes
+
+### 🎉 Added
+-   **Roman Numeral Section Titles:** Sections in the form builder now display their index as Roman numerals followed by the user-defined title (e.g., "I. Section Title").
+-   **Indonesian Phone Number Validation Guidance:** Provided format guidance and a sample Regex (`^(\+62|0)8[0-9]{8,11}$`) for "No HP" (Mobile Number) validation using the "Custom Regex Pattern" feature.
+
+### 🛠️ Changed
+-   **Parent Selection Logic for Cascading Dropdowns:** Improved the logic for identifying potential parent questions in cascading dropdown setups. Parent questions (e.g., "102 RW") are now required to have their own primary "Main Options List" populated to be selectable as a parent for subsequent questions (e.g., "103 RT").
+-   **Dynamic Child Option Dialog Stability (`_showEditChildOptionsDialog`):** Significantly refactored `TextEditingController` lifecycle management within the "Manage Child Options" dialog for cascading dropdowns. This includes adjusted `dispose` strategies (e.g., using `WidgetsBinding.instance.addPostFrameCallback` and modifying `dispose` timing during save operations after option removal) to enhance stability.
+
+### 🐛 Fixed
+-   Addressed critical runtime errors (`A TextEditingController was used after being disposed.` and `_dependents.isEmpty: is not true.`) that occurred when users reduced, added, or saved changes to child options within the "Manage Child Options" dialog for cascading dropdown configurations.
+-   Improved robustness of `TextEditingController` handling during dynamic list modifications within dialogs.
+
+### 📝 Notes & Guidance
+-   **Repeatable Question Groups (Rosters):** Clarified that the current "Repeatable?" feature applies to repeating individual questions. For repeating a *group* of questions (e.g., questions 204-208 based on the answer to question 203 "Number of working people?"), workarounds such as "Fixed Question Sets with Conditional Logic" or using a "Paragraph" field were outlined, as a direct "repeatable group/roster" feature is not yet available.
+
+---
+
+## [0.12.0] - 2025-05-27
+> Peningkatan Fungsionalitas dan Stabilitas Form Builder oleh Tim Riset & Gemini
+
+### 🎉 Added
+-   **Penomoran Romawi untuk Judul Bagian:** Bagian (sections) dalam form builder sekarang menampilkan indeksnya sebagai angka Romawi diikuti oleh judul yang ditentukan pengguna (misalnya, "I. KETERANGAN TEMPAT").
+-   **Panduan Validasi Nomor Telepon Indonesia:** Diberikan panduan format dan contoh Regex (`^(\+62|0)8[0-9]{8,11}$`) untuk validasi "No HP" melalui fitur "Pola Regex Kustom".
+
+### 🛠️ Changed
+-   **Logika Pemilihan Induk untuk Dropdown Bertingkat:** Logika untuk mengidentifikasi pertanyaan yang dapat menjadi induk (parent) dalam pengaturan dropdown bertingkat (cascading) telah disempurnakan. Pertanyaan induk (misalnya, "102 RW") sekarang diwajibkan untuk memiliki daftar "Opsi Pilihan" utamanya sendiri yang terisi agar dapat dipilih sebagai Induk untuk pertanyaan berikutnya (misalnya, "103 RT").
+-   **Stabilitas Dialog Opsi Anak Dinamis (`_showEditChildOptionsDialog`):** Melakukan refactoring signifikan pada manajemen siklus hidup `TextEditingController` di dalam dialog "Atur Opsi Anak" untuk dropdown bertingkat. Ini termasuk strategi `dispose` yang disesuaikan (misalnya, penggunaan `WidgetsBinding.instance.addPostFrameCallback` dan penyesuaian waktu `dispose` saat menyimpan setelah menghapus opsi) untuk meningkatkan stabilitas.
+
+### 🐛 Fixed
+-   Mengatasi error runtime kritis (`A TextEditingController was used after being disposed.` dan `_dependents.isEmpty: is not true.`) yang terjadi ketika pengguna mengurangi, menambah, atau menyimpan perubahan pada opsi anak di dalam dialog "Atur Opsi Anak" untuk konfigurasi dropdown bertingkat.
+-   Meningkatkan ketahanan penanganan `TextEditingController` selama modifikasi daftar dinamis dalam dialog.
+
+### 📝 Notes & Guidance
+-   **Grup Pertanyaan Berulang (Repeatable Groups/Rosters):** Mengklarifikasi bahwa fitur "Dapat diulang?" saat ini berlaku untuk pengulangan pertanyaan individual. Untuk kasus pengulangan *grup* pertanyaan (misalnya, pertanyaan 204-208 berdasarkan jawaban pertanyaan 203 "Jumlah orang yang bekerja?"), telah diuraikan solusi workaround seperti "Membuat Set Pertanyaan Tetap dengan Logika Bersyarat" atau menggunakan field "Paragraph", mengingat belum adanya fitur "repeatable group/roster" secara langsung.
+
+---
+
+## [0.11.0] - 2025-05-26
+> Created by Bayu Ardiyansyah
+
+> Introduction of Global Account Management Page and Enhanced UI/UX for All Account Operations
+
+### 🎉 Added
+-   **Global Account Management Section (`AdminAccountPage`):**
+  -   Introduced a new dedicated card/section in `AdminAccountPage` titled "**Daftar Semua Akun**".
+  -   Tapping this card now navigates to the new `AllAccountPage`.
+-   **Dedicated All Accounts Page (`AllAccountPage`):**
+  -   Implemented a new page to list and manage all registered user accounts globally, independent of specific forms.
+  -   Includes a **search bar** to filter accounts by email or username.
+  -   Features a "**Buat Akun Pengguna Baru**" button to create new system users directly from this page.
+-   **All Accounts Controller (`AllAccountController`):**
+  -   Developed a new GetX controller to handle data fetching, searching, creation, editing, and deletion of **all user accounts** from the `/users` Firestore collection.
+  -   Implements real-time listening to user data changes via Firestore snapshots.
+-   **New Route and Binding:**
+  -   Added `AppRoutes.allAccountManagement` and `AllAccountBinding` to the application's routing system to support the new `AllAccountPage`.
+
+### 🛠️ Changed
+-   **Modernized UI/UX for All Account Dialogs (`AllAccountPage` & `AllAccountController`):**
+  -   **"Buat Akun Pengguna Baru" Dialog:**
+    -   Redesigned with elegant rounded borders, improved spacing, and modern `TextField` styling (filled background, `OutlineInputBorder`).
+    -   Action buttons ("Batal", "Buat Akun") are now `ElevatedButton` and `TextButton` with consistent branding colors and rounded shapes.
+  -   **"Edit Akun Pengguna" Dialog:**
+    -   Updated with similar modern styling as the create dialog (rounded borders, improved text fields, consistent button styles).
+    -   The email field is now disabled to prevent accidental changes, visually indicated by a slightly darker background.
+  -   **"Konfirmasi Hapus" Dialog:**
+    -   Enhanced with a more prominent warning title (bold, red color) and clearer confirmation message.
+    -   Action buttons ("Batal", "Hapus") are styled for better visual distinction, with the "Hapus" button using a strong red background.
+-   **Account Item Display (`AllAccountPage`):**
+  -   The "Edit" and "Delete" buttons within each account list item are now styled as `OutlinedButton` for a cleaner, less heavy appearance, with borders matching their respective action colors.
+  -   Font sizes for button labels are slightly increased for better readability.
+-   **Reused `AdminAccountModel`:**
+  -   The existing `AdminAccountModel` is now consistently used across `AllAccountPage` and `AllAccountController` for representing user account data, promoting code reusability.
+
+### 🐛 Fixed
+-   **Navigation to All Accounts Page:** Resolved the issue preventing navigation from `AdminAccountPage` to `AllAccountPage` by correctly registering the new route and its binding in `lib/routes/app_routes.dart`.
+
 ---
 
 ## [0.10.0] - 2025-05-26

@@ -35,6 +35,10 @@ class AdminAccountPage extends GetView<AdminAccountController> {
               ),
             ),
             const SizedBox(height: 20),
+            // --- New Section: All Accounts ---
+            _buildAllAccountsCard(context),
+            const SizedBox(height: 20), // Spacing between the new card and the form list
+            // --- End New Section ---
             Expanded(
               child: Obx(() {
                 if (controller.isLoading.value &&
@@ -60,6 +64,65 @@ class AdminAccountPage extends GetView<AdminAccountController> {
               }),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAllAccountsCard(BuildContext context) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 0), // Adjust margin as needed
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      color: cardBgColor,
+      child: InkWell(
+        onTap: () {
+          // Navigate to the All Accounts page
+          Get.toNamed(AppRoutes.allAccountManagement);
+          print('Navigasi ke halaman Manajemen Semua Akun');
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AdminScreen.primaryHeaderColor.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.people_outline, color: AdminScreen.iconColor, size: 28),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Daftar Semua Akun',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: titleColor),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Kelola semua akun pengguna terdaftar',
+                      style: TextStyle(
+                          fontSize: 12, color: subtitleColor),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, color: Colors.grey.shade600, size: 20),
+            ],
+          ),
         ),
       ),
     );
@@ -149,10 +212,6 @@ class AdminAccountPage extends GetView<AdminAccountController> {
                   ],
                 ),
               ),
-              // Arrow to indicate tappable, or use PopupMenuButton for actions like delete form definition
-              // For this context, tapping navigates, so an arrow is good.
-              // If form deletion is needed here, it's already implemented with PopupMenuButton.
-              // Keeping PopupMenuButton for form deletion if that's still desired from this list.
               PopupMenuButton<String>(
                 icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
                 onSelected: (value) {

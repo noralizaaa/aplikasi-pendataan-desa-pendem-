@@ -21,12 +21,16 @@ import '../../presentation/admin/formpage/admin_form_controller.dart';
 import '../../presentation/admin/formpage/form_builder/admin_form_builder_controller.dart';
 import '../../presentation/admin/profil/admin_profil_controller.dart';
 import '../../presentation/splash/splash_controller.dart';
+// --- NEW IMPORT: AllAccountController ---
+import '../../presentation/admin/Admin_Profile/all_account_controller.dart';
 
 // Import untuk Page
-import '../../presentation/admin/Admin_Profile/admin_account_page.dart'; // Added for AdminAccountPage
-import '../../presentation/admin/Admin_Profile/form_account_management_page.dart'; // Added for FormAccountManagementPage
+import '../../presentation/admin/Admin_Profile/admin_account_page.dart';
+import '../../presentation/admin/Admin_Profile/form_account_management_page.dart';
 import '../../presentation/admin/formpage/form_builder/admin_form_builder_page.dart';
 import '../../presentation/admin/profil/admin_profil_page.dart';
+// --- NEW IMPORT: AllAccountPage ---
+import '../../presentation/admin/Admin_Profile/all_account_page.dart';
 
 
 // Definisikan LoginBinding
@@ -113,6 +117,17 @@ class FormAccountManagementBinding extends Bindings {
   }
 }
 
+// --- NEW BINDING: AllAccountBinding ---
+class AllAccountBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<AllAccountController>(
+          () => AllAccountController(),
+    );
+  }
+}
+// --- END NEW BINDING ---
+
 // Enum untuk lingkungan (opsional, tapi baik untuk konfigurasi)
 enum Environments { DEVELOPMENT, QAS, PRODUCTION }
 
@@ -152,10 +167,15 @@ class AppRoutes {
   static const String userProfile = '/user-profile';
   static const String adminProfil = '/admin-profil'; // Halaman profil admin (dari header)
   static const String adminFormBuilder = '/admin-form-builder';
+  // static const String adminProfile = '/admin_profile'; // Removed: Redundant with adminAccount
+  static const String userList = '/user_list';
+  static const String userDataInput = '/user_data_input';
+  static const String userDataDetail = '/user_data_detail';
 
   // New Routes
   static const String adminAccount = '/admin-account'; // Standalone Admin Account Page / Kategori Manajemen Akun
   static const String formAccountManagement = '/form-account-management'; // Page for managing accounts of a specific form
+  static const String allAccountManagement = '/all_account_management'; // --- NEW ROUTE ---
 
   static String initialRoute = splash;
 
@@ -210,5 +230,12 @@ class AppRoutes {
       page: () => const FormAccountManagementPage(),
       binding: FormAccountManagementBinding(),
     ),
+    // --- NEW GETPAGE ENTRY: AllAccountManagement ---
+    GetPage(
+      name: AppRoutes.allAccountManagement,
+      page: () => const AllAccountPage(),
+      binding: AllAccountBinding(),
+    ),
+    // --- END NEW GETPAGE ENTRY ---
   ];
 }
