@@ -276,10 +276,11 @@ class AdminFormBuilderController extends GetxController {
     for (var section in sections) {
       for (var question in section.questions) {
         if (question.id == currentQuestionIdToExclude) continue;
+
         if ((question.type == QuestionType.dropdown ||
             question.type == QuestionType.multipleChoice ||
             question.type == QuestionType.checkboxes) &&
-            question.options.isNotEmpty) {
+            question.options.isNotEmpty) { // <--- KONDISI UTAMA
           potentialParents.add(question);
         }
       }

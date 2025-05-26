@@ -1045,9 +1045,15 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     );
   }
 
-  void _showEditChildOptionsDialog(String sectionId, String questionId, String parentOptionValue, List<String> initialChildOptions) {
+  void _showEditChildOptionsDialog(
+      String sectionId,
+      String questionId,
+      String parentOptionValue,
+      List<String> initialChildOptions
+      ) {
     final List<TextEditingController> optionControllers =
     initialChildOptions.map((opt) => TextEditingController(text: opt)).toList();
+    final List<TextEditingController> removedControllersForDisposal = [];
 
     if (optionControllers.isEmpty) {
       optionControllers.add(TextEditingController());
@@ -1058,10 +1064,10 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
         title: Text('Atur Opsi Anak untuk Induk: "$parentOptionValue"', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-        content: StatefulBuilder(builder: (BuildContext context, StateSetter setStateDialog) {
+        content: StatefulBuilder(builder: (BuildContext dialogContext, StateSetter setStateDialog) {
           return SizedBox(
-            width: MediaQuery.of(context).size.width * 0.8,
-            height: MediaQuery.of(context).size.height * 0.5,
+            width: MediaQuery.of(dialogContext).size.width * 0.8,
+            height: MediaQuery.of(dialogContext).size.height * 0.5,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1073,13 +1079,15 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                     shrinkWrap: true,
                     itemCount: optionControllers.length,
                     itemBuilder: (ctx, index) {
+                      final currentItemController = optionControllers[index];
                       return Padding(
+                        key: ValueKey(currentItemController),
                         padding: const EdgeInsets.only(bottom: 8.0),
                         child: Row(
                           children: [
                             Expanded(
                               child: TextField(
-                                controller: optionControllers[index],
+                                controller: currentItemController,
                                 decoration: _modernInputDecoration(labelText: 'Opsi Anak ${index + 1}', isDense: true)
                                     .copyWith(
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1089,13 +1097,24 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                             ),
                             IconButton(
                               icon: Icon(Icons.remove_circle_outline_rounded, color: Colors.red.shade300, size: 22),
+                              // Di dalam IconButton onPressed untuk menghapus opsi anak:
                               onPressed: () {
                                 setStateDialog(() {
-                                  optionControllers[index].dispose();
-                                  optionControllers.removeAt(index);
-                                  if (optionControllers.isEmpty) {
-                                    optionControllers.add(TextEditingController());
+                                  FocusScope.of(dialogContext).unfocus();
+                                  final removedController = optionControllers.removeAt(index);
+
+                                  // !! PERUBAHAN DI SINI !!
+                                  // Coba reset value controller secara eksplisit untuk "memutus" koneksi
+                                  // dengan text input service sebelum dipindahkan.
+                                  // dispose() seharusnya melakukan ini, tapi kita coba lebih awal.
+                                  try {
+                                    removedController.value = TextEditingValue.empty; // Mengosongkan teks, seleksi, dan composing region
+                                  } catch (e) {
+                                    // Tangani jika controller sudah terlanjur disposed karena suatu hal (seharusnya tidak terjadi di sini)
+                                    print("Error saat mencoba reset value controller yang akan dihapus: $e");
                                   }
+
+                                  removedControllersForDisposal.add(removedController);
                                 });
                               },
                               splashRadius: 18,
@@ -1110,8 +1129,8 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
-                    icon: Icon(Icons.add_circle_rounded, color: accentThemeColor.withOpacity(0.8), size: 20),
-                    label: Text('Tambah Opsi Anak Lagi', style: TextStyle(color: accentThemeColor.withOpacity(0.9), fontSize: 14)),
+                    icon: Icon(Icons.add_circle_rounded, color: AdminFormBuilderPage.accentThemeColor, size: 20),
+                    label: Text('Tambah Opsi Anak Lagi', style: TextStyle(color: AdminFormBuilderPage.accentThemeColor, fontSize: 14)),
                     onPressed: () {
                       setStateDialog(() {
                         optionControllers.add(TextEditingController());
@@ -1122,30 +1141,69 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
               ],
             ),
           );
-        }
-        ),
+        }),
         actionsAlignment: MainAxisAlignment.spaceBetween,
         actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         actions: [
           OutlinedButton(
             child: const Text('Batal', style: TextStyle(color: Colors.grey)),
             onPressed: () {
-              optionControllers.forEach((c) => c.dispose()); Get.back();
+              Get.back();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                for (var c in optionControllers) { c.dispose(); }
+                for (var c in removedControllersForDisposal) { c.dispose(); }
+              });
             },
             style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.grey.shade300)),
           ),
           ElevatedButton.icon(
             icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
             label: const Text('Simpan Opsi Ini'),
-            style: ElevatedButton.styleFrom(backgroundColor: accentThemeColor, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: AdminFormBuilderPage.accentThemeColor, foregroundColor: Colors.white),
+            // Ini adalah bagian onPressed untuk ElevatedButton.icon (Tombol "Simpan Opsi Ini")
+// di dalam _showEditChildOptionsDialog
+
             onPressed: () {
+              // 1. Ambil data opsi anak yang baru dari controller yang masih aktif
               final newChildOptions = optionControllers
                   .map((c) => c.text.trim())
-                  .where((text) => text.isNotEmpty)
+                  .where((text) => text.isNotEmpty) // Filter opsi yang kosong setelah di-trim
                   .toList();
+
+              // 2. Panggil method pada controller utama Anda untuk menyimpan/memperbarui mapping opsi
+              // Pastikan 'controller' di sini adalah instance AdminFormBuilderController yang benar
               controller.updateMappingForParentOption(sectionId, questionId, parentOptionValue, newChildOptions);
-              optionControllers.forEach((c) => c.dispose());
+
+              // 3. Dispose SEMUA TextEditingController (baik yang masih di optionControllers
+              //    maupun yang sudah dipindahkan ke removedControllersForDisposal)
+              //    SECARA LANGSUNG sebelum memanggil Get.back().
+              try {
+                // Dispose controller yang masih terkait dengan TextField yang mungkin masih ada di UI
+                // (meskipun akan segera ditutup)
+                for (var c in optionControllers) {
+                  c.dispose();
+                }
+
+                // Dispose controller yang TextField-nya sudah dihapus dari UI sebelumnya
+                for (var c in removedControllersForDisposal) {
+                  c.dispose();
+                }
+              } catch (e) {
+                // Tambahkan logging jika ada error saat proses dispose, meskipun jarang terjadi
+                // jika controller belum di-dispose sebelumnya.
+                print("Error saat melakukan dispose pada TextEditingControllers di tombol Simpan: $e");
+              }
+
+              // 4. (Opsional tapi disarankan) Bersihkan list untuk menghindari referensi gantung,
+              //    meskipun dialog akan ditutup dan variabel lokal ini akan hilang.
+              optionControllers.clear();
+              removedControllersForDisposal.clear();
+
+              // 5. Tutup dialog
               Get.back();
+
+              // Tidak ada lagi WidgetsBinding.instance.addPostFrameCallback untuk disposal di sini
+              // karena sudah dilakukan secara langsung di atas.
             },
           ),
         ],
