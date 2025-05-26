@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),  
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## [0.10.0] - 2025-05-26
+> Created by Bayu Ardiyansyah
+
+> Enhancements to Form-Specific Account Management: New User Creation and UI/UX Overhaul for Dialogs
+
+### 🎉 Added
+- **New System User Creation via Admin Panel (`FormAccountManagementController`):**
+  - Implemented `showCreateSystemUserDialog()` to allow administrators to create new user accounts directly.
+  - The dialog facilitates input for `username`, `email`, and `password`.
+  - New users are created in Firebase Authentication and a corresponding document is added to the `/users` Firestore collection with a default `role: 'user'`.
+- **Select Existing User for Form Authority (`FormAccountManagementController`):**
+  - Implemented `showSelectUserFromListDialog()` enabling administrators to grant form-specific authority to existing users.
+  - The dialog fetches and displays users with the role 'user' from the `/users` collection.
+  - Includes functionality to filter out users who already possess authority for the current form.
+  - Selected users are granted 'user' role access for the specific form, managed in the `adminForms/{formId}/managedAccounts` subcollection.
+
+### 🛠️ Changed
+- **UI/UX Overhaul for Account Management Dialogs (`FormAccountManagementController`):**
+  - **"Buat Akun Pengguna Baru" Dialog:**
+    - Redesigned with a custom header, modern `TextField` styling (rounded borders, prefix icons, consistent padding), and improved layout for a more elegant and user-friendly experience.
+    - Password field now includes a visibility toggle.
+    - Action buttons ("Batal", "Buat Akun") styled for better visual hierarchy and clarity.
+  - **"Pilih dari Daftar Pengguna" Dialog:**
+    - Redesigned with a custom colored header, an integrated search bar within the dialog to filter users by name or email.
+    - `ListTile` items for user selection enhanced with `CircleAvatar` (displaying initials), clearer typography for username/email, and improved spacing.
+    - Loading and empty states within the dialog are made more informative.
+- **Action Button Reorganization in `FormAccountManagementPage`:**
+  - The primary action buttons for managing form authorities were restructured for clarity and improved workflow:
+    1.  The button "Tambah Otoritas via Email" has been **replaced** by **"Buat Akun Pengguna Baru"**, which now triggers the `showCreateSystemUserDialog()`.
+    2.  The button **"Pilih dari Daftar Pengguna"** (calling `showSelectUserFromListDialog()`) is retained as the second primary action.
+    3.  This results in two main buttons: one for creating entirely new system users, and one for granting authority to existing users selected from a list.
+- **Model Update (`ManagedAccount`):**
+  - Ensured `ManagedAccount` model includes `role` and `userId` fields to properly store and display form-specific user authorities.
+
+### 🐛 Fixed
+- **Missing Parameters in `ListView.separated`:** Ensured `itemCount`, `itemBuilder`, and `separatorBuilder` are correctly implemented within the `showSelectUserFromListDialog` method in `FormAccountManagementController`, resolving potential runtime errors.
+- **Firestore Query Index Requirement:** (Assumed resolved by user) This version's functionality relies on the correct composite index (`role` Ascending, `username` Ascending on `users` collection) being in place to prevent `failed-precondition` errors when fetching users for the "Pilih dari Daftar Pengguna" dialog.
+
+---
+
 ## [0.9.0] - 2025-05-26
 > Created by Bayu Ardiyansyah
 

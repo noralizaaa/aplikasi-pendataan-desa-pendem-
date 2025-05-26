@@ -6,7 +6,6 @@ import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_m
 import 'package:aplikasi_pendataan_desa/presentation/admin/admin_screen.dart'; // Untuk warna konsisten
 import 'package:aplikasi_pendataan_desa/infrastructure/navigation/routes.dart'; // Untuk navigasi
 
-
 class AdminAccountPage extends GetView<AdminAccountController> {
   const AdminAccountPage({Key? key}) : super(key: key);
 
@@ -27,12 +26,8 @@ class AdminAccountPage extends GetView<AdminAccountController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Judul halaman, bisa "Daftar Form Saya" atau "Manajemen Form"
-            // Sesuai gambar terakhir Anda, ini lebih seperti "Kategori Manajemen Akun"
-            // Namun Anda klarifikasi bahwa "DC-Penduduk" adalah NAMA FORM.
-            // Jadi, judulnya bisa "Form Tersedia" atau "Pilih Form"
             const Text(
-              'Pilih Form untuk Dikelola', // Atau 'Daftar Form Saya'
+              'Kategori Manajemen Akun', // Updated Title
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -40,11 +35,13 @@ class AdminAccountPage extends GetView<AdminAccountController> {
               ),
             ),
             const SizedBox(height: 20),
-
             Expanded(
               child: Obx(() {
-                if (controller.isLoading.value && controller.listedForms.isEmpty) {
-                  return const Center(child: CircularProgressIndicator(color: AdminScreen.accentHeaderColor));
+                if (controller.isLoading.value &&
+                    controller.listedForms.isEmpty) {
+                  return const Center(
+                      child: CircularProgressIndicator(
+                          color: AdminScreen.accentHeaderColor));
                 }
                 if (controller.listedForms.isEmpty) {
                   return _buildNoFormsMessage(); // Pesan jika tidak ada form
@@ -56,8 +53,6 @@ class AdminAccountPage extends GetView<AdminAccountController> {
                     itemCount: controller.listedForms.length,
                     itemBuilder: (context, index) {
                       final formItem = controller.listedForms[index];
-                      // Menggunakan widget kartu yang sama dengan di Dashboard atau AdminFormPage
-                      // jika tampilannya serupa
                       return _buildFormItemCardForAccountTab(formItem, context);
                     },
                   ),
@@ -67,28 +62,18 @@ class AdminAccountPage extends GetView<AdminAccountController> {
           ],
         ),
       ),
-      // Tombol "Buat Form Baru" bisa ditambahkan di sini jika tab "Account" juga berfungsi untuk membuat form
-      // floatingActionButton: FloatingActionButton.extended(
-      //   onPressed: () => Get.toNamed(AppRoutes.adminFormBuilder),
-      //   label: Text('Buat Form Baru'),
-      //   icon: Icon(Icons.add),
-      //   backgroundColor: AdminScreen.accentHeaderColor,
-      // ),
     );
   }
 
-  // Kartu ini akan menampilkan FormItem, mirip dengan yang ada di AdminFormPage atau Dashboard
   Widget _buildFormItemCardForAccountTab(FormItem item, BuildContext context) {
-    int totalQuestions = item.sections.fold(0, (sum, section) => sum + section.questions.length);
-    String formattedDate = "${item.createdAt.toLocal().day.toString().padLeft(2,'0')}/"
-        "${item.createdAt.toLocal().month.toString().padLeft(2,'0')}/"
+    int totalQuestions =
+    item.sections.fold(0, (sum, section) => sum + section.questions.length);
+    String formattedDate =
+        "${item.createdAt.toLocal().day.toString().padLeft(2, '0')}/"
+        "${item.createdAt.toLocal().month.toString().padLeft(2, '0')}/"
         "${item.createdAt.toLocal().year}";
 
-    // Ambil ikon berdasarkan judul atau properti lain jika ada.
-    // Ini adalah bagian yang sebelumnya menggunakan _getIconFromString untuk AccountCategoryItem.
-    // Untuk FormItem, Anda bisa menggunakan ikon generik atau logika lain.
-    IconData formIcon = Icons.description_outlined; // Ikon default untuk form
-    // Contoh logika ikon berdasarkan judul (jika judulnya unik dan bisa dipetakan)
+    IconData formIcon = Icons.description_outlined;
     if (item.title.toLowerCase().contains("penduduk")) {
       formIcon = Icons.people_alt_outlined;
     } else if (item.title.toLowerCase().contains("tps3r")) {
@@ -99,7 +84,6 @@ class AdminAccountPage extends GetView<AdminAccountController> {
       formIcon = Icons.holiday_village_outlined;
     }
 
-
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 16),
@@ -107,19 +91,27 @@ class AdminAccountPage extends GetView<AdminAccountController> {
       color: cardBgColor,
       child: InkWell(
         onTap: () {
-          // Aksi ketika form diklik: navigasi ke halaman edit form (form builder)
-          controller.navigateToFormDetail(item);
+          // Updated Navigation: Navigate to the new account management page
+          Get.toNamed(
+            AppRoutes.formAccountManagement, // New route
+            arguments: {
+              'formId': item.id,
+              'formTitle': item.title,
+            },
+          );
+          print(
+              'Navigasi ke manajemen akun untuk form: ${item.title} (ID: ${item.id})');
         },
         borderRadius: BorderRadius.circular(10),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center, // Agar ikon dan teks sejajar tengah
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container( // Latar belakang ikon
+              Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AdminScreen.primaryHeaderColor.withOpacity(0.25), // Warna oranye muda
+                  color: AdminScreen.primaryHeaderColor.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(formIcon, color: AdminScreen.iconColor, size: 28),
@@ -130,8 +122,11 @@ class AdminAccountPage extends GetView<AdminAccountController> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.title, // Ini adalah "DC-Penduduk", dll.
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: titleColor),
+                      item.title,
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: titleColor),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -139,7 +134,8 @@ class AdminAccountPage extends GetView<AdminAccountController> {
                       const SizedBox(height: 3),
                       Text(
                         item.description,
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey.shade600),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -147,27 +143,32 @@ class AdminAccountPage extends GetView<AdminAccountController> {
                     const SizedBox(height: 6),
                     Text(
                       'Dibuat: $formattedDate | Pertanyaan: $totalQuestions',
-                      style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                      style:
+                      TextStyle(fontSize: 10, color: Colors.grey.shade500),
                     ),
                   ],
                 ),
               ),
-              // Tombol aksi seperti hapus bisa menggunakan PopupMenuButton jika diperlukan di sini juga
-              // Icon(Icons.arrow_forward_ios_rounded, size: 18, color: iconDetailColor.withOpacity(0.7)),
+              // Arrow to indicate tappable, or use PopupMenuButton for actions like delete form definition
+              // For this context, tapping navigates, so an arrow is good.
+              // If form deletion is needed here, it's already implemented with PopupMenuButton.
+              // Keeping PopupMenuButton for form deletion if that's still desired from this list.
               PopupMenuButton<String>(
                 icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
                 onSelected: (value) {
-                  if (value == 'delete') {
+                  if (value == 'delete_form_definition') { // Changed value to be more specific
                     controller.deleteForm(item.id, item.title);
                   }
+                  // Add other actions if needed
                 },
                 itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                   const PopupMenuItem<String>(
-                    value: 'delete',
+                    value: 'delete_form_definition',
                     child: Row(children: [
-                      Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                      Icon(Icons.delete_outline,
+                          color: Colors.redAccent, size: 20),
                       SizedBox(width: 8),
-                      Text('Hapus'),
+                      Text('Hapus Form Ini'), // Clarified text
                     ]),
                   ),
                 ],
@@ -189,13 +190,16 @@ class AdminAccountPage extends GetView<AdminAccountController> {
             Icon(Icons.ballot_outlined, size: 80, color: Colors.grey.shade400),
             const SizedBox(height: 20),
             Text(
-              'Belum Ada Form yang Dibuat',
+              'Belum Ada Kategori Form', // Updated text
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700),
             ),
             const SizedBox(height: 10),
             Text(
-              'Semua form yang Anda buat akan muncul di sini.',
+              'Setiap form yang Anda buat akan muncul di sini sebagai kategori untuk manajemen akun terkait.', // Updated text
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
             ),
