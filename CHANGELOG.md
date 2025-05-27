@@ -10,6 +10,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+
+## [0.15.1] - 2025-05-27
+> Created by Lutfi Indra
+
+> Enhanced admin interface and functionality, including UI updates to align with Figma designs, global search improvements (with pending navigation form execution), and optimized account management features.
+
+### 🎉 Added
+-   **Default Admin Profile Picture:** Implemented a default profile picture for administrators, mirroring the standard user profile picture.
+
+### 🛠️ Changed
+-   **`admin_screen.dart`:** Updated the UI with a new gradient and color scheme to align with the Figma design.
+-   **`admin_controller.dart`:** Modified the search feature to function as a global search. However, proper execution within each navigation form is still pending.
+-   **`admin_profil_page.dart`:** Revised the UI to match the Figma design specifications.
+-   **`admin_profil_controller.dart`:** Updated the UI for the logout confirmation and the card interface for name changes.
+-   **`form_account_management_page.dart`:**
+  -   Overhauled the UI to align with the Figma design.
+  -   Replaced "edit" and "delete" text buttons with icons for a cleaner interface.
+-   **`all_account_page.dart` & `all_account_controller.dart`:**
+  -   Adjusted the header to match the overall theme.
+  -   Optimized the account cards with a more modern design.
+
+### 🐛 Fixed
+-   **`form_account_management_controller.dart`:**
+  -   Resolved issues with the search feature to ensure optimal functionality.
+  -   Corrected card display issues during account creation.
+
 ---
 
 ## [0.15.0] - 2025-05-27
