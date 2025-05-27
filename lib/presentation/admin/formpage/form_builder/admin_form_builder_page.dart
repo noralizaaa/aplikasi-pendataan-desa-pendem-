@@ -269,46 +269,42 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                       ),
                   ],
                 ),
-                // Menggunakan _PersistentTextField untuk Judul Bagian
                 _PersistentTextField(
                   fieldKey: ValueKey('${section.id}_section_title'),
                   initialValue: section.title,
                   onChanged: (text) => controller.updateSectionTitle(section.id, text),
                   decoration: _modernInputDecoration(labelText: 'Judul Bagian (Contoh: Keterangan Rumah Tangga)', hintText: 'Kosongkan untuk hanya menampilkan nomor Romawi', isDense: true),
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  // keyboardType: TextInputType.text, // Default
-                  // maxLines: 1, // Default
                 ),
                 const SizedBox(height: 12),
-                // Menggunakan _PersistentTextField untuk Deskripsi Bagian
                 _PersistentTextField(
                   fieldKey: ValueKey('${section.id}_section_description'),
                   initialValue: section.description ?? '',
                   onChanged: (text) => controller.updateSectionDescription(section.id, text),
                   decoration: _modernInputDecoration(labelText: 'Deskripsi Bagian', hintText: 'Deskripsi Bagian (Opsional)', isDense: true),
-                  maxLines: 2, // Sesuai dengan TextField sebelumnya
-                  style: const TextStyle(fontSize: 14), // Sesuaikan jika perlu, seperti sebelumnya
-                  // keyboardType: TextInputType.multiline, // Defaultnya jika maxLines > 1 atau null
+                  maxLines: 2,
+                  style: const TextStyle(fontSize: 14),
                 ),
                 const SizedBox(height: 20),
                 Text("Pertanyaan untuk Bagian Ini:", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
                 const SizedBox(height: 10),
-                Obx(() { // Membungkus Column pertanyaan dengan Obx jika jumlah pertanyaan bisa berubah dinamis
-                  if (section.questions.isEmpty) { // Anda bisa juga mengakses controller.sections[sectionIndex].questions.isEmpty
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      child: Center(child: Text("Belum ada pertanyaan di bagian ini.", style: TextStyle(color: Colors.grey.shade600))),
-                    );
-                  }
-                  return Column(
+
+                // --- PERUBAHAN DI SINI: Obx dihapus ---
+                if (section.questions.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Center(child: Text("Belum ada pertanyaan di bagian ini.", style: TextStyle(color: Colors.grey.shade600))),
+                  )
+                else
+                  Column( // Langsung Column tanpa Obx
                     children: section.questions.asMap().entries.map((entry) {
-                      final questionIndexInSection = entry.key; // Ini adalah index dalam list questions milik section ini
+                      final questionIndexInSection = entry.key;
                       final question = entry.value;
-                      // sectionIndex adalah index dari section ini dalam list sections utama (sudah ada sebagai parameter)
                       return _buildQuestionCard(section.id, sectionIndex, question, questionIndexInSection);
                     }).toList(),
-                  );
-                }),
+                  ),
+                // --- AKHIR PERUBAHAN ---
+
                 const SizedBox(height: 15),
                 _buildAddQuestionButton(section.id),
               ],
