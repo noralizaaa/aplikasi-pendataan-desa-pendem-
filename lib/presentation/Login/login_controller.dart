@@ -110,8 +110,96 @@ class LoginController extends GetxController {
     _loginAttemptCounter++;
     print('DEBUG: Attempting login via UI. Counter: $_loginAttemptCounter');
 
+    // Di dalam fungsi loginUser(), sebelum blok try untuk FirebaseAuth
     final String email = emailController.text.trim();
     final String password = passwordController.text.trim();
+
+// --- AWAL PERBAIKAN ---
+
+// 1. Validasi Input Kosong
+    if (email.isEmpty || password.isEmpty) {
+      print(
+          'DEBUG: Login input empty. Email: "$email", Password: "$password"'); // Lebih detail
+      Get.snackbar(
+        'Input Tidak Lengkap', // Judul lebih generik jika ada validasi lain
+        'Email dan password tidak boleh kosong.', // Pesan lebih jelas
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orangeAccent,
+        // Warna yang sedikit berbeda untuk warning
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(12),
+        borderRadius: 8,
+        duration: const Duration(seconds: 3),
+      );
+      isLoading.value =
+      false; // Pastikan isLoading di-reset jika validasi gagal
+      isManualLogin.value = false; // Reset juga jika perlu
+      return; // Hentikan eksekusi lebih lanjut
+    }
+
+// 2. (Opsional) Validasi Format Email Sederhana
+    if (!GetUtils.isEmail(email)) {
+      print('DEBUG: Invalid email format: "$email"');
+      Get.snackbar(
+        'Format Email Salah',
+        'Silakan masukkan alamat email yang valid.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orangeAccent,
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(12),
+        borderRadius: 8,
+        duration: const Duration(seconds: 3),
+      );
+      isLoading.value = false;
+      isManualLogin.value = false;
+      return;
+    }
+
+// 3. (Opsional) Validasi Panjang Password Minimum (jika ada aturan)
+// if (password.length < 6) {
+//   print('DEBUG: Password too short.');
+//   Get.snackbar(
+//     'Password Terlalu Pendek',
+//     'Password minimal harus 6 karakter.',
+//     snackPosition: SnackPosition.BOTTOM,
+//     backgroundColor: Colors.orangeAccent,
+//     colorText: Colors.white,
+//     margin: const EdgeInsets.all(12),
+//     borderRadius: 8,
+//     duration: const Duration(seconds: 3),
+//   );
+//   isLoading.value = false;
+//   isManualLogin.value = false;
+//   return;
+// }
+
+// --- AKHIR PERBAIKAN ---
+
+// Setelah semua validasi lolos, baru lanjutkan ke proses login Firebase
+    try {
+      isLoading.value =
+      true; // isLoading bisa di-set di sini jika validasi dipisah
+      isManualLogin.value = true;
+      _loginAttemptCounter++;
+      print(
+          'DEBUG: Attempting login via UI. Counter: $_loginAttemptCounter. Email: $email');
+
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      print('DEBUG: Firebase login successful for ${userCredential.user
+          ?.email}. UID: ${userCredential.user?.uid}');
+      // Navigasi akan ditangani oleh authStateChanges
+    } on FirebaseAuthException catch (e) {
+      // ... (penanganan error FirebaseAuthException)
+    } catch (e) {
+      // ... (penanganan error umum)
+    } finally {
+      isLoading.value = false;
+      isManualLogin.value =
+      false; // Reset setelah login selesai (baik sukses maupun gagal)
+    }
 
     try {
       if (email.isEmpty || password.isEmpty) {
@@ -130,29 +218,76 @@ class LoginController extends GetxController {
         email: email,
         password: password,
       );
-      print('DEBUG: Firebase login successful for ${userCredential.user?.email}. UID: ${userCredential.user?.uid}');
+      print('DEBUG: Firebase login successful for ${userCredential.user
+          ?.email}. UID: ${userCredential.user?.uid}');
       // Navigasi akan ditangani oleh authStateChanges
+
     } on FirebaseAuthException catch (e) {
-      print('ERROR: FirebaseAuthException during UI login: ${e.code} - ${e.message}');
+      // Pastikan ini masih ada dan Anda melihat outputnya di konsol saat error terjadi
+      print('DEBUG: FirebaseAuthException - RAW ERROR CODE: "${e.code}", Message: "${e.message}"');
+
+      String errorMessage;
+      // Normalisasi kode error untuk konsistensi (opsional tapi bisa membantu)
+      String normalizedCode = e.code.toLowerCase().replaceAll('error_', '').replaceAll('-', '_');
+      // Contoh: 'auth/invalid-credential' menjadi 'auth_invalid_credential'
+      // 'INVALID_CREDENTIAL' menjadi 'invalid_credential'
+
+
+      // switch (e.code) { // Anda bisa tetap menggunakan e.code jika lebih suka
+      switch (normalizedCode) { // Atau gunakan versi yang dinormalisasi
+        case 'user_not_found': // Cocok untuk 'user-not-found' atau 'auth/user-not-found'
+        case 'auth_user_not_found':
+          errorMessage = 'Akun dengan email ini tidak ditemukan. Silakan daftar atau cek email Anda.';
+          break;
+        case 'wrong_password': // Cocok untuk 'wrong-password' atau 'auth/wrong-password'
+        case 'auth_wrong_password':
+          errorMessage = 'Password yang Anda masukkan salah. Silakan coba lagi.';
+          break;
+
+      // --- INI BAGIAN PENTING UNTUK KASUS ANDA ---
+        case 'invalid_credential': // Cocok untuk 'invalid-credential'
+        case 'auth_invalid_credential': // Cocok untuk 'auth/invalid-credential'
+          errorMessage = 'Email atau password yang Anda masukkan salah. Silakan periksa kembali.';
+          break;
+      // ------------------------------------------
+
+        case 'invalid_email': // Cocok untuk 'invalid-email' atau 'auth/invalid-email'
+        case 'auth_invalid_email':
+          errorMessage = 'Format email yang Anda masukkan tidak valid.';
+          break;
+        case 'user_disabled':
+        case 'auth_user_disabled':
+          errorMessage = 'Akun ini telah dinonaktifkan. Hubungi administrator.';
+          break;
+        case 'too_many_requests':
+        case 'auth_too_many_requests':
+          errorMessage = 'Terlalu banyak percobaan login. Silakan coba lagi nanti atau reset password Anda.';
+          break;
+        case 'network_request_failed':
+        case 'auth_network_request_failed':
+          errorMessage = 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
+          break;
+        default:
+        // Jika kode yang dinormalisasi pun tidak cocok, tampilkan kode asli dari Firebase
+          errorMessage = 'Terjadi kesalahan saat login. (Kode Asli: ${e.code})';
+      }
+
       Get.snackbar(
         'Login Gagal',
-        'Error: ${e.message}',
+        errorMessage,
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.redAccent,
         colorText: Colors.white,
+        margin: const EdgeInsets.all(12),
+        borderRadius: 8,
+        duration: const Duration(seconds: 4),
       );
+
     } catch (e) {
-      print('ERROR: Unexpected exception during UI login: ${e.toString()}');
-      Get.snackbar(
-        'Error',
-        'Terjadi kesalahan: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.redAccent,
-        colorText: Colors.white,
-      );
+      // ... (penanganan error umum lainnya)
     } finally {
       isLoading.value = false;
-      isManualLogin.value = false; // Reset setelah login selesai
+      isManualLogin.value = false;
     }
   }
 

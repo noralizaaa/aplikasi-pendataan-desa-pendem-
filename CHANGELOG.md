@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.17.6] - 2025-05-28
+> Created by Febri Bagus Triwibowo  
+> Improved login feedback handling and enhanced visual consistency on splash screen.
+
+### 🎉 Added
+- *(No new features added in this release)*
+
+### 🛠️ Changed
+- **Splash Screen (`splash_screen.dart`):**
+  - Updated background color to better align with the app's branding and visual identity.
+
+### 🐛 Fixed
+- **Login Controller (`login_controller.dart`):**
+  - Refined `Snackbar` feedback logic to handle multiple login conditions more accurately, providing clearer messages for failed logins, empty fields, and invalid credentials.
+
+---
 
 ## [0.17.5] - 2025-05-28
 > Created by Lutfi Indra
