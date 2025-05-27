@@ -107,14 +107,14 @@ class UserProfileController extends GetxController {
       DocumentSnapshot defaultRoleDoc = await FirebaseFirestore.instance.collection('forms').doc('000').get();
       if (defaultRoleDoc.exists) {
         final data = defaultRoleDoc.data() as Map<String, dynamic>;
-        return data['nama'] ?? 'Tidak ada otoritas (Default)';
+        return data['nama'] ?? 'user (Default)';
       } else {
         print("PENTING: Dokumen '000' di collection 'forms' tidak ditemukan. Mohon buat dokumen tersebut di Firestore dengan field 'nama' untuk peran default.");
-        return 'Tidak ada otoritas';
+        return 'user';
       }
     } catch (e) {
       print("Error fetching default authority role from Firestore: $e");
-      return 'Tidak ada otoritas (Error)';
+      return 'user (Error)';
     }
   }
 

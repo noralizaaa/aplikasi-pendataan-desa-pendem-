@@ -12,6 +12,12 @@ class AdminAccountPage extends GetView<AdminAccountController> {
   static const Color pageBackgroundColor = Color(0xFFEBF4F8);
   static const Color titlePageColor = Colors.black87;
   static const Color cardBgColor = AdminScreen.cardBackgroundColor;
+  // Warna baru untuk kartu "Daftar Semua Akun" agar lebih mencolok
+  static const Gradient allAccountsCardGradient = LinearGradient(
+    colors: [Color(0xFFFFF9C4), Color(0xFFFFF176)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
   static const Color titleColor = Colors.black87;
   static const Color subtitleColor = Colors.black54;
   static const Color dateColor = Colors.grey;
@@ -34,15 +40,14 @@ class AdminAccountPage extends GetView<AdminAccountController> {
                 color: titlePageColor,
               ),
             ),
-            const SizedBox(height: 20),
-            // --- New Section: All Accounts ---
+            const SizedBox(height: 20), // Jarak setelah judul utama
+            // --- Card untuk "Daftar Semua Akun" ---
             _buildAllAccountsCard(context),
-            const SizedBox(height: 20), // Spacing between the new card and the form list
-            // --- End New Section ---
+            const SizedBox(height: 24),
+            // --- Daftar form lainnya ---
             Expanded(
               child: Obx(() {
-                if (controller.isLoading.value &&
-                    controller.listedForms.isEmpty) {
+                if (controller.isLoading.value && controller.listedForms.isEmpty) {
                   return const Center(
                       child: CircularProgressIndicator(
                           color: AdminScreen.accentHeaderColor));
@@ -54,10 +59,16 @@ class AdminAccountPage extends GetView<AdminAccountController> {
                   onRefresh: () => controller.refreshListedForms(),
                   color: AdminScreen.accentHeaderColor,
                   child: ListView.builder(
+                    padding: EdgeInsets.zero,
                     itemCount: controller.listedForms.length,
                     itemBuilder: (context, index) {
                       final formItem = controller.listedForms[index];
-                      return _buildFormItemCardForAccountTab(formItem, context);
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: index == controller.listedForms.length - 1 ? 0 : 16.0,
+                        ),
+                        child: _buildFormItemCardForAccountTab(formItem, context),
+                      );
                     },
                   ),
                 );
@@ -70,58 +81,70 @@ class AdminAccountPage extends GetView<AdminAccountController> {
   }
 
   Widget _buildAllAccountsCard(BuildContext context) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 0), // Adjust margin as needed
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      color: cardBgColor,
-      child: InkWell(
-        onTap: () {
-          // Navigate to the All Accounts page
-          Get.toNamed(AppRoutes.allAccountManagement);
-          print('Navigasi ke halaman Manajemen Semua Akun');
-        },
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AdminScreen.primaryHeaderColor.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(10),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: allAccountsCardGradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Get.toNamed(AppRoutes.allAccountManagement);
+            print('Navigasi ke halaman Manajemen Semua Akun');
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.8),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.manage_accounts_outlined,
+                    color: AdminScreen.primaryHeaderColor,
+                    size: 36,
+                  ),
                 ),
-                child: const Icon(Icons.people_outline, color: AdminScreen.iconColor, size: 28),
-              ),
-              const SizedBox(width: 16),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Daftar Semua Akun',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: titleColor),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: 3),
-                    Text(
-                      'Kelola semua akun pengguna terdaftar',
-                      style: TextStyle(
-                          fontSize: 12, color: subtitleColor),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Daftar Semua Akun',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Kelola semua akun pengguna terdaftar',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.arrow_forward_ios, color: Colors.grey.shade600, size: 20),
-            ],
+                const Icon(Icons.arrow_forward_ios, color: Colors.black45, size: 22),
+              ],
+            ),
           ),
         ),
       ),
@@ -129,8 +152,7 @@ class AdminAccountPage extends GetView<AdminAccountController> {
   }
 
   Widget _buildFormItemCardForAccountTab(FormItem item, BuildContext context) {
-    int totalQuestions =
-    item.sections.fold(0, (sum, section) => sum + section.questions.length);
+    int totalQuestions = item.sections.fold(0, (sum, section) => sum + section.questions.length);
     String formattedDate =
         "${item.createdAt.toLocal().day.toString().padLeft(2, '0')}/"
         "${item.createdAt.toLocal().month.toString().padLeft(2, '0')}/"
@@ -149,21 +171,19 @@ class AdminAccountPage extends GetView<AdminAccountController> {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       color: cardBgColor,
       child: InkWell(
         onTap: () {
-          // Updated Navigation: Navigate to the new account management page
           Get.toNamed(
-            AppRoutes.formAccountManagement, // New route
+            AppRoutes.formAccountManagement,
             arguments: {
               'formId': item.id,
               'formTitle': item.title,
             },
           );
-          print(
-              'Navigasi ke manajemen akun untuk form: ${item.title} (ID: ${item.id})');
+          print('Navigasi ke manajemen akun untuk form: ${item.title} (ID: ${item.id})');
         },
         borderRadius: BorderRadius.circular(10),
         child: Padding(
@@ -206,8 +226,7 @@ class AdminAccountPage extends GetView<AdminAccountController> {
                     const SizedBox(height: 6),
                     Text(
                       'Dibuat: $formattedDate | Pertanyaan: $totalQuestions',
-                      style:
-                      TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                      style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
                     ),
                   ],
                 ),
@@ -215,19 +234,17 @@ class AdminAccountPage extends GetView<AdminAccountController> {
               PopupMenuButton<String>(
                 icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
                 onSelected: (value) {
-                  if (value == 'delete_form_definition') { // Changed value to be more specific
+                  if (value == 'delete_form_definition') {
                     controller.deleteForm(item.id, item.title);
                   }
-                  // Add other actions if needed
                 },
                 itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                   const PopupMenuItem<String>(
                     value: 'delete_form_definition',
                     child: Row(children: [
-                      Icon(Icons.delete_outline,
-                          color: Colors.redAccent, size: 20),
+                      Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
                       SizedBox(width: 8),
-                      Text('Hapus Form Ini'), // Clarified text
+                      Text('Hapus Form Ini'),
                     ]),
                   ),
                 ],
@@ -249,7 +266,7 @@ class AdminAccountPage extends GetView<AdminAccountController> {
             Icon(Icons.ballot_outlined, size: 80, color: Colors.grey.shade400),
             const SizedBox(height: 20),
             Text(
-              'Belum Ada Kategori Form', // Updated text
+              'Belum Ada Kategori Form',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 18,
@@ -258,7 +275,7 @@ class AdminAccountPage extends GetView<AdminAccountController> {
             ),
             const SizedBox(height: 10),
             Text(
-              'Setiap form yang Anda buat akan muncul di sini sebagai kategori untuk manajemen akun terkait.', // Updated text
+              'Setiap form yang Anda buat akan muncul di sini sebagai kategori untuk manajemen akun terkait.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
             ),

@@ -16,7 +16,7 @@ class UserProfile {
   factory UserProfile.fromMap(Map<String, dynamic> data) {
     return UserProfile(
       username: data['username'] as String? ?? 'N/A', // Safer cast with `as String?`
-      role: data['role'] as String? ?? 'Peran Tidak Diketahui', // Safer cast
+      role: data['role'] as String? ?? 'user', // Safer cast
       programId: data['programId'] as String?, // Null-safe cast
     );
   }

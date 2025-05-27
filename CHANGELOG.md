@@ -3,6 +3,30 @@
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+
+---
+
+
+## [0.17.5] - 2025-05-28
+> Created by Lutfi Indra
+> Improved UI clarity for admin account management, enhanced user data synchronization, and fixed user display name retrieval.
+
+### 🎉 Added
+- *(No new features added in this release)*
+
+### 🛠️ Changed
+- **Admin Account Page (`admin_account_page.dart`):**
+  - Optimized UI layout to visually distinguish this page as the top-level authority form, making it stand out from other forms.
+- **User Screen (`user_screen.dart`):**
+  - Implemented auto-refresh behavior to ensure real-time updates when user profile information changes.
+- **User Profile Model & Controller (`user_profile_model.dart`, `user_profile_controller.dart`):**
+  - Updated user role field to use a static assignment for consistency and simplicity in account management logic.
+
+### 🐛 Fixed
+- **User Screen (`user_screen.dart`):**
+  - Corrected the fetch logic for displaying the user's display name; it now retrieves and displays the correct data reliably.
+
 ---
 
 ## [0.17.0] - 2025-05-28
