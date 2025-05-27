@@ -65,11 +65,12 @@ class AllAccountController extends GetxController {
     final TextEditingController emailController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
     final TextEditingController usernameController = TextEditingController();
-    final RxString selectedRole = 'user'.obs; // Default role
+    final RxString selectedRole = 'user'.obs;
 
     await Get.dialog(
       AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), // Modern rounded corners
+        backgroundColor: const Color(0xFFFFF3E0), // Warna oranye pastel yang soft
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: const Text(
           'Buat Akun Pengguna Baru',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -78,55 +79,73 @@ class AllAccountController extends GetxController {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              // Username
+              TextFormField(
                 controller: usernameController,
                 decoration: InputDecoration(
                   labelText: 'Nama Pengguna',
                   hintText: 'Masukkan nama pengguna',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: const Icon(Icons.person_outline),
                   filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  fillColor: Colors.white, // Tetap putih biar kontras
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
               ),
               const SizedBox(height: 15),
-              TextField(
+
+              // Email
+              TextFormField(
                 controller: emailController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Email',
-                  hintText: 'Masukkan email',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  hintText: 'Masukkan email pengguna',
+                  prefixIcon: const Icon(Icons.email_outlined),
                   filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
-                keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 15),
-              TextField(
+
+              // Password
+              TextFormField(
                 controller: passwordController,
+                obscureText: true,
                 decoration: InputDecoration(
                   labelText: 'Password',
                   hintText: 'Masukkan password',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: const Icon(Icons.lock_outline),
                   filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
-                obscureText: true,
               ),
               const SizedBox(height: 15),
+
+              // Role
               Obx(() => DropdownButtonFormField<String>(
                 value: selectedRole.value,
                 decoration: InputDecoration(
                   labelText: 'Peran',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: const Icon(Icons.security_outlined),
                   filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
-                items: <String>['user', 'admin'] // Sesuaikan peran yang tersedia
-                    .map<DropdownMenuItem<String>>((String value) {
+                items: ['user', 'admin'].map((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value.capitalizeFirst!),
@@ -141,13 +160,15 @@ class AllAccountController extends GetxController {
             ],
           ),
         ),
-        actionsPadding: const EdgeInsets.all(15), // Consistent padding for actions
+        actionsPadding: const EdgeInsets.all(15),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
             style: TextButton.styleFrom(
-              foregroundColor: Colors.grey.shade700, // Text color for cancel
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              foregroundColor: Colors.grey.shade700,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: const Text('Batal'),
           ),
@@ -162,9 +183,11 @@ class AllAccountController extends GetxController {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AdminScreen.primaryHeaderColor, // Consistent brand color
+              backgroundColor: AdminScreen.accentHeaderColor, // Warna oranye branding
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
             child: const Text('Buat Akun'),
@@ -173,6 +196,8 @@ class AllAccountController extends GetxController {
       ),
     );
   }
+
+
 
   Future<void> _createSystemUser(String email, String password, String username, String role) async {
     if (email.isEmpty || password.isEmpty || username.isEmpty) {
@@ -221,7 +246,8 @@ class AllAccountController extends GetxController {
 
     await Get.dialog(
       AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), // Modern rounded corners
+        backgroundColor: const Color(0xFFFFF3E0), // Oranye pastel seperti form buat akun
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: const Text(
           'Edit Akun Pengguna',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -230,43 +256,50 @@ class AllAccountController extends GetxController {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              TextFormField(
                 controller: usernameController,
                 decoration: InputDecoration(
                   labelText: 'Nama Pengguna',
                   hintText: 'Masukkan nama pengguna baru',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: const Icon(Icons.person_outline),
                   filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
               ),
               const SizedBox(height: 15),
-              TextField(
+              TextFormField(
                 controller: emailController,
                 decoration: InputDecoration(
                   labelText: 'Email',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: const Icon(Icons.email_outlined),
                   filled: true,
-                  fillColor: Colors.grey.shade200, // Slightly darker to indicate disabled
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  fillColor: Colors.grey.shade200,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
-                keyboardType: TextInputType.emailAddress,
-                enabled: false, // Email typically shouldn't be edited easily
-                style: const TextStyle(color: Colors.grey), // Text color for disabled field
+                enabled: false,
+                style: const TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 15),
               Obx(() => DropdownButtonFormField<String>(
                 value: selectedRole.value,
                 decoration: InputDecoration(
                   labelText: 'Peran',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  prefixIcon: const Icon(Icons.security_outlined),
                   filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
-                items: <String>['user', 'admin'] // Sesuaikan peran yang tersedia
-                    .map<DropdownMenuItem<String>>((String value) {
+                items: ['user', 'admin'].map((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value.capitalizeFirst!),
@@ -287,7 +320,9 @@ class AllAccountController extends GetxController {
             onPressed: () => Get.back(),
             style: TextButton.styleFrom(
               foregroundColor: Colors.grey.shade700,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: const Text('Batal'),
           ),
@@ -301,9 +336,11 @@ class AllAccountController extends GetxController {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AdminScreen.primaryHeaderColor,
+              backgroundColor: AdminScreen.accentHeaderColor,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
             child: const Text('Simpan'),
@@ -312,6 +349,8 @@ class AllAccountController extends GetxController {
       ),
     );
   }
+
+
 
   Future<void> _updateAccountDetails(String uid, String newUsername, String newRole) async {
     try {

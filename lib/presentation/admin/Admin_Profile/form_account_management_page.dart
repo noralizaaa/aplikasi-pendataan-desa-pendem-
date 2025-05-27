@@ -3,28 +3,26 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'form_account_management_controller.dart';
 import 'managed_account_model.dart';
+import 'package:aplikasi_pendataan_desa/presentation/admin/admin_screen.dart'; // Tambahan untuk warna konsisten
 
-class FormAccountManagementPage
-    extends GetView<FormAccountManagementController> {
+class FormAccountManagementPage extends GetView<FormAccountManagementController> {
   const FormAccountManagementPage({Key? key}) : super(key: key);
 
   // Define colors based on the image or your app's theme
-  static const Color pageBackgroundColor = Color(0xFFF5F5F5); // Light grey
-  static const Color headerBackgroundColor = FormAccountManagementController.primaryHeaderColor; // Orange from controller
+  static const Color pageBackgroundColor = Color(0xFFF5F5F5);
+  static const Color headerBackgroundColor = AdminScreen.primaryHeaderColor;
   static const Color headerTextColor = Colors.white;
   static const Color searchBarColor = Colors.white;
-  static const Color searchIconColor = Color(0xFFFFCA28); // Yellowish
+  static const Color searchIconColor = AdminScreen.accentHeaderColor;
 
-  // Warna Tombol Aksi
-  static const Color createNewUserButtonColor = FormAccountManagementController.primaryHeaderColor; // Tombol utama untuk buat akun baru
-  static const Color selectExistingUserButtonColor = Color(0xFF4CAF50); // Warna hijau untuk tombol pilih pengguna
+  static const Color createNewUserButtonColor = AdminScreen.primaryHeaderColor;
+  static const Color selectExistingUserButtonColor = Color(0xFF4CAF50);
 
   static const Color buttonTextColor = Colors.white;
   static const Color cardBackgroundColor = Colors.white;
   static const Color accountTextColor = Colors.black87;
-  static const Color editButtonColor = FormAccountManagementController.editButtonColor; // Green
-  static const Color deleteButtonColor = FormAccountManagementController.deleteButtonColor; // Red
-
+  static const Color editButtonColor = Color(0xFF4CAF50); // Green
+  static const Color deleteButtonColor = Color(0xFFF44336); // Red
 
   @override
   Widget build(BuildContext context) {
@@ -32,8 +30,7 @@ class FormAccountManagementPage
       backgroundColor: pageBackgroundColor,
       body: Column(
         children: [
-          _buildHeader(),
-          _buildSearchBar(),
+          _buildHeaderWithSearch(), // Gabungan header + search bar dalam container oranye
           _buildActionButtonsRow(), // Widget untuk tombol-tombol aksi
           Expanded(child: _buildAccountList()),
         ],
@@ -41,71 +38,80 @@ class FormAccountManagementPage
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeaderWithSearch() {
     return Container(
-      color: headerBackgroundColor,
-      padding: EdgeInsets.only(
-          top: Get.mediaQuery.padding.top + 10,
-          bottom: 15,
-          left: 10,
-          right: 10),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: headerTextColor),
-            onPressed: () => Get.back(),
-          ),
-          const SizedBox(width: 10),
-          Obx(() => Text(
-            'Management Account\n${controller.formTitle.value}',
-            style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: headerTextColor),
-            textAlign: TextAlign.start,
-          )),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-      child: TextField(
-        onChanged: (value) => controller.updateSearchQuery(value),
-        decoration: InputDecoration(
-          hintText: 'Cari Akun (berdasarkan email)',
-          prefixIcon: const Icon(Icons.search, color: Colors.grey),
-          suffixIcon: Container(
-            margin: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-                color: searchIconColor,
-                borderRadius: BorderRadius.circular(8.0)
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.search, color: Colors.white),
-              onPressed: () {
-                // Aksi pencarian bisa dipicu di sini jika perlu
-              },
-            ),
-          ),
-          filled: true,
-          fillColor: searchBarColor,
-          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.0),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.0),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.0),
-            borderSide: const BorderSide(color: headerBackgroundColor, width: 1.5),
-          ),
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFFAB40), // Warna oranye tua
+            Color(0xFFFFD180), // Warna oranye muda
+          ],
         ),
+        borderRadius: BorderRadius.only(
+          bottomRight: Radius.circular(60),
+        ),
+      ),
+      padding: EdgeInsets.only(
+        top: Get.mediaQuery.padding.top + 10,
+        left: 16,
+        right: 16,
+        bottom: 30,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black54),
+                onPressed: () => Get.back(),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Obx(() => Text(
+                  'Management Account\n${controller.formTitle.value}',
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87),
+                  textAlign: TextAlign.start,
+                )),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Search bar masuk dalam container oranye
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: TextField(
+              onChanged: (value) => controller.updateSearchQuery(value),
+              decoration: InputDecoration(
+                hintText: 'Cari Akun (berdasarkan email)',
+                suffixIcon: Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: searchIconColor,
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.search, color: Colors.white),
+                    onPressed: () {
+                      // Aksi pencarian bisa dipicu di sini jika perlu
+                    },
+                  ),
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -119,15 +125,15 @@ class FormAccountManagementPage
           // Tombol PERTAMA: Diganti menjadi "Buat Akun Pengguna Baru"
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: createNewUserButtonColor, // Menggunakan warna utama
+              backgroundColor: searchIconColor,
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
               minimumSize: const Size(double.infinity, 48),
             ),
-            onPressed: () => controller.showCreateSystemUserDialog(), // Panggil dialog buat pengguna sistem baru
+            onPressed: () => controller.showCreateSystemUserDialog(),
             icon: const Icon(Icons.person_add_alt_1, color: buttonTextColor),
             label: const Text(
-              'Buat Akun Pengguna Baru', // Label tombol diganti
+              'Buat Akun Pengguna Baru',
               style: TextStyle(fontSize: 15, color: buttonTextColor),
             ),
           ),
@@ -147,13 +153,10 @@ class FormAccountManagementPage
               style: TextStyle(fontSize: 15, color: buttonTextColor),
             ),
           ),
-          // Tombol "Tambah Otoritas via Email" yang asli sudah digantikan fungsinya oleh tombol pertama.
-          // Tombol ketiga yang sebelumnya juga "Buat Akun Pengguna Baru" kini tidak diperlukan.
         ],
       ),
     );
   }
-
 
   Widget _buildAccountList() {
     return Obx(() {
@@ -204,7 +207,10 @@ class FormAccountManagementPage
                 children: [
                   Text(
                     account.email,
-                    style: const TextStyle(fontSize: 15, color: accountTextColor, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                        fontSize: 15,
+                        color: accountTextColor,
+                        fontWeight: FontWeight.w500),
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (account.role.isNotEmpty)
@@ -220,28 +226,16 @@ class FormAccountManagementPage
             ),
             Row(
               children: [
-                TextButton(
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                        side: const BorderSide(color: editButtonColor)
-                    ),
-                  ),
+                IconButton(
+                  tooltip: 'Edit Akun',
+                  icon: const Icon(Icons.edit, color: editButtonColor),
                   onPressed: () => controller.editAccount(account),
-                  child: const Text('Edit', style: TextStyle(color: editButtonColor)),
                 ),
-                const SizedBox(width: 8),
-                TextButton(
-                  style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                          side: const BorderSide(color: deleteButtonColor)
-                      )
-                  ),
+                const SizedBox(width: 4),
+                IconButton(
+                  tooltip: 'Hapus Akun',
+                  icon: const Icon(Icons.delete, color: deleteButtonColor),
                   onPressed: () => controller.deleteAccount(account),
-                  child: const Text('Delete', style: TextStyle(color: deleteButtonColor)),
                 ),
               ],
             ),

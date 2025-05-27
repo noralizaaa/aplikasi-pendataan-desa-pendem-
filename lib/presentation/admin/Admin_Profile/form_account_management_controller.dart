@@ -30,33 +30,38 @@ class AppUser {
 class FormAccountManagementController extends GetxController {
   final RxString formId = ''.obs;
   final RxString formTitle = ''.obs;
-  final RxList<ManagedAccount> accounts = <ManagedAccount>[].obs;
-  final RxList<AppUser> eligibleUsers = <AppUser>[].obs;
-  final RxList<AppUser> _allFetchedUsers = <AppUser>[].obs;
+  final RxList<ManagedAccount> accounts = <ManagedAccount>[].obs; // Daftar akun yang terotorisasi untuk form ini
+  final RxList<AppUser> eligibleUsers = <AppUser>[].obs; // Untuk dialog pemilihan pengguna
+  final RxList<AppUser> _allFetchedUsers = <AppUser>[].obs; // Cache semua pengguna sistem untuk dialog
 
-  final RxBool isLoading = true.obs;
-  final RxBool isProcessing = false.obs;
-  final RxBool isLoadingUsersDialog = false.obs;
+  final RxBool isLoading = true.obs; // Loading untuk daftar akun utama
+  final RxBool isProcessing = false.obs; // Status untuk operasi seperti tambah/hapus
+  final RxBool isLoadingUsersDialog = false.obs; // Loading untuk dialog pemilihan pengguna
+
+  // Variabel untuk pencarian di halaman utama (memfilter 'accounts')
   final RxString searchQuery = ''.obs;
+
+  // Variabel untuk pencarian di dalam dialog pemilihan pengguna
   final RxString userSearchQueryDialog = ''.obs;
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final fb_auth.FirebaseAuth _firebaseAuth = fb_auth.FirebaseAuth.instance; // Instance FirebaseAuth
+  final fb_auth.FirebaseAuth _firebaseAuth = fb_auth.FirebaseAuth.instance;
   StreamSubscription? _accountsSubscription;
 
-  // Controllers untuk dialog
-  final TextEditingController emailInputController = TextEditingController();
-  final TextEditingController userSearchDialogController = TextEditingController();
-  final TextEditingController newUserEmailController = TextEditingController();
-  final TextEditingController newUsernameController = TextEditingController();
-  final TextEditingController newPasswordController = TextEditingController();
-  final RxBool obscureNewPassword = true.obs;
+  // Controllers untuk input fields di dialog
+  final TextEditingController emailInputController = TextEditingController(); // Dialog tambah via email
+  final TextEditingController userSearchDialogController = TextEditingController(); // Dialog pilih pengguna
+  final TextEditingController newUserEmailController = TextEditingController(); // Dialog buat akun baru
+  final TextEditingController newUsernameController = TextEditingController(); // Dialog buat akun baru
+  final TextEditingController newPasswordController = TextEditingController(); // Dialog buat akun baru
+  final RxBool obscureNewPassword = true.obs; // Untuk toggle visibilitas password
 
+  // Definisi warna (jika diperlukan di controller, jika tidak bisa tetap di UI)
   static const Color primaryHeaderColor = Color(0xFFF57F17);
   static const Color deleteButtonColor = Colors.red;
   static const Color editButtonColor = Colors.green;
   static const Color secondaryColor = Color(0xFF4CAF50);
-  static const Color tertiaryColor = Color(0xFF2196F3); // Warna untuk tombol "Buat Akun Baru"
+  static const Color tertiaryColor = Color(0xFF2196F3);
 
   @override
   void onInit() {
@@ -73,6 +78,8 @@ class FormAccountManagementController extends GetxController {
     } else {
       _handleError('Argumen tidak ditemukan.');
     }
+
+    // Listener untuk search di dialog pemilihan pengguna
     userSearchDialogController.addListener(() {
       userSearchQueryDialog.value = userSearchDialogController.text;
       _filterEligibleUsersForDialog();
@@ -82,7 +89,7 @@ class FormAccountManagementController extends GetxController {
   void _handleError(String message, {bool isOperationError = false}) {
     Get.snackbar(isOperationError ? 'Operasi Gagal' : 'Error Sistem', message,
         backgroundColor: Colors.red.shade700, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
-    if (!isOperationError) isLoading.value = false;
+    if (!isOperationError) isLoading.value = false; // Hanya set isLoading false jika bukan error operasi spesifik
     isProcessing.value = false;
     isLoadingUsersDialog.value = false;
   }
@@ -100,18 +107,33 @@ class FormAccountManagementController extends GetxController {
       accounts.assignAll(snapshot.docs
           .map((doc) => ManagedAccount.fromFirestore(doc))
           .toList());
+      // isLoading hanya di-set false saat data pertama kali dimuat atau setelah listener siap
       if(isLoading.value) isLoading.value = false;
     }, onError: (error) {
       _handleError('Gagal mengambil daftar akun terotorisasi: $error');
     });
   }
 
+  // Getter untuk daftar akun yang telah difilter berdasarkan searchQuery utama
+  // Digunakan oleh Obx di UI (FormAccountManagementPage)
   List<ManagedAccount> get filteredAccounts {
-    if (searchQuery.value.isEmpty) return accounts;
-    return accounts
-        .where((account) =>
-        account.email.toLowerCase().contains(searchQuery.value.toLowerCase()))
-        .toList();
+    if (searchQuery.value.isEmpty) {
+      return accounts; // Kembalikan semua akun jika query kosong
+    }
+    // Kembalikan akun yang emailnya mengandung query (case-insensitive)
+    return accounts.where((account) {
+      final emailLower = account.email.toLowerCase();
+      final queryLower = searchQuery.value.toLowerCase();
+      return emailLower.contains(queryLower);
+    }).toList();
+  }
+
+  // Metode ini dipanggil oleh TextField pencarian utama di FormAccountManagementPage
+  void updateSearchQuery(String query) {
+    searchQuery.value = query;
+    // Tidak perlu memanggil _filterAccounts() secara manual di sini karena
+    // 'filteredAccounts' adalah getter yang akan otomatis dievaluasi ulang
+    // oleh Obx di UI setiap kali 'searchQuery' atau 'accounts' berubah.
   }
 
   void showAddAuthorityByEmailDialog() {
@@ -164,7 +186,7 @@ class FormAccountManagementController extends GetxController {
             onPressed: isProcessing.value ? null : () async {
               final email = emailInputController.text.trim();
               if (email.isNotEmpty) {
-                Get.back();
+                Get.back(); // Tutup dialog sebelum memproses
                 await _findUserByEmailAndGrantAuthority(email);
               } else {
                 Get.snackbar('Input Kosong', 'Email tidak boleh kosong.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white);
@@ -193,7 +215,7 @@ class FormAccountManagementController extends GetxController {
       if (usersSnapshot.docs.isEmpty) {
         Get.snackbar('Pengguna Tidak Ditemukan', 'Tidak ada pengguna terdaftar dengan email "$email".',
             backgroundColor: Colors.orange.shade700, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
-        isProcessing.value = false;
+        // Tidak perlu set isProcessing false di sini, akan dihandle di finally
         return;
       }
       final userDoc = usersSnapshot.docs.first;
@@ -201,12 +223,14 @@ class FormAccountManagementController extends GetxController {
     } catch (e) {
       _handleError('Gagal memproses penambahan via email: ${e.toString()}', isOperationError: true);
     } finally {
+      // Pastikan isProcessing di-set false bahkan jika ada return di tengah try block
       if(!isClosed) isProcessing.value = false;
     }
   }
 
   void _filterEligibleUsersForDialog() {
     final query = userSearchQueryDialog.value.toLowerCase();
+    // Ambil ID pengguna yang sudah memiliki otoritas untuk form ini
     final Set<String?> existingAuthorizedUserIds = accounts.map((acc) => acc.userId).toSet();
 
     if (query.isEmpty) {
@@ -219,6 +243,7 @@ class FormAccountManagementController extends GetxController {
             final bool matchesQuery =
                 (user.username?.toLowerCase().contains(query) ?? false) ||
                     user.email.toLowerCase().contains(query);
+            // Hanya masukkan pengguna yang cocok dengan query DAN belum terotorisasi
             return matchesQuery && !existingAuthorizedUserIds.contains(user.id);
           }).toList()
       );
@@ -227,11 +252,12 @@ class FormAccountManagementController extends GetxController {
 
   Future<void> showSelectUserFromListDialog() async {
     isLoadingUsersDialog.value = true;
-    userSearchDialogController.clear();
-    userSearchQueryDialog.value = '';
-    _allFetchedUsers.clear();
-    eligibleUsers.clear();
+    userSearchDialogController.clear(); // Bersihkan query pencarian dialog sebelumnya
+    // userSearchQueryDialog.value = ''; // Sudah dihandle oleh listener controller
+    _allFetchedUsers.clear(); // Bersihkan cache pengguna sebelumnya
+    eligibleUsers.clear(); // Bersihkan daftar pengguna yang bisa dipilih
 
+    // Tampilkan dialog loading sementara data diambil
     Get.dialog(
         AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
@@ -247,19 +273,23 @@ class FormAccountManagementController extends GetxController {
         barrierDismissible: false);
 
     try {
+      // Ambil semua pengguna sistem dengan peran 'user'
       final usersSnapshot = await _db.collection('users').where('role', isEqualTo: 'user').orderBy('username').get();
       _allFetchedUsers.assignAll(usersSnapshot.docs.map((doc) => AppUser.fromFirestore(doc)).toList());
-      _filterEligibleUsersForDialog();
-      Get.back();
+
+      _filterEligibleUsersForDialog(); // Filter awal (sebelum user mengetik di search bar dialog)
+
+      Get.back(); // Tutup dialog loading
 
       if (_allFetchedUsers.isEmpty) {
         Get.snackbar("Tidak Ada Pengguna", "Tidak ada pengguna dengan peran 'user' yang terdaftar di sistem.", snackPosition: SnackPosition.BOTTOM, duration: const Duration(seconds: 4), backgroundColor: Colors.blueGrey, colorText: Colors.white);
-        isLoadingUsersDialog.value = false;
+        // isLoadingUsersDialog.value = false; // Dihandle di finally
         return;
       }
+      // Cek jika setelah filter awal (sebelum search) tidak ada user eligible
       if (eligibleUsers.isEmpty && _allFetchedUsers.isNotEmpty) {
-        Get.snackbar("Semua Sudah Terotorisasi", "Semua pengguna dengan peran 'user' sudah memiliki otoritas untuk form ini.", snackPosition: SnackPosition.BOTTOM, duration: const Duration(seconds: 4), backgroundColor: Colors.lightBlue, colorText: Colors.white);
-        isLoadingUsersDialog.value = false;
+        Get.snackbar("Semua Sudah Terotorisasi", "Semua pengguna 'user' sudah memiliki otoritas untuk form ini.", snackPosition: SnackPosition.BOTTOM, duration: const Duration(seconds: 4), backgroundColor: Colors.lightBlue, colorText: Colors.white);
+        // isLoadingUsersDialog.value = false; // Dihandle di finally
         return;
       }
 
@@ -270,7 +300,7 @@ class FormAccountManagementController extends GetxController {
           title: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
             decoration: BoxDecoration(
-              color: secondaryColor,
+              color: secondaryColor, // Menggunakan secondaryColor
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(15.0),
                 topRight: Radius.circular(15.0),
@@ -285,16 +315,16 @@ class FormAccountManagementController extends GetxController {
               ],
             ),
           ),
-          contentPadding: const EdgeInsets.fromLTRB(0, 5, 0, 5),
+          contentPadding: const EdgeInsets.fromLTRB(0, 5, 0, 5), // Atur padding konten
           content: SizedBox(
-            width: double.maxFinite,
-            height: Get.height * 0.55,
+            width: double.maxFinite, // Agar dialog responsif
+            height: Get.height * 0.55, // Batasi tinggi dialog
             child: Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
                   child: TextField(
-                    controller: userSearchDialogController,
+                    controller: userSearchDialogController, // Controller untuk search di dialog
                     decoration: InputDecoration(
                       hintText: "Cari nama atau email...",
                       prefixIcon: const Icon(Icons.search, size: 20, color: Colors.grey),
@@ -306,14 +336,14 @@ class FormAccountManagementController extends GetxController {
                   ),
                 ),
                 Expanded(
-                  child: Obx(() {
+                  child: Obx(() { // Obx untuk me-render ulang list saat eligibleUsers berubah
                     if (eligibleUsers.isEmpty) {
                       return Center(
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Text(
                             userSearchQueryDialog.value.isEmpty
-                                ? "Tidak ada pengguna 'user' yang bisa dipilih saat ini (mungkin semua sudah terotorisasi)."
+                                ? "Tidak ada pengguna 'user' yang bisa dipilih (mungkin semua sudah terotorisasi)."
                                 : "Tidak ada pengguna ditemukan untuk '${userSearchQueryDialog.value}'.",
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.grey.shade700, fontSize: 15),
@@ -339,7 +369,7 @@ class FormAccountManagementController extends GetxController {
                           subtitle: Text(user.email, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
                           onTap: () async {
-                            Get.back();
+                            Get.back(); // Tutup dialog pemilihan
                             await _grantAuthority(user.id, user.email, 'user');
                           },
                         );
@@ -361,24 +391,27 @@ class FormAccountManagementController extends GetxController {
       );
 
     } catch (e) {
-      Get.back();
+      if(Get.isDialogOpen ?? false) Get.back(); // Tutup dialog loading jika masih terbuka saat error
       _handleError('Gagal memuat daftar pengguna untuk dipilih: ${e.toString()}', isOperationError: true);
     } finally {
       if(!isClosed) isLoadingUsersDialog.value = false;
     }
   }
 
+
   Future<void> _grantAuthority(String targetUserId, String targetUserEmail, String role) async {
     isProcessing.value = true;
     try {
       final managedAccountRef = _db.collection('adminForms').doc(formId.value).collection('managedAccounts').doc(targetUserId);
       final existingDoc = await managedAccountRef.get();
+
       if (existingDoc.exists) {
         Get.snackbar('Sudah Ada Otoritas', 'Pengguna "$targetUserEmail" sudah memiliki otoritas untuk form ini.',
             backgroundColor: Colors.blue.shade600, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
-        isProcessing.value = false;
+        // Tidak perlu set isProcessing false di sini, akan dihandle di finally
         return;
       }
+
       await managedAccountRef.set({
         'email': targetUserEmail,
         'userId': targetUserId,
@@ -394,7 +427,6 @@ class FormAccountManagementController extends GetxController {
     }
   }
 
-  // --- FUNGSI UNTUK MEMBUAT PENGGUNA SISTEM BARU (UI DIBENAHI) ---
   void showCreateSystemUserDialog() {
     newUserEmailController.clear();
     newUsernameController.clear();
@@ -403,159 +435,151 @@ class FormAccountManagementController extends GetxController {
 
     Get.dialog(
       AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)), // Sudut lebih membulat
-        titlePadding: const EdgeInsets.all(0), // Hapus padding default
-        title: Container( // Header Kustom
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          decoration: BoxDecoration(
-            color: tertiaryColor, // Menggunakan warna tertiary (biru)
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20.0),
-              topRight: Radius.circular(20.0),
-            ),
-          ),
-          child: const Center( // Judul di tengah
-            child: Text(
-              'Buat Akun Pengguna Baru',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
-            ),
-          ),
+        backgroundColor: const Color(0xFFFFF3E0),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text(
+          'Buat Akun Pengguna Baru',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Informasi Akun", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
-              const SizedBox(height: 16),
-              _buildTextField(
+              TextFormField(
                 controller: newUsernameController,
-                labelText: 'Username',
-                hintText: 'Masukkan username unik',
-                prefixIcon: Icons.person_outline_rounded,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: newUserEmailController,
-                labelText: 'Email',
-                hintText: 'contoh@email.com',
-                prefixIcon: Icons.alternate_email_rounded,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-              Obx(() => _buildTextField(
-                controller: newPasswordController,
-                labelText: 'Password',
-                hintText: 'Minimal 6 karakter',
-                prefixIcon: Icons.lock_outline_rounded,
-                obscureText: obscureNewPassword.value,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscureNewPassword.value ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    color: Colors.grey.shade600,
+                decoration: InputDecoration(
+                  labelText: 'Nama Pengguna',
+                  hintText: 'Masukkan nama pengguna',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  onPressed: () => obscureNewPassword.toggle(),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 15),
+              TextFormField(
+                controller: newUserEmailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  hintText: 'Masukkan email pengguna',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 15),
+              Obx(() => TextFormField(
+                controller: newPasswordController,
+                obscureText: obscureNewPassword.value,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  hintText: 'Minimal 6 karakter',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscureNewPassword.value
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: Colors.grey.shade600,
+                    ),
+                    onPressed: () => obscureNewPassword.toggle(),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
               )),
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
               Center(
                 child: Text(
                   "Pengguna baru akan otomatis dibuat dengan peran 'user'.",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                 ),
-              )
+              ),
             ],
           ),
         ),
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-        actionsAlignment: MainAxisAlignment.spaceBetween, // Tombol menyebar
+        actionsPadding: const EdgeInsets.all(15),
         actions: [
-          OutlinedButton( // Tombol Batal dengan outline
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              side: BorderSide(color: Colors.grey.shade400),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
+          TextButton(
             onPressed: () => Get.back(),
-            child: Text('Batal', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
-          ),
-          Obx(() => ElevatedButton.icon( // Tombol Buat Akun dengan ikon
-            style: ElevatedButton.styleFrom(
-                backgroundColor: tertiaryColor, // Warna tombol utama
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey.shade700,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
+            child: const Text('Batal'),
+          ),
+          Obx(() => ElevatedButton.icon(
             onPressed: isProcessing.value ? null : () async {
               final email = newUserEmailController.text.trim();
               final username = newUsernameController.text.trim();
               final password = newPasswordController.text.trim();
 
               if (email.isEmpty || username.isEmpty || password.isEmpty) {
-                Get.snackbar('Input Tidak Lengkap', 'Semua field harus diisi.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white);
+                Get.snackbar(
+                  'Input Tidak Lengkap',
+                  'Semua field harus diisi.',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.orange.shade700,
+                  colorText: Colors.white,
+                );
+                return;
+              }
+              if (!GetUtils.isEmail(email)) {
+                Get.snackbar('Format Email Salah', 'Masukkan format email yang valid.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white);
                 return;
               }
               if (password.length < 6) {
-                Get.snackbar('Password Lemah', 'Password minimal harus 6 karakter.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white);
+                Get.snackbar(
+                  'Password Lemah',
+                  'Password minimal harus 6 karakter.',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.orange.shade700,
+                  colorText: Colors.white,
+                );
                 return;
               }
-              Get.back();
+              Get.back(); // Tutup dialog sebelum memproses
               await _processNewSystemUserCreation(email, password, username);
             },
-            icon: isProcessing.value ? Container() : const Icon(Icons.person_add_outlined, color: Colors.white, size: 20),
+            icon: isProcessing.value
+                ? Container() // Tidak ada ikon saat loading
+                : const Icon(Icons.person_add_outlined, color: Colors.white, size: 20),
             label: isProcessing.value
-                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                : const Text('Buat Akun', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          ),
-          ),
+                ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+            )
+                : const Text('Buat Akun', style: TextStyle(fontWeight: FontWeight.w600)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryHeaderColor, // Menggunakan tertiaryColor untuk tombol Buat Akun
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          )),
         ],
       ),
       barrierDismissible: false,
     );
   }
-
-  // Helper widget untuk TextField agar lebih konsisten
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String labelText,
-    required String hintText,
-    required IconData prefixIcon,
-    bool obscureText = false,
-    Widget? suffixIcon,
-    TextInputType? keyboardType,
-  }) {
-    return TextField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      style: const TextStyle(fontSize: 15),
-      decoration: InputDecoration(
-        labelText: labelText,
-        hintText: hintText,
-        hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-        labelStyle: TextStyle(color: Colors.grey.shade700, fontSize: 15),
-        prefixIcon: Icon(prefixIcon, color: tertiaryColor.withOpacity(0.8), size: 20),
-        suffixIcon: suffixIcon,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          borderSide: const BorderSide(color: tertiaryColor, width: 1.5),
-        ),
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 12.0),
-      ),
-    );
-  }
-
 
   Future<void> _processNewSystemUserCreation(String email, String password, String username) async {
     isProcessing.value = true;
@@ -567,11 +591,12 @@ class FormAccountManagementController extends GetxController {
       fb_auth.User? newUser = userCredential.user;
 
       if (newUser != null) {
+        // Simpan detail pengguna ke Firestore
         await _db.collection('users').doc(newUser.uid).set({
           'username': username,
           'email': email,
-          'displayName': username,
-          'role': 'user',
+          'displayName': username, // Bisa disamakan dengan username atau biarkan kosong
+          'role': 'user', // Peran default
           'createdAt': FieldValue.serverTimestamp(),
           'uid': newUser.uid,
         });
@@ -587,16 +612,53 @@ class FormAccountManagementController extends GetxController {
       else if (e.code == 'invalid-email') { errorMessage = 'Format email tidak valid.'; }
       _handleError(errorMessage, isOperationError: true);
     } catch (e) {
-      _handleError('Terjadi kesalahan: ${e.toString()}', isOperationError: true);
+      _handleError('Terjadi kesalahan saat membuat pengguna: ${e.toString()}', isOperationError: true);
     } finally {
       if(!isClosed) isProcessing.value = false;
     }
   }
-  // --- AKHIR FUNGSI BARU ---
 
-  void editAccount(ManagedAccount account) { /* ... */ }
-  void deleteAccount(ManagedAccount account) { /* ... */ }
-  void updateSearchQuery(String query) { /* ... */ }
+  // Metode untuk mengedit dan menghapus akun (implementasi detail menyusul jika diperlukan)
+  void editAccount(ManagedAccount account) {
+    // Logika untuk menampilkan dialog edit peran atau detail akun terotorisasi
+    Get.snackbar('Info', 'Fitur edit untuk akun ${account.email} belum diimplementasikan.', snackPosition: SnackPosition.BOTTOM);
+  }
+
+  void deleteAccount(ManagedAccount account) async {
+    // Tampilkan dialog konfirmasi sebelum menghapus
+    Get.dialog(
+        AlertDialog(
+          title: const Text('Konfirmasi Hapus'),
+          content: Text('Anda yakin ingin menghapus otoritas untuk akun "${account.email}" dari form "${formTitle.value}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: deleteButtonColor),
+              onPressed: () async {
+                Get.back(); // Tutup dialog konfirmasi
+                isProcessing.value = true;
+                try {
+                  await _db.collection('adminForms').doc(formId.value).collection('managedAccounts').doc(account.id).delete();
+                  Get.snackbar('Berhasil', 'Otoritas untuk akun "${account.email}" berhasil dihapus.',
+                      backgroundColor: Colors.green.shade600, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+                } catch (e) {
+                  _handleError('Gagal menghapus otoritas akun: ${e.toString()}', isOperationError: true);
+                } finally {
+                  if(!isClosed) isProcessing.value = false;
+                }
+              },
+              child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        )
+    );
+  }
+
+  // Helper widget _buildTextField tidak lagi digunakan karena TextFormField dipakai langsung di dialog
+  // Jika ingin standarisasi TextField di banyak tempat, bisa dipertahankan atau dipindahkan ke file terpisah.
 
   @override
   void onClose() {

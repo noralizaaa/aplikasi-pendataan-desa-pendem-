@@ -96,41 +96,78 @@ class AdminProfilController extends GetxController {
     }
   }
 
-  /// Menampilkan dialog untuk edit username
+  //// Menampilkan dialog untuk edit username dengan tampilan modern
   void promptEditUsername() {
-    usernameEditController.text = displayUsername.value; // Pastikan nilai terbaru ada di controller
+    usernameEditController.text = displayUsername.value;
+
     Get.dialog(
       AlertDialog(
-        title: const Text("Edit Username"),
+        backgroundColor: const Color(0xFFFFF3E0), // Warna pastel oranye
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text(
+          "Edit Username",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         content: TextField(
           controller: usernameEditController,
-          decoration: const InputDecoration(hintText: "Masukkan username baru"),
           autofocus: true,
+          decoration: InputDecoration(
+            labelText: "Username Baru",
+            hintText: "Masukkan username baru",
+            prefixIcon: const Icon(Icons.person_outline),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
         ),
+        actionsPadding: const EdgeInsets.all(12),
         actions: [
           TextButton(
-            onPressed: () => Get.back(), // Tutup dialog
+            onPressed: () => Get.back(),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey.shade700,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
             child: const Text("Batal"),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               final newUsername = usernameEditController.text.trim();
               if (newUsername.isNotEmpty && newUsername != displayUsername.value) {
-                Get.back(); // Tutup dialog sebelum memanggil update
+                Get.back();
                 updateUsername(newUsername);
               } else if (newUsername.isEmpty) {
-                Get.snackbar("Input Error", "Username tidak boleh kosong.",
-                    snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange);
+                Get.snackbar(
+                  "Input Error",
+                  "Username tidak boleh kosong.",
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.orange.shade700,
+                  colorText: Colors.white,
+                );
               } else {
-                Get.back(); // Tutup dialog jika tidak ada perubahan
+                Get.back(); // Tidak ada perubahan
               }
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepOrangeAccent, // Warna tombol simpan
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
             child: const Text("Simpan"),
           ),
         ],
       ),
     );
   }
+
 
   /// Mengupdate username di Firestore
   Future<void> updateUsername(String newUsername) async {
@@ -161,42 +198,104 @@ class AdminProfilController extends GetxController {
   }
 
   Future<void> logout() async {
-    // ... (fungsi logout Anda yang sudah ada)
     Get.dialog(
-      AlertDialog(
-        title: const Text("Konfirmasi Logout"),
-        content: const Text("Apakah Anda yakin ingin keluar dari akun ini?"),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
-        actionsAlignment: MainAxisAlignment.spaceBetween,
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
           ),
-          TextButton(
-            onPressed: () async {
-              Get.back();
-              isLoading.value = true;
-              try {
-                await _auth.signOut();
-                adminProfile.value = null;
-                currentUserId.value = '';
-                displayUsername.value = 'Admin'.obs.value;
-                displayRole.value = 'Admin'.obs.value;
-                displayPhotoUrl.value = ''.obs.value;
-                Get.offAllNamed(AppRoutes.login);
-              } catch (e) {
-                Get.snackbar('Error Logout', 'Gagal untuk logout: ${e.toString()}',
-                    snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
-              } finally {
-                isLoading.value = false;
-              }
-            },
-            child: const Text("Logout", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.logout, size: 48, color: Color(0xFFF57C00)),
+              const SizedBox(height: 16),
+              const Text(
+                "Konfirmasi Logout",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                "Apakah Anda yakin ingin keluar dari akun ini?",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Tombol Batal
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Get.back(),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        foregroundColor: Colors.black54,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: const BorderSide(color: Colors.grey, width: 1),
+                        ),
+                      ),
+                      child: const Text("Batal"),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Tombol Logout
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Get.back();
+                        isLoading.value = true;
+                        try {
+                          await _auth.signOut();
+                          adminProfile.value = null;
+                          currentUserId.value = '';
+                          displayUsername.value = 'Admin'.obs.value;
+                          displayRole.value = 'Admin'.obs.value;
+                          displayPhotoUrl.value = ''.obs.value;
+                          Get.offAllNamed(AppRoutes.login);
+                        } catch (e) {
+                          Get.snackbar(
+                            'Error Logout',
+                            'Gagal untuk logout: ${e.toString()}',
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: Colors.red,
+                            colorText: Colors.white,
+                          );
+                        } finally {
+                          isLoading.value = false;
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF57C00),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text("Logout"),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
       barrierDismissible: false,
     );
   }
+
 }

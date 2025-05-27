@@ -49,66 +49,80 @@ class AdminProfilPage extends GetView<AdminProfilController> {
         return RefreshIndicator(
           onRefresh: () => controller.refreshProfile(),
           color: headerBackgroundColor,
-          child: CustomScrollView( // Menggunakan CustomScrollView untuk efek header yang lebih fleksibel
-            slivers: [
-              _buildCustomSliverAppBar(context), // Header kustom sebagai SliverAppBar
-              SliverToBoxAdapter( // Konten lainnya
-                child: _buildProfileContent(context),
-              ),
-            ],
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              children: [
+                _buildUserStyleHeader(context), // Header disamakan seperti UI user
+                _buildProfileContent(context), // Konten lainnya
+              ],
+            ),
           ),
         );
       }),
     );
   }
 
-  Widget _buildCustomSliverAppBar(BuildContext context) {
-    return SliverAppBar(
-      backgroundColor: headerBackgroundColor,
-      expandedHeight: 220.0, // Tinggi header kustom
-      pinned: true, // Header tetap terlihat saat scroll (hanya bagian title/leading)
-      automaticallyImplyLeading: false, // Kita akan buat tombol back sendiri
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(
-            color: headerBackgroundColor, // Warna solid
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(40), // Lengkungan lebih besar
-              bottomRight: Radius.circular(40),
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 40), // Space untuk status bar dan tombol back
-              CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.white.withOpacity(0.8),
-                backgroundImage: (controller.displayPhotoUrl.value.isNotEmpty && Uri.tryParse(controller.displayPhotoUrl.value)?.hasAbsolutePath == true)
-                    ? NetworkImage(controller.displayPhotoUrl.value)
-                    : null,
-                child: (controller.displayPhotoUrl.value.isEmpty || Uri.tryParse(controller.displayPhotoUrl.value)?.hasAbsolutePath != true)
-                    ? Icon(Icons.person_outline, size: 60, color: iconColor.withOpacity(0.9))
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                "Hello, ${controller.displayUsername.value}",
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: headerTextColor, // Teks di header
-                ),
-              ),
-              const SizedBox(height: 20), // Padding bawah
-            ],
-          ),
+  // Header bergaya user, tidak menggunakan SliverAppBar
+  Widget _buildUserStyleHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFFAB40).withOpacity(1.0), // Warna oranye lebih tua untuk gradasi
+            Color(0xFFFFD180).withOpacity(0.5), // Warna oranye muda
+          ],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomRight: Radius.circular(100),
         ),
       ),
-      leading: IconButton( // Tombol back di AppBar
-        icon: const Icon(Icons.arrow_back, color: Colors.black54), // Warna ikon back
-        onPressed: () => Get.back(),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+      child: Column(
+        children: [
+          const SizedBox(height: 15),
+          Align(
+            alignment: Alignment.topLeft,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black54),
+              onPressed: () => Get.back(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          CircleAvatar(
+            radius: 50,
+            backgroundColor: Colors.white.withOpacity(0.9),
+            child: ClipOval(
+              child: (controller.displayPhotoUrl.value.isNotEmpty &&
+                  Uri.tryParse(controller.displayPhotoUrl.value)?.hasAbsolutePath == true)
+                  ? Image.network(
+                controller.displayPhotoUrl.value,
+                fit: BoxFit.cover,
+                width: 90,
+                height: 90,
+              )
+                  : Image.asset(
+                'assets/images/Profile.png',
+                fit: BoxFit.cover,
+                width: 90,
+                height: 90,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "Hello, ${controller.displayUsername.value}",
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
       ),
     );
   }
