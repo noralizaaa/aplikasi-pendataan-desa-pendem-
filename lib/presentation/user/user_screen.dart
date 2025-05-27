@@ -1,4 +1,5 @@
 // lib/presentation/user/user_screen.dart
+import 'package:aplikasi_pendataan_desa/infrastructure/navigation/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
@@ -84,7 +85,7 @@ class UserScreen extends GetView<UserController> {
                           ),
                           InkWell(
                             onTap: () {
-                              Get.snackbar('Profil', 'Navigasi ke halaman profil.', snackPosition: SnackPosition.BOTTOM);
+                              Get.toNamed(AppRoutes.userProfile);
                             },
                             borderRadius: BorderRadius.circular(28),
                             child: CircleAvatar(
@@ -240,19 +241,14 @@ class UserScreen extends GetView<UserController> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          Get.snackbar(
-            'Form Dipilih: ${form.nama}',
-            'ID Form: ${form.idForm}',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: accentHeaderColor,
-            colorText: Colors.white,
-            margin: const EdgeInsets.all(12),
-            borderRadius: 8,
-          );
+          // Navigasi ke halaman input form dengan mengirim ID form
+          Get.toNamed(AppRoutes.LIST_SUBMISSION_FORM, arguments: form.idForm);
         },
+        // ... sisa child widget sama
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
+            // ... (isi Row sama seperti sebelumnya)
             children: [
               Expanded(
                 child: Column(
@@ -281,7 +277,7 @@ class UserScreen extends GetView<UserController> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Kategori: ${form.category}',
+                            'Kategori: ${form.category}', // Pastikan form.category ada di FormDataModel Anda
                             style: TextStyle(fontSize: 13.5, color: Colors.grey.shade700),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -295,14 +291,14 @@ class UserScreen extends GetView<UserController> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            form.lokasi,
+                            form.lokasi, // Pastikan form.lokasi ada di FormDataModel Anda
                             style: TextStyle(fontSize: 13.5, color: Colors.grey.shade700),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                    if (form.createdAt != null) ...[
+                    if (form.createdAt != null) ...[ // Pastikan form.createdAt ada dan tipenya Timestamp
                       const SizedBox(height: 6),
                       Row(
                         children: [

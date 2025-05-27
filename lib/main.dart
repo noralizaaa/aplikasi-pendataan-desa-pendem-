@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'infrastructure/navigation/routes.dart'; // Pastikan AppRoutes dan EnvironmentsBadge ada di sini atau diimpor oleh file ini
 import 'presentation/theme/app_theme.dart';
@@ -21,6 +22,7 @@ Future<void> main() async { // Jadikan main() sebagai async
     options: DefaultFirebaseOptions.currentPlatform, // Menggunakan konfigurasi dari firebase_options.dart
   );
 
+  initializeDateFormatting();
   runApp(const MyApp());
 }
 

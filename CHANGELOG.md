@@ -5,11 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),  
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Changelog
+
+This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [0.15.0] - 2025-05-27
+> Created by Bayu Ardiyansyah
+
+> Introduced List Submissions Screen with Enhanced Data Display, Search, Sort, and Delete Capabilities; Refined User Input Form Workflow.
+
+### 🎉 Added
+-   **New Feature: List Submissions Screen (`ListSubmissionFormScreen`, `ListSubmissionFormController`, `ListSubmissionFormBinding`):**
+  -   Users are now directed to this screen after selecting a form type from the main user screen.
+  -   Displays a list of previously submitted entries for the selected form, specific to the logged-in user.
+  -   Includes a prominent "Create New Entry" button that navigates to the `InputUserScreen`.
+-   **Submission Identifier Display:** Submissions in the list now display key identifiers (e.g., Name, NIK/KK) extracted from the actual submitted form data, rather than just the submitter's username. Prioritized codes for extraction include "NAMA_LENGKAP", "NAMA_KEPALA_KELUARGA", "NIK", "NO_KK".
+-   **Search Functionality for Submissions:** Added a search bar on the `ListSubmissionFormScreen` to filter submissions based on the extracted display identifier (case-insensitive).
+-   **Sorting Functionality for Submissions:** Implemented options to sort submissions by "Latest", "Oldest", "Identifier A-Z", and "Identifier Z-A".
+-   **Delete Functionality for Submissions:** Added a "Delete" button for each submission item, including a confirmation dialog, allowing users to remove their own entries.
+-   **Refresh Capability:** Added pull-to-refresh functionality on the `ListSubmissionFormScreen` to reload form structure and submission list.
+
+### 🛠️ Changed
+-   **Navigation Flow:** Tapping a form card on the `UserScreen` now navigates to the new `ListSubmissionFormScreen` (showing existing submissions for that form) instead of directly to the `InputUserScreen` (for new entry).
+-   **`ListSubmissionFormController`:**
+  -   Refactored to fetch and manage both the selected form's structure (`FormItem`) and its associated submissions (`FormSubmission`).
+  -   Introduced a `DisplayableSubmission` helper class to hold the original submission and its extracted/formatted display identifiers for easier UI rendering, searching, and sorting.
+  -   Search and sort logic now operates on these extracted, case-insensitive identifiers.
+-   **`ListSubmissionFormScreen` UI:**
+  -   Significantly redesigned to closely match the provided UI mock-up (`gambar.png`).
+  -   Features a new header section with an integrated search bar and a gradient background.
+  -   Includes a "Riwayat Pendataan" (Submission History) title and a sort order dropdown.
+  -   Submission items are displayed as cards with primary identifier text, submission date, and "Edit" (placeholder) / "Delete" buttons.
+  -   A full-width "Buat Pendataan Baru" (Create New Entry) button is fixed at the bottom of the screen.
+-   **`InputUserController` & `InputUserScreen`:**
+  -   Resolved an error related to `DropdownButtonFormField` value assignment.
+  -   Improved null-safety for accessing `question.validation` properties within `InputUserController`.
+  -   Refined form state initialization (`_initializeStates` in `InputUserController`) for better reset behavior, especially for checkboxes and dropdowns, to support multiple submissions within the same session.
+  -   Snackbar notification for successful form submission is now consistently displayed, and the form is reset for a new entry instead of navigating back.
+-   **Date Formatting:** Consistently used `intl` package for date formatting (`dd MMM yy, HH:mm` with 'id_ID' locale) on the `ListSubmissionFormScreen`.
+
+### 🐛 Fixed
+-   **(Underlying) Potential for `DropdownButtonFormField` value type error in `InputUserScreen`:** Corrected logic for setting the `value` property to ensure it's a valid `String?` from the available options.
+-   **(Underlying) Potential for null access when handling `question.validation` in `InputUserController`:** Improved safe access patterns.
+
 ---
 
 ## [0.14.1] - 2025-05-27
 > Created by Bayu Ardiyansyah
-
+> 
 > Improved Admin Form Builder Usability and Controller Optimizations.
 
 ### 🎉 Added
