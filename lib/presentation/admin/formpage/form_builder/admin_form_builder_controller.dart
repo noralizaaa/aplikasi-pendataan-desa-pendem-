@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:uid/uid.dart'; // Untuk ID unik lokal
 
 import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart';
-import '../../../../infrastructure/navigation/routes.dart';
+import '../../../../infrastructure/navigation/routes.dart'; // Pastikan path ini benar
 
 class AdminFormBuilderController extends GetxController {
   final RxString formTitle = ''.obs;
@@ -26,6 +26,86 @@ class AdminFormBuilderController extends GetxController {
   static const String _formsCollectionPath = 'adminForms';
 
   bool get isEditMode => _currentFormId != null && _currentFormId!.isNotEmpty;
+
+  // --- Methods for Repeatable Group Questions ---
+  List<FormQuestion> getPotentialRepeatableGroupControllers(String currentSectionId, String currentQuestionId) {
+    final List<FormQuestion> controllers = [];
+    for (var section in sections) {
+      for (var question in section.questions) {
+        if (question.id == currentQuestionId) continue;
+        if (question.type == QuestionType.number && (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty)) {
+          controllers.add(question);
+        }
+      }
+    }
+    return controllers;
+  }
+
+  List<String> getAvailableControlledGroupTags(String currentSectionId, String currentQuestionId) {
+    final Set<String> tags = {};
+    final FormQuestion? currentQ = findQuestionById(currentQuestionId); // Panggil sekali di luar loop
+
+    for (var section in sections) {
+      for (var question in section.questions) {
+        if (question.isRepeatableGroupController &&
+            question.controlledGroupTag != null &&
+            question.controlledGroupTag!.isNotEmpty) {
+          // Jika pertanyaan saat ini (currentQ) adalah controller dan tagnya sama dengan tag yang sedang diiterasi,
+          // maka jangan tambahkan tag ini ke daftar pilihan. Ini untuk mencegah currentQ memilih tagnya sendiri
+          // untuk 'belongsToGroupTag'.
+          if (currentQ != null &&
+              currentQ.isRepeatableGroupController &&
+              currentQ.id == question.id && // Memastikan ini adalah tag dari currentQ itu sendiri
+              currentQ.controlledGroupTag == question.controlledGroupTag) {
+            // Jangan tambahkan tag milik currentQ sendiri
+          } else {
+            tags.add(question.controlledGroupTag!);
+          }
+        }
+      }
+    }
+    return tags.toList();
+  }
+
+  void updateQuestionAsRepeatableGroupController(String sectionId, String questionId, bool isController, String? groupTag) {
+    _updateQuestionProperty(sectionId, questionId, (q) {
+      if (isController) {
+        return q.copyWith(
+          isRepeatableGroupController: true,
+          controlledGroupTag: groupTag?.trim(),
+          setControlledGroupTagNull: groupTag == null || groupTag.trim().isEmpty,
+          belongsToGroupTag: null,
+          setBelongsToGroupTagNull: true,
+        );
+      } else {
+        return q.copyWith(
+          isRepeatableGroupController: false,
+          controlledGroupTag: null,
+          setControlledGroupTagNull: true,
+        );
+      }
+    });
+  }
+
+  void updateQuestionBelongsToGroupTag(String sectionId, String questionId, String? groupTag) {
+    _updateQuestionProperty(sectionId, questionId, (q) {
+      if (groupTag != null && groupTag.isNotEmpty) {
+        return q.copyWith(
+          belongsToGroupTag: groupTag,
+          setBelongsToGroupTagNull: false,
+          isRepeatableGroupController: false,
+          controlledGroupTag: null,
+          setControlledGroupTagNull: true,
+        );
+      } else {
+        return q.copyWith(
+          belongsToGroupTag: null,
+          setBelongsToGroupTagNull: true,
+        );
+      }
+    });
+  }
+  // --- End of Methods for Repeatable Group Questions ---
 
   @override
   void onInit() {
@@ -62,7 +142,7 @@ class AdminFormBuilderController extends GetxController {
     titleController.text = '';
     descriptionController.text = '';
     sections.clear();
-    addSection(); // Mulai dengan satu bagian default
+    addSection();
     _currentFormId = null;
     _originalCreatedAt = null;
     update();
@@ -80,7 +160,7 @@ class AdminFormBuilderController extends GetxController {
         titleController.text = formItem.title;
         descriptionController.text = formItem.description;
         _originalCreatedAt = formItem.createdAt;
-        Get.snackbar('Informasi', 'Form "${formItem.title}" berhasil dimuat.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.blueGrey, colorText: Colors.white);
+        // Get.snackbar('Informasi', 'Form "${formItem.title}" berhasil dimuat.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.blueGrey, colorText: Colors.white);
       } else {
         Get.snackbar('Error', 'Form dengan ID "$formId" tidak ditemukan.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade300, colorText: Colors.white);
         _initializeNewForm();
@@ -96,7 +176,7 @@ class AdminFormBuilderController extends GetxController {
   void addSection() {
     sections.add(FormSection(
       id: UId.getId(),
-      title: '', // Judul akan diisi pengguna, UI akan menampilkan Romawi jika kosong
+      title: '',
       questions: [],
     ));
   }
@@ -118,30 +198,25 @@ class AdminFormBuilderController extends GetxController {
   void removeSection(String sectionId) {
     sections.removeWhere((s) => s.id == sectionId);
     if (sections.isEmpty) {
-      addSection(); // Pastikan selalu ada minimal satu bagian
+      addSection();
     }
   }
 
   void addQuestionToSection(String sectionId, QuestionType type) {
-    final sectionIndexInList = sections.indexWhere((s) => s.id == sectionId); // 0-based index
+    final sectionIndexInList = sections.indexWhere((s) => s.id == sectionId);
     if (sectionIndexInList != -1) {
       final currentSection = sections[sectionIndexInList];
-      // Nomor pertanyaan berikutnya dalam bagian ini (1-based)
       int nextQuestionNumberInThisSection = currentSection.questions.length + 1;
-      // Nomor bagian (1-based) untuk awalan kode
       int sectionNumberForCode = sectionIndexInList + 1;
-
-      // Kode otomatis: [NomorBagian][NomorUrutPertanyaanDalamBagian, 2 digit]
-      // Contoh: Bagian 1, Pertanyaan 1 -> 101; Bagian 3, Pertanyaan 12 -> 312
       String suggestedCode = '$sectionNumberForCode${nextQuestionNumberInThisSection.toString().padLeft(2, '0')}';
 
       final newQuestion = FormQuestion(
         id: UId.getId(),
-        code: suggestedCode, // Kode otomatis berdasarkan nomor bagian dan urutan pertanyaan
+        code: suggestedCode,
         questionText: '',
         type: type,
         options: (type == QuestionType.multipleChoice || type == QuestionType.checkboxes || type == QuestionType.dropdown)
-            ? ['Opsi 1'] // Opsi default awal
+            ? ['Opsi 1']
             : [],
         isRequired: false,
         conditionalJumps: [],
@@ -223,28 +298,16 @@ class AdminFormBuilderController extends GetxController {
 
   void updateValidation(String sectionId, String questionId, ValidationRule? newValidationRule) {
     _updateQuestionProperty(sectionId, questionId, (q) {
-      // If newValidationRule is completely empty (all fields null or default/none), then set validation to null.
       bool isNewRuleEffectivelyEmpty = newValidationRule == null ||
           (newValidationRule.minLength == null &&
               newValidationRule.maxLength == null &&
               newValidationRule.minValue == null &&
               newValidationRule.maxValue == null &&
               (newValidationRule.regex == null || newValidationRule.regex!.isEmpty) &&
-              (newValidationRule.predefinedRule == null || newValidationRule.predefinedRule!.isEmpty)); // 'none' is handled by copyWith
-
-      ValidationRule? ruleToSet = newValidationRule;
-      if (ruleToSet != null) {
-        // Example: If a predefinedRule is chosen (and it's not 'custom'),
-        // you might want to clear the custom regex.
-        // For now, we let both coexist, validation execution logic would prioritize.
-        // if (ruleToSet.predefinedRule != null && ruleToSet.predefinedRule!.isNotEmpty && ruleToSet.predefinedRule != 'custom_regex_identifier_if_any') {
-        //   ruleToSet = ruleToSet.copyWith(regex: null, setRegexNull: true);
-        // }
-      }
-      return q.copyWith(validation: ruleToSet, setValidationNull: isNewRuleEffectivelyEmpty);
+              (newValidationRule.predefinedRule == null || newValidationRule.predefinedRule!.isEmpty || newValidationRule.predefinedRule == 'none'));
+      return q.copyWith(validation: newValidationRule, setValidationNull: isNewRuleEffectivelyEmpty);
     });
   }
-
 
   void addConditionalJump(String sectionId, String questionId, ConditionalJump jump) {
     _updateQuestionProperty(sectionId, questionId, (q) {
@@ -276,11 +339,10 @@ class AdminFormBuilderController extends GetxController {
     for (var section in sections) {
       for (var question in section.questions) {
         if (question.id == currentQuestionIdToExclude) continue;
-
         if ((question.type == QuestionType.dropdown ||
             question.type == QuestionType.multipleChoice ||
             question.type == QuestionType.checkboxes) &&
-            question.options.isNotEmpty) { // <--- KONDISI UTAMA
+            question.options.isNotEmpty) {
           potentialParents.add(question);
         }
       }
@@ -313,7 +375,6 @@ class AdminFormBuilderController extends GetxController {
   void updateMappingForParentOption(String sectionId, String questionId, String parentOptionValue, List<String> childOptions) {
     _updateQuestionProperty(sectionId, questionId, (q) {
       if (q.dependentOptions == null || q.dependentOptions!.parentQuestionId.isEmpty) return q;
-
       final newMapping = Map<String, List<String>>.from(q.dependentOptions!.optionMapping);
       newMapping[parentOptionValue] = childOptions;
       return q.copyWith(dependentOptions: q.dependentOptions!.copyWith(optionMapping: newMapping));
@@ -329,6 +390,7 @@ class AdminFormBuilderController extends GetxController {
     });
   }
 
+  // --- LOGIKA SIMPAN DENGAN DIALOG KONFIRMASI ---
   Future<void> saveForm() async {
     if (formTitle.value.trim().isEmpty) {
       Get.snackbar('Input Error', 'Judul form tidak boleh kosong.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white);
@@ -339,6 +401,79 @@ class AdminFormBuilderController extends GetxController {
       return;
     }
 
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.0),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        title: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.help_outline_rounded,
+              color: Get.theme.colorScheme.secondary,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Konfirmasi Simpan',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Get.theme.textTheme.bodyLarge?.color ?? Colors.black87),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Anda yakin ingin menyimpan perubahan pada form "${formTitle.value.trim().isNotEmpty ? formTitle.value.trim() : "Tanpa Judul"}"?',
+          style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
+        ),
+        actionsAlignment: MainAxisAlignment.end,
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Get.back(); // Tutup dialog
+            },
+            child: Text(
+              'Tidak',
+              style: TextStyle(
+                color: Colors.grey.shade800,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.save_alt_rounded, size: 18),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Get.theme.colorScheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              elevation: 2,
+            ),
+            onPressed: () {
+              Get.back();
+              _executeSaveForm();
+            },
+            label: const Text('Ya, Simpan', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+      barrierDismissible: true,
+    );
+  }
+
+  Future<void> _executeSaveForm() async {
     isBusy.value = true;
     try {
       String formIdToSave = _currentFormId ?? _db.collection(_formsCollectionPath).doc().id;
@@ -378,9 +513,12 @@ class AdminFormBuilderController extends GetxController {
 
     } catch (e) {
       Get.snackbar('Error Simpan Form', 'Gagal menyimpan: ${e.toString()}', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade400, colorText: Colors.white);
-      if(!isClosed) isBusy.value = false;
+      if(!isClosed) {
+        isBusy.value = false;
+      }
     }
   }
+  // --- AKHIR LOGIKA SIMPAN ---
 
   void _navigateBackIfPossible() {
     if (Get.isSnackbarOpen) Get.closeCurrentSnackbar();

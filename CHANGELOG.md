@@ -5,10 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),  
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## [0.14.1] - 2025-05-27
+> Created by Bayu Ardiyansyah
+
+> Improved Admin Form Builder Usability and Controller Optimizations.
+
+### 🎉 Added
+-   **Admin Form Builder:** Added a modern and elegant confirmation dialog ('Yes/No') before saving a form to prevent accidental saves.
+
+### 🛠️ Changed
+-   **Admin Form Builder:** Form sections (`ExpansionTile`) on the builder page are now initially collapsed by default for a cleaner and tidier initial view.
+-   **Admin Form Builder:** Optimized the `getAvailableControlledGroupTags` method in `AdminFormBuilderController` for improved efficiency in fetching available group tags.
+
+---
 ## [0.14.0] - 2025-05-27
 > Created by Bayu Ardiyansyah
 
-> Implemented Managed Accounts Form Authorization and Enhanced User Form Display Logic
+> Enhanced Form Authorization, User Display Logic, and Fixed Landing Page UI
 
 ### 🎉 Added
 -   **Dynamic Form Authorization via `managedAccounts`:** `UserController` now actively checks Firestore `adminForms/{formId}/managedAccounts/{userId}` to determine form access for users without global `hasAuthority`, enabling granular form permissions.
@@ -18,18 +33,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🛠️ Changed
 -   **Refactored `UserController.fetchFormData()` Logic:**
   -   Supports two main authorization paths: global admins (argument `hasAuthority: true`) fetching all forms defined in `adminForms`, and regular users fetching forms based on their specific permissions in `managedAccounts`.
-  -   Form data for authorized users is now directly sourced from `adminForms/{formId}` documents, instead of a separate `forms` collection for this path.
--   **Adapted `FormDataModel.fromMap()`:** Modified the factory constructor to correctly parse data fields from `adminForms` documents (e.g., mapping Firestore `title` field to `nama` in the model) and to use the Firestore document ID as `idForm`.
+  -   Form data for authorized users is now directly sourced from `adminForms/{formId}` documents.
+-   **Adapted `FormDataModel.fromMap()`:** Modified the factory constructor to correctly parse data fields from `adminForms` documents (e.g., mapping Firestore `title` field to `nama` in model) and to use the Firestore document ID as `idForm`.
 -   **Improved `UserScreen` Display Logic:**
-  -   Refined conditional rendering within the `Obx` widget to prioritize displaying the list of forms if `sortedFormDataList` is populated (either via global admin access or `managedAccounts` authorization).
-  -   Updated conditions for showing `_buildNoDataMessage()` versus `_buildNoAuthorityMessage()` to more accurately reflect data availability and user login status after authorization checks.
+  -   Refined conditional rendering in `Obx` widget to prioritize displaying the list of forms if `sortedFormDataList` is populated (either via global admin access or `managedAccounts` authorization).
+  -   Updated conditions for showing `_buildNoDataMessage()` versus `_buildNoAuthorityMessage()` to more accurately reflect data availability and user login status.
 -   **Robust Argument Handling in `UserController.onInit()`:** Enhanced `onInit` to gracefully manage scenarios where `Get.arguments` might be `null` or not a `Map`, defaulting `userHasAuthority` to `false` which then correctly triggers the `managedAccounts` authorization check.
+-   **Landing Page `BottomArcClipper` Logic:** Adjusted the `BottomArcClipper` and internal padding/spacing within the top clipped section of the Landing Page for a more refined curve and content placement.
 
 ### 🐛 Fixed
--   **User Form List Not Appearing for Specifically Authorized Users:** Resolved the critical issue where users granted permissions via the `adminForms/{formId}/managedAccounts` structure could not see their assigned forms. This was addressed by implementing the new `managedAccounts` authorization logic in `UserController` and correcting UI display conditions in `UserScreen`.
--   **Misleading "Akses Terbatas" Message:** Fixed the problem where "Akses Terbatas" was displayed even when forms were successfully fetched (e.g., via `managedAccounts` but `hasAuthority` argument was `false` or not received), by adjusting the UI rendering priorities in `UserScreen`.
--   **State Initialization in `UserController`:** Ensured `UserController` defaults to a state (`hasAuthority=false`, `programId=''`) that correctly triggers `managedAccounts` checks when navigation arguments are not properly received, making the form display more resilient.
-
+-   **User Form List Not Displaying for Specifically Authorized Users:** Resolved the critical issue where users with specific form permissions (via `managedAccounts`) could not see their assigned forms. This was addressed by implementing the new `managedAccounts` authorization logic in `UserController` and correcting UI display conditions in `UserScreen`.
+-   **Misleading "Akses Terbatas" Message:** Corrected the scenario where "Akses Terbatas" was shown even if forms were successfully fetched (e.g., via `managedAccounts` but `hasAuthority` argument was `false` or not received), by adjusting the UI rendering priorities in `UserScreen`.
+-   **Landing Page Bottom Overflow:** Addressed and resolved the "Bottom Overflowed" issue on the `LandingPageScreen` by adjusting vertical paddings, `SizedBox` heights, image scaling within the top section, and refining the layout (including `Spacer` usage and `MainAxisAlignment`) of elements in the lower section containing the "START" button.
+-   **(Underlying) Argument Reception Issue in `UserController`:** While the root cause of arguments not being passed via `Get.toNamed` still requires user investigation on the calling side, `UserController` now more gracefully defaults to a state that triggers `managedAccounts` checks, making it more resilient to missing arguments.
 ---
 
 ## [0.13.1] - 2025-05-27

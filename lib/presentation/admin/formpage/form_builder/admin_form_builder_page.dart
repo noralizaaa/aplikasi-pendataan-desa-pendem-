@@ -231,7 +231,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
       color: cardBgColor,
       child: ExpansionTile(
         key: ValueKey(section.id), // Use section.id for stable key
-        initiallyExpanded: sectionIndex == 0 || section.questions.isNotEmpty || section.title.isNotEmpty,
+        initiallyExpanded: false,
         backgroundColor: cardBgColor,
         collapsedBackgroundColor: cardBgColor,
         iconColor: accentThemeColor,
@@ -441,11 +441,134 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
             ],
           ),
           _buildRepeatableSetting(sectionId, question),
+          _buildRepeatableGroupSettings(sectionId, question),
           _buildConditionalJumpSetting(sectionId, question),
           if (question.type == QuestionType.dropdown)
             _buildDependentOptionsConfigurator(sectionId, question),
         ],
       ),
+    );
+  }
+
+  Widget _buildRepeatableGroupSettings(String sectionId, FormQuestion question) {
+    final String uniqueTagSuggestion = "grup_${question.id.substring(0, 5)}";
+
+    return _buildExpansionTileForSettings(
+      'Pengaturan Grup Pertanyaan Berulang',
+      [
+        // Opsi 1: Pertanyaan ini adalah PENGONTROL grup
+        // Hanya boleh tipe Angka
+        if (question.type == QuestionType.number)
+          CheckboxListTile(
+            title: Text("Jadikan Pengontrol Grup?", style: TextStyle(fontSize: 14, fontWeight: question.isRepeatableGroupController ? FontWeight.bold : FontWeight.normal)),
+            subtitle: Text("Jawaban pertanyaan ini (angka) akan menentukan berapa kali grup pertanyaan lain diulang.", style: const TextStyle(fontSize: 12)),
+            value: question.isRepeatableGroupController,
+            onChanged: (bool? value) {
+              if (value == true) {
+                // Jika belum ada tag, berikan sugesti
+                controller.updateQuestionAsRepeatableGroupController(sectionId, question.id, true, question.controlledGroupTag ?? uniqueTagSuggestion);
+              } else {
+                controller.updateQuestionAsRepeatableGroupController(sectionId, question.id, false, null);
+              }
+            },
+            controlAffinity: ListTileControlAffinity.leading,
+            activeColor: accentThemeColor,
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+        if (question.isRepeatableGroupController && question.type == QuestionType.number)
+          Padding(
+            padding: const EdgeInsets.only(left: 16.0, top: 4.0, bottom: 8.0),
+            child: TextField(
+              controller: TextEditingController(text: question.controlledGroupTag ?? uniqueTagSuggestion)
+                ..selection = TextSelection.fromPosition(TextPosition(offset: (question.controlledGroupTag ?? uniqueTagSuggestion).length)),
+              decoration: _modernInputDecoration(
+                  labelText: 'ID Unik Grup yang Dikontrol',
+                  hintText: 'Contoh: ${uniqueTagSuggestion}',
+                  isDense: true),
+              onChanged: (tag) {
+                controller.updateQuestionAsRepeatableGroupController(sectionId, question.id, true, tag.isNotEmpty ? tag : null);
+              },
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+
+        if (question.type == QuestionType.number && question.isRepeatableGroupController)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            child: Divider(height: 12, color: Colors.grey.shade300),
+          ),
+
+        // Opsi 2: Pertanyaan ini adalah ANGGOTA grup
+        // Tidak boleh jika pertanyaan ini adalah controller
+        if (!question.isRepeatableGroupController) ...[
+          CheckboxListTile(
+            title: Text("Jadikan Anggota Grup Berulang?", style: TextStyle(fontSize: 14, fontWeight: (question.belongsToGroupTag !=null && question.belongsToGroupTag!.isNotEmpty) ? FontWeight.bold : FontWeight.normal)),
+            subtitle: Text("Pertanyaan ini akan diulang berdasarkan jawaban pertanyaan pengontrol.", style: const TextStyle(fontSize: 12)),
+            value: (question.belongsToGroupTag != null && question.belongsToGroupTag!.isNotEmpty),
+            onChanged: (bool? value) {
+              if (value == true) {
+                // Biarkan kosong dulu, user akan pilih dari dropdown
+                controller.updateQuestionBelongsToGroupTag(sectionId, question.id, question.belongsToGroupTag); // Mungkin sudah ada nilai sebelumnya
+              } else {
+                controller.updateQuestionBelongsToGroupTag(sectionId, question.id, null);
+              }
+            },
+            controlAffinity: ListTileControlAffinity.leading,
+            activeColor: accentThemeColor,
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+          if (question.belongsToGroupTag != null && question.belongsToGroupTag!.isNotEmpty || (question.isRepeatableGroupController == false && Get.find<AdminFormBuilderController>().getAvailableControlledGroupTags(sectionId, question.id).isNotEmpty)) // Tampilkan dropdown jika sudah jadi anggota ATAU ada tag yang bisa dipilih
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0, top: 4.0, bottom: 8.0),
+              child: DropdownButtonFormField<String?>(
+                value: question.belongsToGroupTag,
+                decoration: _modernInputDecoration(labelText: 'Pilih ID Grup Induk', isDense: true),
+                hint: const Text('Pilih grup...'),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text("Tidak termasuk grup / Lepaskan", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+                  ),
+                  ...controller.getAvailableControlledGroupTags(sectionId, question.id)
+                      .map((tag) => DropdownMenuItem(value: tag, child: Text(tag)))
+                      .toList(),
+                ],
+                onChanged: (String? selectedTag) {
+                  controller.updateQuestionBelongsToGroupTag(sectionId, question.id, selectedTag);
+                },
+                isExpanded: true,
+              ),
+            ),
+          if (controller.getAvailableControlledGroupTags(sectionId, question.id).isEmpty && !question.isRepeatableGroupController && (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty) )
+            Padding(
+              padding: const EdgeInsets.only(left:16.0, top:0.0, bottom: 8.0),
+              child: Text("Tidak ada grup pertanyaan yang tersedia. Buat pertanyaan pengontrol terlebih dahulu (tipe Angka).", style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
+            ),
+        ],
+
+        // Info validasi silang (placeholder)
+        if (question.isRepeatableGroupController && question.type == QuestionType.number)
+          Padding(
+            padding: const EdgeInsets.only(top: 10.0, left: 4.0, right: 4.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Info Lanjutan (Validasi Silang):",
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.blueGrey.shade700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Untuk validasi seperti 'jawaban pertanyaan ini tidak boleh melebihi jawaban dari pertanyaan X (misal: 112)', akan memerlukan fitur validasi silang antar pertanyaan yang lebih canggih dan saat ini belum terimplementasi di UI builder ini. Namun, nilai min/max untuk pertanyaan ini sendiri dapat diatur di 'Pengaturan Validasi Angka'.",
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+          ),
+      ],
+      initiallyExpanded: question.isRepeatableGroupController || (question.belongsToGroupTag != null && question.belongsToGroupTag!.isNotEmpty),
     );
   }
 
