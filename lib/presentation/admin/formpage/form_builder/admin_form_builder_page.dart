@@ -222,7 +222,6 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
 
     String titleForDialog = section.title.trim().isEmpty ? "Bagian $romanNumeral" : section.title.trim();
 
-
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
       elevation: 2,
@@ -231,7 +230,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
       color: cardBgColor,
       child: ExpansionTile(
         key: ValueKey(section.id), // Use section.id for stable key
-        initiallyExpanded: false,
+        initiallyExpanded: false, // Defaultnya section tertutup
         backgroundColor: cardBgColor,
         collapsedBackgroundColor: cardBgColor,
         iconColor: accentThemeColor,
@@ -270,36 +269,46 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                       ),
                   ],
                 ),
-                TextField(
-                  controller: TextEditingController(text: section.title)
-                    ..selection = TextSelection.fromPosition(TextPosition(offset: section.title.length)),
+                // Menggunakan _PersistentTextField untuk Judul Bagian
+                _PersistentTextField(
+                  fieldKey: ValueKey('${section.id}_section_title'),
+                  initialValue: section.title,
                   onChanged: (text) => controller.updateSectionTitle(section.id, text),
                   decoration: _modernInputDecoration(labelText: 'Judul Bagian (Contoh: Keterangan Rumah Tangga)', hintText: 'Kosongkan untuk hanya menampilkan nomor Romawi', isDense: true),
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  // keyboardType: TextInputType.text, // Default
+                  // maxLines: 1, // Default
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: TextEditingController(text: section.description)
-                    ..selection = TextSelection.fromPosition(TextPosition(offset: section.description?.length ?? 0)),
+                // Menggunakan _PersistentTextField untuk Deskripsi Bagian
+                _PersistentTextField(
+                  fieldKey: ValueKey('${section.id}_section_description'),
+                  initialValue: section.description ?? '',
                   onChanged: (text) => controller.updateSectionDescription(section.id, text),
                   decoration: _modernInputDecoration(labelText: 'Deskripsi Bagian', hintText: 'Deskripsi Bagian (Opsional)', isDense: true),
-                  maxLines: 2,
+                  maxLines: 2, // Sesuai dengan TextField sebelumnya
+                  style: const TextStyle(fontSize: 14), // Sesuaikan jika perlu, seperti sebelumnya
+                  // keyboardType: TextInputType.multiline, // Defaultnya jika maxLines > 1 atau null
                 ),
                 const SizedBox(height: 20),
                 Text("Pertanyaan untuk Bagian Ini:", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
                 const SizedBox(height: 10),
-                if (section.questions.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: Center(child: Text("Belum ada pertanyaan di bagian ini.", style: TextStyle(color: Colors.grey.shade600))),
-                  ),
-                Column(
-                  children: section.questions.asMap().entries.map((entry) {
-                    final questionIndex = entry.key;
-                    final question = entry.value;
-                    return _buildQuestionCard(section.id, sectionIndex, question, questionIndex);
-                  }).toList(),
-                ),
+                Obx(() { // Membungkus Column pertanyaan dengan Obx jika jumlah pertanyaan bisa berubah dinamis
+                  if (section.questions.isEmpty) { // Anda bisa juga mengakses controller.sections[sectionIndex].questions.isEmpty
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: Center(child: Text("Belum ada pertanyaan di bagian ini.", style: TextStyle(color: Colors.grey.shade600))),
+                    );
+                  }
+                  return Column(
+                    children: section.questions.asMap().entries.map((entry) {
+                      final questionIndexInSection = entry.key; // Ini adalah index dalam list questions milik section ini
+                      final question = entry.value;
+                      // sectionIndex adalah index dari section ini dalam list sections utama (sudah ada sebagai parameter)
+                      return _buildQuestionCard(section.id, sectionIndex, question, questionIndexInSection);
+                    }).toList(),
+                  );
+                }),
                 const SizedBox(height: 15),
                 _buildAddQuestionButton(section.id),
               ],
@@ -310,6 +319,58 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     );
   }
 
+  Widget _buildGridNumericSettings(String sectionId, FormQuestion question) {
+    bool isGridConfigured = (question.gridRowLabels.isNotEmpty) ||
+        (question.gridColumnLabels.isNotEmpty) ||
+        (question.gridSubColumnLabels.isNotEmpty);
+    return _buildExpansionTileForSettings(
+      'Pengaturan Label Grid Numerik', // Judul ExpansionTile
+      [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10.0, top: 4.0),
+          child: Text(
+            "Masukkan label dipisahkan koma (,). Contoh: Senin,Selasa.\n"
+                "- Label Baris: Opsional (misal: 'Sampah Basah,Sampah Kering'). Kosongkan jika grid hanya butuh 1 jenis baris.\n"
+                "- Label Kolom: Wajib (misal: 'Senin,Selasa,dst' untuk hari).\n"
+                "- Label Sub-Kolom: Wajib (misal: 'Kecil,Sedang,Besar' untuk ukuran).",
+            style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600, height: 1.4),
+          ),
+        ),
+        // Menggunakan _PersistentTextField untuk Label Baris
+        _PersistentTextField(
+          fieldKey: ValueKey('${question.id}_gridRowLabels_persistent'),
+          initialValue: question.gridRowLabels.join(', '),
+          onChanged: (text) => controller.updateGridRowLabelsFromString(sectionId, question.id, text),
+          decoration: _modernInputDecoration(labelText: 'Label Baris (Pisahkan dengan koma)', hintText: 'Contoh: Baris A,Baris B', isDense: true),
+          style: const TextStyle(fontSize: 14),
+        ),
+        const SizedBox(height: 12),
+        // Menggunakan _PersistentTextField untuk Label Kolom
+        _PersistentTextField(
+          fieldKey: ValueKey('${question.id}_gridColLabels_persistent'),
+          initialValue: question.gridColumnLabels.join(', '),
+          onChanged: (text) => controller.updateGridColumnLabelsFromString(sectionId, question.id, text),
+          decoration: _modernInputDecoration(labelText: 'Label Kolom (Pisahkan dengan koma)', hintText: 'Contoh: Kolom 1,Kolom 2', isDense: true),
+          style: const TextStyle(fontSize: 14),
+        ),
+        const SizedBox(height: 12),
+        // Menggunakan _PersistentTextField untuk Label Sub-Kolom
+        _PersistentTextField(
+          fieldKey: ValueKey('${question.id}_gridSubColLabels_persistent'),
+          initialValue: question.gridSubColumnLabels.join(', '),
+          onChanged: (text) => controller.updateGridSubColumnLabelsFromString(sectionId, question.id, text),
+          decoration: _modernInputDecoration(labelText: 'Label Sub-Kolom (Pisahkan dengan koma)', hintText: 'Contoh: Sub A,Sub B', isDense: true),
+          style: const TextStyle(fontSize: 14),
+        ),
+      ],
+      initiallyExpanded: isGridConfigured, // Buka jika sudah ada label yang dikonfigurasi
+    );
+  }
+
+// lib/presentation/admin/formpage/form_builder/admin_form_builder_page.dart
+
+// ... (kode lain di atas _buildQuestionCard tetap sama) ...
+
   Widget _buildQuestionCard(String sectionId, int sectionIndexOverall, FormQuestion question, int questionIndexInSection) {
     // sectionIndexOverall adalah 0-based index dari section
     // questionIndexInSection adalah 0-based index dari pertanyaan di dalam section tersebut
@@ -317,8 +378,11 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     String questionTypeString = question.type.toShortString();
     if (questionTypeString.isNotEmpty) {
       questionTypeString = (questionTypeString[0].toUpperCase() + questionTypeString.substring(1));
+      // Kustomisasi nama tampilan untuk GridNumerik
+      if (question.type == QuestionType.gridNumeric) {
+        questionTypeString = "Grid Numerik";
+      }
     }
-
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16.0, top: 8.0),
@@ -334,6 +398,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Baris untuk header pertanyaan (nomor, tipe) dan tombol hapus
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,7 +431,10 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
             ],
           ),
           const SizedBox(height: 8),
+
+          // TextField untuk Kode Pertanyaan
           TextField(
+            key: ValueKey('${question.id}_code'), // Tambahkan key untuk kestabilan state controller
             controller: TextEditingController(text: question.code ?? '')
               ..selection = TextSelection.fromPosition(TextPosition(offset: (question.code ?? '').length)),
             onChanged: (text) => controller.updateQuestionCode(sectionId, question.id, text),
@@ -379,32 +447,43 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 12),
+
+          // TextField untuk Teks Pertanyaan
           TextField(
+            key: ValueKey('${question.id}_text'), // Tambahkan key
             controller: TextEditingController(text: question.questionText)
               ..selection = TextSelection.fromPosition(TextPosition(offset: question.questionText.length)),
             onChanged: (text) => controller.updateQuestionText(sectionId, question.id, text),
             decoration: _modernInputDecoration(labelText: 'Teks Pertanyaan', isDense: true,
                 prefixIcon: Padding(padding: const EdgeInsets.all(10.0), child: Icon(Icons.help_outline_rounded, size: 18, color: Colors.grey.shade500))
             ),
-            maxLines: null,
+            maxLines: null, // Biarkan null agar bisa expand otomatis
             style: const TextStyle(fontSize: 15),
           ),
           const SizedBox(height: 12),
+
+          // Pengaturan spesifik berdasarkan tipe pertanyaan
           if (question.type == QuestionType.multipleChoice || question.type == QuestionType.checkboxes || question.type == QuestionType.dropdown)
             _buildOptionsSection(sectionId, question),
-          if (question.type == QuestionType.number)
+
+          if (question.type == QuestionType.gridNumeric)
+            _buildGridNumericSettings(sectionId, question), // Ini sudah ada dari perubahan sebelumnya
+
+          // Validasi (pastikan urutannya logis)
+          if (question.type == QuestionType.number || question.type == QuestionType.gridNumeric)
             _buildNumberValidationSection(sectionId, question),
           if (question.type == QuestionType.text || question.type == QuestionType.paragraph)
             _buildTextValidationSection(sectionId, question),
           if (question.type == QuestionType.date)
             _buildDateValidationSection(sectionId, question),
 
+          // Aturan umum (PredefinedRule, Wajib diisi, Opsi Lainnya, dll.)
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
             child: _buildPredefinedRuleDropdown(sectionId, question),
           ),
           const SizedBox(height: 12),
-          Row(
+          Row( // Wajib diisi & Opsi Lainnya
             children: [
               const Text('Wajib diisi', style: TextStyle(fontSize: 14)),
               Switch(
@@ -420,10 +499,10 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Flexible(
+                      const Flexible(
                         child: Text(
                           'Opsi "Lainnya"',
-                          style: const TextStyle(fontSize: 14),
+                          style: TextStyle(fontSize: 14),
                           overflow: TextOverflow.ellipsis,
                           softWrap: false,
                         ),
@@ -449,6 +528,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
       ),
     );
   }
+
 
   Widget _buildRepeatableGroupSettings(String sectionId, FormQuestion question) {
     final String uniqueTagSuggestion = "grup_${question.id.substring(0, 5)}";
@@ -574,6 +654,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
 
 
   Widget _buildOptionsSection(String sectionId, FormQuestion question) {
+    // Asumsi optionInputDecoration sudah didefinisikan di dalam kelas AdminFormBuilderPage
     InputDecoration optionInputDecoration(String hint) {
       return InputDecoration(
         hintText: hint,
@@ -585,6 +666,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
         isDense: true,
       );
     }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -592,8 +674,14 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
           padding: const EdgeInsets.only(bottom: 6.0, top: 4.0),
           child: Text('Opsi Pilihan:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.grey.shade800)),
         ),
+        // Gunakan Obx jika question.options adalah RxList atau jika daftar opsi bisa berubah drastis.
+        // Jika question.options adalah List biasa yang diupdate melalui controller.sections.refresh(),
+        // maka Obx di level atas (yang mengamati controller.sections) sudah cukup.
+        // Namun, jika hanya ingin merebuild bagian ini saat opsi berubah, Obx di sini bisa berguna.
+        // Untuk saat ini, kita asumsikan Obx di level atas sudah menangani rebuild.
         ...question.options.asMap().entries.map((entry) {
-          int index = entry.key; String option = entry.value;
+          int index = entry.key;
+          String option = entry.value;
           return Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -602,13 +690,14 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                 child: Icon(
                   question.type == QuestionType.multipleChoice ? Icons.radio_button_off_rounded :
                   question.type == QuestionType.checkboxes ? Icons.check_box_outline_blank_rounded :
-                  Icons.arrow_right_rounded,
+                  Icons.arrow_right_rounded, // Untuk dropdown
                   color: Colors.grey.shade500, size: 18,
                 ),
               ),
               Expanded(
-                child: TextField(
-                  controller: TextEditingController(text: option)..selection = TextSelection.fromPosition(TextPosition(offset: option.length)),
+                child: _PersistentTextField( // Menggunakan _PersistentTextField
+                  fieldKey: ValueKey('${question.id}_option_${index}_persistent'),
+                  initialValue: option,
                   onChanged: (text) => controller.updateOption(sectionId, question.id, index, text),
                   decoration: optionInputDecoration('Opsi ${index + 1}'),
                   style: const TextStyle(fontSize: 14),
@@ -637,6 +726,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
       ],
     );
   }
+
 
   Widget _buildExpansionTileForSettings(String title, List<Widget> children, {bool initiallyExpanded = false}) {
     return ExpansionTile(
@@ -1284,7 +1374,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
             label: const Text('Simpan Opsi Ini'),
             style: ElevatedButton.styleFrom(backgroundColor: AdminFormBuilderPage.accentThemeColor, foregroundColor: Colors.white),
             // Ini adalah bagian onPressed untuk ElevatedButton.icon (Tombol "Simpan Opsi Ini")
-// di dalam _showEditChildOptionsDialog
+            // di dalam _showEditChildOptionsDialog
 
             onPressed: () {
               // 1. Ambil data opsi anak yang baru dari controller yang masih aktif
@@ -1335,7 +1425,6 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     );
   }
 
-
   Widget _buildAddQuestionButton(String sectionId) {
     return Padding(
       padding: const EdgeInsets.only(top: 12.0, bottom: 8.0),
@@ -1360,12 +1449,12 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                     ),
                     GridView.count(
                       crossAxisCount: 3,
-                      childAspectRatio: 1.8,
+                      childAspectRatio: 1.6,
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                      mainAxisSpacing: 10.0,
-                      crossAxisSpacing: 10.0,
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                      mainAxisSpacing: 8.0,
+                      crossAxisSpacing: 8.0,
                       children: QuestionType.values.map((type) {
                         IconData iconData; String typeName;
                         switch(type) {
@@ -1376,7 +1465,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                           case QuestionType.multipleChoice: iconData = Icons.radio_button_checked_rounded; typeName = "Pilihan Ganda"; break;
                           case QuestionType.checkboxes: iconData = Icons.check_box_rounded; typeName = "Kotak Centang"; break;
                           case QuestionType.dropdown: iconData = Icons.arrow_drop_down_circle_rounded; typeName = "Dropdown"; break;
-                        // default: iconData = Icons.help_rounded; typeName = "Lainnya"; // Should not happen with enum
+                          case QuestionType.gridNumeric: iconData = Icons.grid_on_outlined; typeName = "Grid Numerik"; break; // <-- OPSI BARU
                         }
                         return InkWell(
                           onTap: () {
@@ -1385,7 +1474,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                           },
                           borderRadius: BorderRadius.circular(10),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                             decoration: BoxDecoration(
                                 color: accentThemeColor.withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(10),
@@ -1394,9 +1483,15 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(iconData, color: accentThemeColor, size: 26),
-                                const SizedBox(height: 5),
-                                Text(typeName, style: TextStyle(fontSize: 11, color: accentThemeColor.withOpacity(0.9), fontWeight: FontWeight.w500), textAlign: TextAlign.center),
+                                Icon(iconData, color: accentThemeColor, size: 24),
+                                const SizedBox(height: 4),
+                                Text(
+                                  typeName,
+                                  style: TextStyle(fontSize: 10.5, color: accentThemeColor.withOpacity(0.95), fontWeight: FontWeight.w500),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ],
                             ),
                           ),
@@ -1424,5 +1519,79 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
         ),
       ),
     );
+  }
+}
+
+
+// Di bagian atas file AdminFormBuilderPage.dart, setelah import
+// atau di dalam kelas AdminFormBuilderPage sebagai nested class jika mau,
+// tapi lebih umum sebagai helper class terpisah di file yang sama.
+
+class _PersistentTextField extends StatefulWidget {
+  final String initialValue;
+  final ValueKey fieldKey; // Key unik untuk TextField ini berdasarkan data
+  final InputDecoration decoration;
+  final Function(String) onChanged;
+  final TextStyle? style;
+  final int? maxLines;
+  final TextInputType? keyboardType;
+
+  const _PersistentTextField({
+    required this.fieldKey, // Gunakan Key yang lebih spesifik dari pemanggil
+    required this.initialValue,
+    required this.decoration,
+    required this.onChanged,
+    this.style,
+    this.maxLines = 1, // Default maxLines
+    this.keyboardType,
+  }) : super(key: fieldKey); // Teruskan fieldKey ke super constructor
+
+  @override
+  State<_PersistentTextField> createState() => _PersistentTextFieldState();
+}
+
+class _PersistentTextFieldState extends State<_PersistentTextField> {
+  late TextEditingController _textController;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void didUpdateWidget(_PersistentTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Hanya update controller jika nilai awal dari model benar-benar berubah
+    // DAN controller saat ini tidak mencerminkan nilai baru tersebut.
+    // Ini mencegah kursor melompat jika perubahan berasal dari input pengguna sendiri.
+    if (widget.initialValue != oldWidget.initialValue) {
+      if (_textController.text != widget.initialValue) {
+        _textController.text = widget.initialValue;
+        // Atur kursor ke akhir teks setelah pembaruan programatik
+        _textController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _textController.text.length),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      // Tidak perlu key di sini karena sudah ada di StatefulWidget
+      controller: _textController,
+      onChanged: widget.onChanged,
+      decoration: widget.decoration,
+      style: widget.style,
+      maxLines: widget.maxLines,
+      keyboardType: widget.keyboardType,
+    );
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
   }
 }

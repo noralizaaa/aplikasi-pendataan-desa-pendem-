@@ -1,41 +1,39 @@
 # 📦 CHANGELOG
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),  
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-# Changelog
-
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2025-05-28
+> Created by Bayu Ardiyansyah
 
-
-## [0.15.1] - 2025-05-27
-> Created by Lutfi Indra
-
-> Enhanced admin interface and functionality, including UI updates to align with Figma designs, global search improvements (with pending navigation form execution), and optimized account management features.
+> Added Dynamic Grid Numeric Question Type to Admin Form Builder and Fixed Critical Text Input Issues.
 
 ### 🎉 Added
--   **Default Admin Profile Picture:** Implemented a default profile picture for administrators, mirroring the standard user profile picture.
+-   **Admin Form Builder: New "Grid Numeric" Question Type:**
+  -   Introduced a new `gridNumeric` question type, enabling administrators to create complex matrix or grid-style questions (e.g., for daily waste volume tracking across multiple categories like "Wet/Dry" and "Small/Medium/Large").
+  -   Admins can dynamically define labels for rows (optional), main columns (e.g., days of the week), and sub-columns (e.g., sizes) for each grid question.
+-   **Admin Form Builder: Configuration UI for Grid Numeric Questions:**
+  -   Implemented a dedicated settings section (`_buildGridNumericSettings`) within the question card for the "Grid Numeric" type.
+  -   Administrators can input comma-separated values for row, column, and sub-column labels via text fields.
 
 ### 🛠️ Changed
--   **`admin_screen.dart`:** Updated the UI with a new gradient and color scheme to align with the Figma design.
--   **`admin_controller.dart`:** Modified the search feature to function as a global search. However, proper execution within each navigation form is still pending.
--   **`admin_profil_page.dart`:** Revised the UI to match the Figma design specifications.
--   **`admin_profil_controller.dart`:** Updated the UI for the logout confirmation and the card interface for name changes.
--   **`form_account_management_page.dart`:**
-  -   Overhauled the UI to align with the Figma design.
-  -   Replaced "edit" and "delete" text buttons with icons for a cleaner interface.
--   **`all_account_page.dart` & `all_account_controller.dart`:**
-  -   Adjusted the header to match the overall theme.
-  -   Optimized the account cards with a more modern design.
+-   **`admin_form_model.dart` (`FormQuestion`):**
+  -   Extended the `FormQuestion` model to include `gridRowLabels`, `gridColumnLabels`, and `gridSubColumnLabels` (all `List<String>`) to store the structure of the new grid question type.
+  -   Updated the constructor, `fromMap`, `toMap`, and `copyWith` methods to correctly initialize, serialize, deserialize, and manage these new grid-related properties.
+-   **`AdminFormBuilderController.dart`:**
+  -   Enhanced to support the creation and dynamic updating of "Grid Numeric" questions.
+  -   Added new methods (`updateGridRowLabelsFromString`, `updateGridColumnLabelsFromString`, `updateGridSubColumnLabelsFromString`) to parse comma-separated label inputs from the UI and update the `FormQuestion` model.
+  -   When a new "Grid Numeric" question is added, it's now initialized with default labels (e.g., "Senin-Minggu" for columns, "Kecil,Sedang,Besar" for sub-columns) to guide the admin.
+-   **`AdminFormBuilderPage.dart`:**
+  -   The "Add Question" bottom sheet now includes "Grid Numerik" as a selectable question type.
+  -   The question card UI (`_buildQuestionCard`) now conditionally renders the new `_buildGridNumericSettings` widget for configuring grid labels if the question type is `gridNumeric`.
 
 ### 🐛 Fixed
--   **`form_account_management_controller.dart`:**
-  -   Resolved issues with the search feature to ensure optimal functionality.
-  -   Corrected card display issues during account creation.
+-   **Admin Form Builder: Text Input Fields Losing Focus:**
+  -   Resolved a critical usability issue where typing into various `TextField`s (e.g., for section titles/descriptions, question codes/texts, option texts, grid labels, and validation rule inputs) was interrupted after each character, requiring users to re-click.
+  -   This was fixed by implementing and utilizing a `_PersistentTextField` stateful helper widget that correctly manages `TextEditingController` lifecycle and state across rebuilds.
+-   **Admin Form Builder: Form Saving Error "Null is not a subtype of type List<String>":**
+  -   Improved the robustness of `FormQuestion.toMap()` and `FormQuestion.copyWith()` methods by adding defensive fallbacks (`?? []`) for all `List<String>` properties (like `options`, `gridRowLabels`, etc.). This prevents errors during form saving if any of these list properties inadvertently become `null` at runtime.
 
 ---
 

@@ -2,7 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Enum untuk tipe pertanyaan yang didukung
 enum QuestionType {
-  text, paragraph, number, date, multipleChoice, checkboxes, dropdown,
+  text,
+  paragraph,
+  number,
+  date,
+  multipleChoice,
+  checkboxes,
+  dropdown,
+  gridNumeric, // <-- TIPE BARU DITAMBAHKAN
 }
 
 extension QuestionTypeExtension on QuestionType {
@@ -19,7 +26,8 @@ extension QuestionTypeExtension on QuestionType {
       case 'multiplechoice': return QuestionType.multipleChoice;
       case 'checkboxes': return QuestionType.checkboxes;
       case 'dropdown': return QuestionType.dropdown;
-      default: return QuestionType.text; // Default to text if unknown
+      case 'gridnumeric': return QuestionType.gridNumeric; // <-- CASE BARU
+      default: return QuestionType.text;
     }
   }
 }
@@ -30,7 +38,7 @@ class ValidationRule {
   final num? minValue;
   final num? maxValue;
   final String? regex;
-  final String? predefinedRule; // e.g., "lettersOnly", "numbersOnly", "alphanumeric", "email"
+  final String? predefinedRule;
 
   ValidationRule({
     this.minLength,
@@ -143,7 +151,7 @@ class DependentOptionsConfig {
           }
           return MapEntry(key, <String>[]);
         },
-      ) ?? {},
+      ) ?? const {},
     );
   }
 
@@ -153,14 +161,13 @@ class DependentOptionsConfig {
       'optionMapping': optionMapping,
     };
   }
-
   DependentOptionsConfig copyWith({
     String? parentQuestionId,
     Map<String, List<String>>? optionMapping,
   }) {
     return DependentOptionsConfig(
       parentQuestionId: parentQuestionId ?? this.parentQuestionId,
-      optionMapping: optionMapping ?? this.optionMapping,
+      optionMapping: optionMapping ?? Map<String, List<String>>.from(this.optionMapping),
     );
   }
 }
@@ -178,11 +185,14 @@ class FormQuestion {
   final bool repeatable;
   final int? repeatCount;
   final DependentOptionsConfig? dependentOptions;
-
-  // Properti untuk grup pertanyaan berulang
   final bool isRepeatableGroupController;
   final String? controlledGroupTag;
   final String? belongsToGroupTag;
+
+  // Properti BARU untuk tipe gridNumeric
+  final List<String> gridRowLabels;
+  final List<String> gridColumnLabels;
+  final List<String> gridSubColumnLabels;
 
   FormQuestion({
     required this.id,
@@ -200,6 +210,9 @@ class FormQuestion {
     this.isRepeatableGroupController = false,
     this.controlledGroupTag,
     this.belongsToGroupTag,
+    this.gridRowLabels = const [],
+    this.gridColumnLabels = const [],
+    this.gridSubColumnLabels = const [],
   });
 
   factory FormQuestion.fromMap(Map<String, dynamic> map) {
@@ -216,18 +229,18 @@ class FormQuestion {
           : null,
       conditionalJumps: (map['conditionalJumps'] as List<dynamic>?)
           ?.map((j) => ConditionalJump.fromMap(j as Map<String, dynamic>))
-          .toList() ??
-          [],
+          .toList() ?? [],
       repeatable: map['repeatable'] as bool? ?? false,
       repeatCount: map['repeatCount'] as int?,
       dependentOptions: map['dependentOptions'] != null
-          ? DependentOptionsConfig.fromMap(
-          map['dependentOptions'] as Map<String, dynamic>)
+          ? DependentOptionsConfig.fromMap(map['dependentOptions'] as Map<String, dynamic>)
           : null,
-      isRepeatableGroupController:
-      map['isRepeatableGroupController'] as bool? ?? false,
+      isRepeatableGroupController: map['isRepeatableGroupController'] as bool? ?? false,
       controlledGroupTag: map['controlledGroupTag'] as String?,
       belongsToGroupTag: map['belongsToGroupTag'] as String?,
+      gridRowLabels: List<String>.from(map['gridRowLabels'] as List<dynamic>? ?? []),
+      gridColumnLabels: List<String>.from(map['gridColumnLabels'] as List<dynamic>? ?? []),
+      gridSubColumnLabels: List<String>.from(map['gridSubColumnLabels'] as List<dynamic>? ?? []),
     );
   }
 
@@ -236,22 +249,28 @@ class FormQuestion {
       'id': id,
       'questionText': questionText,
       'type': type.toShortString(),
-      'options': options,
+      'options': options ?? [],
       'isRequired': isRequired,
       'hasOtherOption': hasOtherOption,
-      'conditionalJumps': conditionalJumps.map((j) => j.toMap()).toList(),
+      'conditionalJumps': (conditionalJumps ?? []).map((j) => j.toMap()).toList(),
       'repeatable': repeatable,
       'isRepeatableGroupController': isRepeatableGroupController,
     };
-    if (code != null && code!.isNotEmpty) {
-      map['code'] = code;
-    }
+
+    List<String> currentGridRowLabels = gridRowLabels ?? [];
+    if (currentGridRowLabels.isNotEmpty) map['gridRowLabels'] = currentGridRowLabels;
+
+    List<String> currentGridColumnLabels = gridColumnLabels ?? [];
+    if (currentGridColumnLabels.isNotEmpty) map['gridColumnLabels'] = currentGridColumnLabels;
+
+    List<String> currentGridSubColumnLabels = gridSubColumnLabels ?? [];
+    if (currentGridSubColumnLabels.isNotEmpty) map['gridSubColumnLabels'] = currentGridSubColumnLabels;
+
+    if (code != null && code!.isNotEmpty) map['code'] = code;
     if (validation != null && validation!.toMap().isNotEmpty) {
       map['validation'] = validation!.toMap();
     }
-    if (repeatCount != null) {
-      map['repeatCount'] = repeatCount;
-    }
+    if (repeatCount != null) map['repeatCount'] = repeatCount;
     if (dependentOptions != null) {
       map['dependentOptions'] = dependentOptions!.toMap();
     }
@@ -266,51 +285,43 @@ class FormQuestion {
 
   FormQuestion copyWith({
     String? id,
-    String? code,
-    bool setCodeNull = false,
+    String? code, bool setCodeNull = false,
     String? questionText,
     QuestionType? type,
     List<String>? options,
     bool? isRequired,
     bool? hasOtherOption,
-    ValidationRule? validation,
-    bool setValidationNull = false,
+    ValidationRule? validation, bool setValidationNull = false,
     List<ConditionalJump>? conditionalJumps,
     bool? repeatable,
-    int? repeatCount,
-    bool setRepeatCountNull = false,
-    DependentOptionsConfig? dependentOptions,
-    bool setDependentOptionsNull = false,
+    int? repeatCount, bool setRepeatCountNull = false,
+    DependentOptionsConfig? dependentOptions, bool setDependentOptionsNull = false,
     bool? isRepeatableGroupController,
-    String? controlledGroupTag,
-    bool setControlledGroupTagNull = false,
-    String? belongsToGroupTag,
-    bool setBelongsToGroupTagNull = false,
+    String? controlledGroupTag, bool setControlledGroupTagNull = false,
+    String? belongsToGroupTag, bool setBelongsToGroupTagNull = false,
+    List<String>? gridRowLabels,
+    List<String>? gridColumnLabels,
+    List<String>? gridSubColumnLabels,
   }) {
     return FormQuestion(
       id: id ?? this.id,
       code: setCodeNull ? null : (code ?? this.code),
       questionText: questionText ?? this.questionText,
       type: type ?? this.type,
-      options: options ?? List<String>.from(this.options),
+      options: options ?? List<String>.from(this.options ?? []),
       isRequired: isRequired ?? this.isRequired,
       hasOtherOption: hasOtherOption ?? this.hasOtherOption,
       validation: setValidationNull ? null : (validation ?? this.validation),
-      conditionalJumps:
-      conditionalJumps ?? List<ConditionalJump>.from(this.conditionalJumps),
+      conditionalJumps: conditionalJumps ?? List<ConditionalJump>.from(this.conditionalJumps ?? []),
       repeatable: repeatable ?? this.repeatable,
       repeatCount: setRepeatCountNull ? null : (repeatCount ?? this.repeatCount),
-      dependentOptions: setDependentOptionsNull
-          ? null
-          : (dependentOptions ?? this.dependentOptions),
-      isRepeatableGroupController:
-      isRepeatableGroupController ?? this.isRepeatableGroupController,
-      controlledGroupTag: setControlledGroupTagNull
-          ? null
-          : (controlledGroupTag ?? this.controlledGroupTag),
-      belongsToGroupTag: setBelongsToGroupTagNull
-          ? null
-          : (belongsToGroupTag ?? this.belongsToGroupTag),
+      dependentOptions: setDependentOptionsNull ? null : (dependentOptions ?? this.dependentOptions),
+      isRepeatableGroupController: isRepeatableGroupController ?? this.isRepeatableGroupController,
+      controlledGroupTag: setControlledGroupTagNull ? null : (controlledGroupTag ?? this.controlledGroupTag),
+      belongsToGroupTag: setBelongsToGroupTagNull ? null : (belongsToGroupTag ?? this.belongsToGroupTag),
+      gridRowLabels: gridRowLabels ?? List<String>.from(this.gridRowLabels ?? []),
+      gridColumnLabels: gridColumnLabels ?? List<String>.from(this.gridColumnLabels ?? []),
+      gridSubColumnLabels: gridSubColumnLabels ?? List<String>.from(this.gridSubColumnLabels ?? []),
     );
   }
 }
@@ -331,7 +342,7 @@ class FormSection {
   factory FormSection.fromMap(Map<String, dynamic> map) {
     return FormSection(
       id: map['id'] as String? ?? '',
-      title: map['title'] as String? ?? '', // Allow empty title to be handled by UI
+      title: map['title'] as String? ?? '',
       description: map['description'] as String?,
       questions: (map['questions'] as List<dynamic>?)
           ?.map((q) => FormQuestion.fromMap(q as Map<String, dynamic>))
@@ -343,9 +354,9 @@ class FormSection {
     final map = <String, dynamic>{
       'id': id,
       'title': title,
-      'questions': questions.map((q) => q.toMap()).toList(),
+      'questions': (questions ?? []).map((q) => q.toMap()).toList(),
     };
-    if (description != null) map['description'] = description;
+    if (description != null && description!.isNotEmpty) map['description'] = description;
     return map;
   }
 
@@ -360,12 +371,12 @@ class FormSection {
       id: id ?? this.id,
       title: title ?? this.title,
       description: setDescriptionNull ? null : (description ?? this.description),
-      questions: questions ?? List<FormQuestion>.from(this.questions),
+      questions: questions ?? List<FormQuestion>.from(this.questions ?? []),
     );
   }
 
   FormSection cleanUpQuestionsBeforeSave() {
-    final validQuestions = questions
+    final validQuestions = (questions ?? [])
         .where((q) => q.questionText.trim().isNotEmpty || (q.code != null && q.code!.trim().isNotEmpty))
         .toList();
     return copyWith(questions: validQuestions);
@@ -409,7 +420,7 @@ class FormItem {
       'description': description,
       'createdAt': Timestamp.fromDate(createdAt),
       'createdByUserId': createdByUserId,
-      'sections': sections.map((s) => s.toMap()).toList(),
+      'sections': (sections ?? []).map((s) => s.toMap()).toList(),
     };
   }
 }

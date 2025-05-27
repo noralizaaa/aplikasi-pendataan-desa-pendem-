@@ -31,7 +31,7 @@ class AdminFormBuilderController extends GetxController {
   List<FormQuestion> getPotentialRepeatableGroupControllers(String currentSectionId, String currentQuestionId) {
     final List<FormQuestion> controllers = [];
     for (var section in sections) {
-      for (var question in section.questions) {
+      for (var question in section.questions) { // Asumsi section.questions tidak pernah null
         if (question.id == currentQuestionId) continue;
         if (question.type == QuestionType.number && (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty)) {
           controllers.add(question);
@@ -43,19 +43,16 @@ class AdminFormBuilderController extends GetxController {
 
   List<String> getAvailableControlledGroupTags(String currentSectionId, String currentQuestionId) {
     final Set<String> tags = {};
-    final FormQuestion? currentQ = findQuestionById(currentQuestionId); // Panggil sekali di luar loop
+    final FormQuestion? currentQ = findQuestionById(currentQuestionId);
 
     for (var section in sections) {
-      for (var question in section.questions) {
+      for (var question in section.questions) { // Asumsi section.questions tidak pernah null
         if (question.isRepeatableGroupController &&
             question.controlledGroupTag != null &&
             question.controlledGroupTag!.isNotEmpty) {
-          // Jika pertanyaan saat ini (currentQ) adalah controller dan tagnya sama dengan tag yang sedang diiterasi,
-          // maka jangan tambahkan tag ini ke daftar pilihan. Ini untuk mencegah currentQ memilih tagnya sendiri
-          // untuk 'belongsToGroupTag'.
           if (currentQ != null &&
               currentQ.isRepeatableGroupController &&
-              currentQ.id == question.id && // Memastikan ini adalah tag dari currentQ itu sendiri
+              currentQ.id == question.id &&
               currentQ.controlledGroupTag == question.controlledGroupTag) {
             // Jangan tambahkan tag milik currentQ sendiri
           } else {
@@ -106,6 +103,39 @@ class AdminFormBuilderController extends GetxController {
     });
   }
   // --- End of Methods for Repeatable Group Questions ---
+
+  // --- Methods for GridNumeric Question Type ---
+  void _updateGridLabels(String sectionId, String questionId, List<String> newLabels, String labelType) {
+    _updateQuestionProperty(sectionId, questionId, (q) {
+      switch (labelType) {
+        case 'rows':
+          return q.copyWith(gridRowLabels: newLabels);
+        case 'cols':
+          return q.copyWith(gridColumnLabels: newLabels);
+        case 'subCols':
+          return q.copyWith(gridSubColumnLabels: newLabels);
+        default:
+          return q;
+      }
+    });
+  }
+
+  void updateGridRowLabelsFromString(String sectionId, String questionId, String commaSeparatedLabels) {
+    final labels = commaSeparatedLabels.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    _updateGridLabels(sectionId, questionId, labels, 'rows');
+  }
+
+  void updateGridColumnLabelsFromString(String sectionId, String questionId, String commaSeparatedLabels) {
+    final labels = commaSeparatedLabels.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    _updateGridLabels(sectionId, questionId, labels, 'cols');
+  }
+
+  void updateGridSubColumnLabelsFromString(String sectionId, String questionId, String commaSeparatedLabels) {
+    final labels = commaSeparatedLabels.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    _updateGridLabels(sectionId, questionId, labels, 'subCols');
+  }
+  // --- End of Methods for GridNumeric Question Type ---
+
 
   @override
   void onInit() {
@@ -160,7 +190,6 @@ class AdminFormBuilderController extends GetxController {
         titleController.text = formItem.title;
         descriptionController.text = formItem.description;
         _originalCreatedAt = formItem.createdAt;
-        // Get.snackbar('Informasi', 'Form "${formItem.title}" berhasil dimuat.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.blueGrey, colorText: Colors.white);
       } else {
         Get.snackbar('Error', 'Form dengan ID "$formId" tidak ditemukan.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade300, colorText: Colors.white);
         _initializeNewForm();
@@ -210,6 +239,15 @@ class AdminFormBuilderController extends GetxController {
       int sectionNumberForCode = sectionIndexInList + 1;
       String suggestedCode = '$sectionNumberForCode${nextQuestionNumberInThisSection.toString().padLeft(2, '0')}';
 
+      List<String> defaultGridRowLabels = const [];
+      List<String> defaultGridColumnLabels = const [];
+      List<String> defaultGridSubColumnLabels = const [];
+
+      if (type == QuestionType.gridNumeric) {
+        defaultGridColumnLabels = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+        defaultGridSubColumnLabels = ['Kecil', 'Sedang', 'Besar'];
+      }
+
       final newQuestion = FormQuestion(
         id: UId.getId(),
         code: suggestedCode,
@@ -222,6 +260,9 @@ class AdminFormBuilderController extends GetxController {
         conditionalJumps: [],
         validation: ValidationRule(),
         dependentOptions: null,
+        gridRowLabels: defaultGridRowLabels,
+        gridColumnLabels: defaultGridColumnLabels,
+        gridSubColumnLabels: defaultGridSubColumnLabels,
       );
       final updatedQuestions = List<FormQuestion>.from(currentSection.questions)..add(newQuestion);
       sections[sectionIndexInList] = currentSection.copyWith(questions: updatedQuestions);
@@ -232,7 +273,7 @@ class AdminFormBuilderController extends GetxController {
     final sectionIndex = sections.indexWhere((s) => s.id == sectionId);
     if (sectionIndex != -1) {
       final section = sections[sectionIndex];
-      final questionList = section.questions;
+      final questionList = section.questions; // Ini adalah List<FormQuestion>
       final questionIndexInOriginalList = questionList.indexWhere((q) => q.id == questionId);
       if (questionIndexInOriginalList != -1) {
         final updatedQuestion = updater(questionList[questionIndexInOriginalList]);
@@ -261,15 +302,16 @@ class AdminFormBuilderController extends GetxController {
 
   void addOption(String sectionId, String questionId) {
     _updateQuestionProperty(sectionId, questionId, (q) {
-      final newOptions = List<String>.from(q.options)..add('Opsi ${q.options.length + 1}');
+      final newOptions = List<String>.from(q.options ?? [])..add('Opsi ${(q.options ?? []).length + 1}');
       return q.copyWith(options: newOptions);
     });
   }
 
   void updateOption(String sectionId, String questionId, int optionIndex, String newText) {
     _updateQuestionProperty(sectionId, questionId, (q) {
-      if (optionIndex >= 0 && optionIndex < q.options.length) {
-        final newOptions = List<String>.from(q.options);
+      final currentOptions = q.options ?? [];
+      if (optionIndex >= 0 && optionIndex < currentOptions.length) {
+        final newOptions = List<String>.from(currentOptions);
         newOptions[optionIndex] = newText;
         return q.copyWith(options: newOptions);
       }
@@ -279,8 +321,9 @@ class AdminFormBuilderController extends GetxController {
 
   void removeOption(String sectionId, String questionId, int optionIndex) {
     _updateQuestionProperty(sectionId, questionId, (q) {
-      if (optionIndex >= 0 && optionIndex < q.options.length) {
-        final newOptions = List<String>.from(q.options)..removeAt(optionIndex);
+      final currentOptions = q.options ?? [];
+      if (optionIndex >= 0 && optionIndex < currentOptions.length) {
+        final newOptions = List<String>.from(currentOptions)..removeAt(optionIndex);
         return q.copyWith(options: newOptions);
       }
       return q;
@@ -291,7 +334,7 @@ class AdminFormBuilderController extends GetxController {
     final sectionIndex = sections.indexWhere((s) => s.id == sectionId);
     if (sectionIndex != -1) {
       final section = sections[sectionIndex];
-      final updatedQuestions = List<FormQuestion>.from(section.questions)..removeWhere((q) => q.id == questionId);
+      final updatedQuestions = List<FormQuestion>.from(section.questions)..removeWhere((q) => q.id == questionId); // questions dari FormSection sudah dihandle di modelnya
       sections[sectionIndex] = section.copyWith(questions: updatedQuestions);
     }
   }
@@ -311,14 +354,14 @@ class AdminFormBuilderController extends GetxController {
 
   void addConditionalJump(String sectionId, String questionId, ConditionalJump jump) {
     _updateQuestionProperty(sectionId, questionId, (q) {
-      final updatedJumps = List<ConditionalJump>.from(q.conditionalJumps)..add(jump);
+      final updatedJumps = List<ConditionalJump>.from(q.conditionalJumps ?? [])..add(jump);
       return q.copyWith(conditionalJumps: updatedJumps);
     });
   }
 
   void removeConditionalJump(String sectionId, String questionId, String targetIdToRemove) {
     _updateQuestionProperty(sectionId, questionId, (q) {
-      final updatedJumps = List<ConditionalJump>.from(q.conditionalJumps)
+      final updatedJumps = List<ConditionalJump>.from(q.conditionalJumps ?? [])
         ..removeWhere((j) => j.jumpToQuestionId == targetIdToRemove || j.jumpToSectionId == targetIdToRemove);
       return q.copyWith(conditionalJumps: updatedJumps);
     });
@@ -337,12 +380,12 @@ class AdminFormBuilderController extends GetxController {
   List<FormQuestion> getPotentialParentQuestions(String? currentSectionIdToExclude, String currentQuestionIdToExclude) {
     final List<FormQuestion> potentialParents = [];
     for (var section in sections) {
-      for (var question in section.questions) {
+      for (var question in section.questions) { // Asumsi section.questions non-null
         if (question.id == currentQuestionIdToExclude) continue;
         if ((question.type == QuestionType.dropdown ||
             question.type == QuestionType.multipleChoice ||
             question.type == QuestionType.checkboxes) &&
-            question.options.isNotEmpty) {
+            (question.options).isNotEmpty) { // question.options sudah dihandle di model dengan default const []
           potentialParents.add(question);
         }
       }
@@ -352,7 +395,7 @@ class AdminFormBuilderController extends GetxController {
 
   FormQuestion? findQuestionById(String questionId) {
     for (var section in sections) {
-      for (var q_item in section.questions) {
+      for (var q_item in section.questions) { // Asumsi section.questions non-null
         if (q_item.id == questionId) return q_item;
       }
     }
@@ -364,18 +407,28 @@ class AdminFormBuilderController extends GetxController {
       if (newParentQuestionId == null || newParentQuestionId.isEmpty) {
         return q.copyWith(dependentOptions: null, setDependentOptionsNull: true);
       }
-      final newConfig = (q.dependentOptions?.parentQuestionId == newParentQuestionId
-          ? q.dependentOptions
-          : DependentOptionsConfig(parentQuestionId: newParentQuestionId, optionMapping: {}))!
-          .copyWith(parentQuestionId: newParentQuestionId);
+      // --- PERBAIKAN UNTUK COPYWITH PADA NULLABLE ---
+      final String nonNullNewParentId = newParentQuestionId; // newParentQuestionId sudah pasti non-null & non-empty di sini
+      final DependentOptionsConfig? currentDepOptions = q.dependentOptions;
+
+      DependentOptionsConfig configToModify;
+      if (currentDepOptions != null && currentDepOptions.parentQuestionId == nonNullNewParentId) {
+        configToModify = currentDepOptions;
+      } else {
+        configToModify = DependentOptionsConfig(parentQuestionId: nonNullNewParentId, optionMapping: {});
+      }
+      // Sekarang configToModify dijamin non-null
+      final newConfig = configToModify.copyWith(parentQuestionId: nonNullNewParentId);
+      // --- AKHIR PERBAIKAN ---
       return q.copyWith(dependentOptions: newConfig, setDependentOptionsNull: false);
     });
   }
 
   void updateMappingForParentOption(String sectionId, String questionId, String parentOptionValue, List<String> childOptions) {
     _updateQuestionProperty(sectionId, questionId, (q) {
-      if (q.dependentOptions == null || q.dependentOptions!.parentQuestionId.isEmpty) return q;
-      final newMapping = Map<String, List<String>>.from(q.dependentOptions!.optionMapping);
+      if (q.dependentOptions == null || q.dependentOptions!.parentQuestionId.isEmpty) return q; // Guard clause
+      // q.dependentOptions dijamin non-null di sini
+      final newMapping = Map<String, List<String>>.from(q.dependentOptions!.optionMapping); // optionMapping juga non-null by default
       newMapping[parentOptionValue] = childOptions;
       return q.copyWith(dependentOptions: q.dependentOptions!.copyWith(optionMapping: newMapping));
     });
@@ -383,14 +436,14 @@ class AdminFormBuilderController extends GetxController {
 
   void removeMappingForParentOption(String sectionId, String questionId, String parentOptionValue) {
     _updateQuestionProperty(sectionId, questionId, (q) {
-      if (q.dependentOptions == null) return q;
-      final newMapping = Map<String, List<String>>.from(q.dependentOptions!.optionMapping);
+      if (q.dependentOptions == null) return q; // Guard clause
+      // q.dependentOptions dijamin non-null di sini
+      final newMapping = Map<String, List<String>>.from(q.dependentOptions!.optionMapping); // optionMapping juga non-null by default
       newMapping.remove(parentOptionValue);
       return q.copyWith(dependentOptions: q.dependentOptions!.copyWith(optionMapping: newMapping));
     });
   }
 
-  // --- LOGIKA SIMPAN DENGAN DIALOG KONFIRMASI ---
   Future<void> saveForm() async {
     if (formTitle.value.trim().isEmpty) {
       Get.snackbar('Input Error', 'Judul form tidak boleh kosong.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white);
@@ -438,7 +491,7 @@ class AdminFormBuilderController extends GetxController {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () {
-              Get.back(); // Tutup dialog
+              Get.back();
             },
             child: Text(
               'Tidak',
@@ -482,7 +535,9 @@ class AdminFormBuilderController extends GetxController {
       final formToSave = FormItem(
         id: formIdToSave,
         title: formTitle.value.trim(),
+        // --- PERBAIKAN UNTUK UNDEFINED NAME 'description' ---
         description: formDescription.value.trim(),
+        // --- AKHIR PERBAIKAN ---
         createdAt: createdAtValue,
         createdByUserId: _auth.currentUser!.uid,
         sections: sections.map((s) => s.cleanUpQuestionsBeforeSave()).toList(),
@@ -518,7 +573,6 @@ class AdminFormBuilderController extends GetxController {
       }
     }
   }
-  // --- AKHIR LOGIKA SIMPAN ---
 
   void _navigateBackIfPossible() {
     if (Get.isSnackbarOpen) Get.closeCurrentSnackbar();
