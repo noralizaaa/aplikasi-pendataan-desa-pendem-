@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+
+## [0.13.1] - 2025-05-27
+> Created by Lutfi Indra
+
+>  Resolved Login/Profile Bugs and Improved User Interface
+
+### 🎉 Added
+-   **Added profile.png asset to represent the user profile picture across the application.:**
+
+### 🛠️ Changed
+-   **Landing Page UI Update: Refreshed design elements and layout for a more modern and welcoming first impression.**
+-   **User Home Page UI Update: Improved layout consistency, spacing, and typography for enhanced usability.**
+-   **User Profile Page UI Update: Redesigned UI elements to provide better clarity and aesthetic appeal.**
+
+### 🐛 Fixed
+-   **Logout/Login Issue: resolved a bug where users could not immediately log in again after logging out.**
+-   **Profile Page Repetition Bug: eFixed an issue on the profile page where the Pendata display was looping indefinitely (e.g., pendata1-2-3-...).**
 ---
 
 ## [0.12.1] - 2025-05-27

@@ -73,6 +73,7 @@ flutter:
       - assets/images/bps.png
       - assets/images/undraw_mobile-ux_5h2w.png
       - assets/images/SensusKu.png
+      - assets/images/Profile.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

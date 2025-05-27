@@ -34,14 +34,17 @@ class UserProfileScreen extends GetView<UserProfileController> {
             ),
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [primaryHeaderColor, accentHeaderColor],
+                    colors: [
+                      accentHeaderColor.withOpacity(0.8), // Kurangi opasitas dari 1.0 ke 0.8
+                      primaryHeaderColor.withOpacity(0.5), // Sama untuk warna terang
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
+                  borderRadius: const BorderRadius.only(
+                    bottomRight: Radius.circular(100),
                   ),
                 ),
                 child: Padding(
@@ -52,8 +55,16 @@ class UserProfileScreen extends GetView<UserProfileController> {
                       CircleAvatar(
                         radius: 50,
                         backgroundColor: Colors.white.withOpacity(0.9),
-                        child: Icon(Icons.person, size: 60, color: iconColor),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/images/Profile.png',
+                            fit: BoxFit.cover,
+                            width: 90,
+                            height: 90,
+                          ),
+                        ),
                       ),
+
                       const SizedBox(height: 16),
                       Obx(() {
                         final username = controller.userProfile.value?.username ?? 'Pengguna';
@@ -62,7 +73,7 @@ class UserProfileScreen extends GetView<UserProfileController> {
                           style: const TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: Colors.black,
                           ),
                         );
                       }),
