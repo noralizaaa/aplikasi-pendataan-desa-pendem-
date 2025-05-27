@@ -15,7 +15,7 @@ class AdminAccountPage extends GetView<AdminAccountController> {
   static const Color titleColor = Colors.black87;
   static const Color subtitleColor = Colors.black54;
   static const Color dateColor = Colors.grey;
-  static const Color iconDetailColor = AdminScreen.iconColor; // Dari AdminScreen
+  static const Color iconDetailColor = AdminScreen.iconColor;
 
   @override
   Widget build(BuildContext context) {

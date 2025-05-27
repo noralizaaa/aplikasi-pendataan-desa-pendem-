@@ -1,93 +1,164 @@
-// Path: lib/presentation/user/user_controller.dart
-
+// lib/presentation/user/user_controller.dart
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart'; // For Get.snackbar
-import 'package:aplikasi_pendataan_desa/presentation/user/user_model.dart'; // Sesuaikan path ini
-import 'package:aplikasi_pendataan_desa/infrastructure/navigation/routes.dart'; // Import AppRoutes
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart'; // Hanya untuk Colors pada Get.snackbar jika diperlukan
+import 'user_model.dart';
+// Pastikan Anda memiliki definisi AppRoutes atau ganti dengan string rute langsung
+import 'package:aplikasi_pendataan_desa/infrastructure/navigation/routes.dart';
 
 class UserController extends GetxController {
-  // Observable untuk menyimpan daftar form data
   final RxList<FormDataModel> formDataList = <FormDataModel>[].obs;
-  // Observable untuk loading state saat fetching data
   final RxBool isLoading = true.obs;
-  // Observable untuk menyimpan status otoritas pengguna saat ini (dari LoginController)
-  final RxBool userHasAuthority = false.obs; // Default false
-  // Observable untuk menyimpan nama pengguna
-  final RxString userName = ''.obs;
-  // Observable untuk menyimpan ID program/otoritas pengguna
-  final RxString userProgramId = ''.obs; // NEW: Added userProgramId
+  final RxBool userHasAuthority = false.obs; // Default krusial ke false
+  final RxString userName = 'Pengguna'.obs;
+  final RxString userProgramId = ''.obs; // Default krusial ke string kosong
+
+  final RxString currentSortOrder = 'Default'.obs;
+  final List<String> sortOptions = ['Default', 'Nama A-Z', 'Terbaru'];
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  RxList<FormDataModel> get sortedFormDataList {
+    List<FormDataModel> listToSort = List<FormDataModel>.from(formDataList);
+    switch (currentSortOrder.value) {
+      case 'Nama A-Z':
+        listToSort.sort((a, b) => a.nama.toLowerCase().compareTo(b.nama.toLowerCase()));
+        break;
+      case 'Terbaru':
+        listToSort.sort((a, b) {
+          if (a.createdAt == null && b.createdAt == null) return 0;
+          if (a.createdAt == null) return 1;
+          if (b.createdAt == null) return -1;
+          return b.createdAt!.compareTo(a.createdAt!);
+        });
+        break;
+      default:
+        break;
+    }
+    return listToSort.obs;
+  }
+
+  void changeSortOrder(String? newOrder) {
+    if (newOrder != null && sortOptions.contains(newOrder)) {
+      currentSortOrder.value = newOrder;
+    }
+  }
 
   @override
   void onInit() {
     super.onInit();
-    // Inisialisasi status otoritas pengguna, nama pengguna, dan program ID
-    if (Get.arguments != null && Get.arguments is Map) {
-      if (Get.arguments.containsKey('hasAuthority')) {
-        userHasAuthority.value = Get.arguments['hasAuthority'];
-      }
-      userName.value = Get.arguments['userName']?.toString() ?? 'Pengguna';
-      userProgramId.value = Get.arguments['programId']?.toString() ?? ''; // Get the programId
-    } else {
-      // Fallback jika tidak ada argumen (misal, navigasi langsung atau deep link)
-      userName.value = 'Pengguna';
-      userHasAuthority.value = false;
-      userProgramId.value = ''; // Default to empty if no programId is passed
-    }
 
-    // Hanya fetch data jika punya otoritas atau jika ingin menampilkan form publik
-    if (userHasAuthority.value || userProgramId.value == '000') { // Fetch if has authority or is default '000'
-      fetchFormData();
-    } else {
-      isLoading.value = false; // Hentikan loading jika tidak punya otoritas dan bukan '000'
+    final arguments = Get.arguments;
+    // --- BLOK DEBUG ARGUMEN (PENTING!) ---
+    print("----------------------------------------------------");
+    print("DEBUG UserController onInit: Menerima Get.arguments = $arguments");
+    if (arguments == null) {
+      print("DEBUG UserController onInit: Get.arguments adalah NULL!");
+    } else if (arguments is! Map) {
+      print("DEBUG UserController onInit: Get.arguments BUKAN Map! Tipe: ${arguments.runtimeType}");
     }
+    // --- AKHIR BLOK DEBUG ---
+
+    if (arguments != null && arguments is Map) {
+      print("DEBUG UserController onInit: Argumen ADALAH Map. Memproses...");
+      userHasAuthority.value = arguments['hasAuthority'] as bool? ?? false;
+      userName.value = arguments['userName']?.toString() ?? _auth.currentUser?.displayName ?? _auth.currentUser?.email ?? 'Pengguna';
+      String? programIdArg = arguments['programId']?.toString();
+      if (programIdArg == "null" || programIdArg == null) { // Menangani string "null" dan null asli
+        userProgramId.value = '';
+        print("DEBUG UserController onInit: Argumen programId adalah '$programIdArg', diinterpretasikan sebagai kosong.");
+      } else {
+        userProgramId.value = programIdArg;
+      }
+    } else {
+      print("DEBUG UserController onInit: Argumen NULL atau bukan Map. Menggunakan nilai default (hasAuthority=false).");
+      userHasAuthority.value = false; // Default jika tidak ada argumen
+      userName.value = _auth.currentUser?.displayName ?? _auth.currentUser?.email ?? 'Pengguna';
+      userProgramId.value = '';     // Default jika tidak ada argumen
+    }
+    print("DEBUG UserController onInit: State Final setelah proses argumen: hasAuthority=${userHasAuthority.value}, programId='${userProgramId.value}', userName='${userName.value}'");
+    print("----------------------------------------------------");
+
+    // fetchFormData akan selalu dipanggil. Logika di dalamnya akan menentukan tindakan.
+    fetchFormData();
   }
 
-  // Fungsi untuk mengambil data form dari Firebase Firestore
   Future<void> fetchFormData() async {
     isLoading.value = true;
-    try {
-      final querySnapshot = await FirebaseFirestore.instance.collection('forms').get();
-      final List<FormDataModel> fetchedForms = querySnapshot.docs
-          .map((doc) => FormDataModel.fromMap(doc.data()))
-          .toList();
+    print("DEBUG UserController fetchFormData: Memulai. hasAuthority awal=${userHasAuthority.value}");
+    User? currentUser = _auth.currentUser;
+    List<FormDataModel> newFormsToDisplay = [];
 
+    try {
       if (userHasAuthority.value) {
-        // Jika user punya otoritas penuh, tampilkan semua form
-        formDataList.value = fetchedForms;
-      } else if (userProgramId.value == '000') {
-        // Jika user hanya punya otoritas '000' (tidak ada otoritas khusus),
-        // tampilkan form yang TIDAK memerlukan otoritas khusus
-        formDataList.value = fetchedForms.where((form) => !form.requiresAuthority).toList();
-      } else {
-        // Jika user punya ID program tertentu (misal '001', '002'),
-        // tampilkan form yang TIDAK memerlukan otoritas khusus ATAU yang cocok dengan ID programnya.
-        // Anda mungkin perlu menyesuaikan logika ini berdasarkan bagaimana 'programId'
-        // di mapping ke form mana yang bisa diakses.
-        formDataList.value = fetchedForms.where((form) {
-          // Default: tampilkan form yang tidak memerlukan otoritas khusus
-          if (!form.requiresAuthority) return true;
-          // Custom logic: if form requires authority, check if its ID matches user's program ID
-          return form.idForm == userProgramId.value;
+        // Skenario 1: Admin Global - Ambil semua form yang terdefinisi di 'adminForms'
+        print("DEBUG UserController fetchFormData: Pengguna adalah Admin Global (berdasarkan argumen). Mengambil semua definisi form dari 'adminForms'.");
+        QuerySnapshot adminFormsSnapshot = await _firestore.collection('adminForms').get();
+        newFormsToDisplay = adminFormsSnapshot.docs.map((doc) {
+          return FormDataModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
         }).toList();
+        print("DEBUG UserController fetchFormData: Admin Global - Ditemukan ${newFormsToDisplay.length} form dari 'adminForms'.");
+
+      } else if (currentUser != null) {
+        // Skenario 2: Pengguna biasa (atau jika hasAuthority tidak true) - Cek otorisasi via 'managedAccounts'
+        String currentUserId = currentUser.uid;
+        print("DEBUG UserController fetchFormData: Pengguna biasa (ID: $currentUserId) atau hasAuthority=false. Memeriksa managedAccounts...");
+
+        QuerySnapshot adminFormsSnapshot = await _firestore.collection('adminForms').get();
+        print("DEBUG UserController fetchFormData: Ditemukan ${adminFormsSnapshot.docs.length} dokumen di adminForms untuk diperiksa.");
+
+        for (var formAdminDoc in adminFormsSnapshot.docs) {
+          DocumentSnapshot managedAccountDoc = await _firestore
+              .collection('adminForms')
+              .doc(formAdminDoc.id)
+              .collection('managedAccounts')
+              .doc(currentUserId)
+              .get();
+
+          if (managedAccountDoc.exists) {
+            print("DEBUG UserController fetchFormData: Pengguna diotorisasi untuk formId '${formAdminDoc.id}'. Menggunakan data dari dokumen adminForms ini.");
+            newFormsToDisplay.add(
+                FormDataModel.fromMap(formAdminDoc.data() as Map<String, dynamic>, formAdminDoc.id)
+            );
+          } else {
+            print("DEBUG UserController fetchFormData: Pengguna TIDAK diotorisasi untuk formId '${formAdminDoc.id}' via managedAccounts.");
+          }
+        }
+        print("DEBUG UserController fetchFormData: Pengguna Biasa - Total ${newFormsToDisplay.length} form diotorisasi dan datanya diambil dari 'adminForms'.");
+      } else {
+        print("DEBUG UserController fetchFormData: Pengguna tidak login. Tidak ada form yang diambil.");
       }
 
-    } catch (e) {
+      formDataList.assignAll(newFormsToDisplay);
+
+    } catch (e, s) {
       Get.snackbar(
-        'Error',
-        'Gagal mengambil data form: $e',
+        'Error Pengambilan Data',
+        'Gagal mengambil data form: ${e.toString()}',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.redAccent,
         colorText: Colors.white,
+        duration: const Duration(seconds: 5),
       );
-      print('Error fetching form data: $e');
+      print('ERROR UserController fetchFormData: $e');
+      print('Stack trace: $s');
+      formDataList.clear();
     } finally {
       isLoading.value = false;
+      print("DEBUG UserController fetchFormData: Selesai. isLoading: ${isLoading.value}. Jumlah form di list: ${formDataList.length}");
     }
   }
 
-  // Contoh logout (kembali ke LoginScreen)
   void logout() {
-    Get.offAllNamed(AppRoutes.login); // Kembali ke LoginScreen dan hapus semua rute sebelumnya
+    print("DEBUG UserController: Proses logout pengguna.");
+    userHasAuthority.value = false;
+    userProgramId.value = '';
+    userName.value = 'Pengguna';
+    formDataList.clear();
+    currentSortOrder.value = 'Default';
+    _auth.signOut();
+    Get.offAllNamed(AppRoutes.login); // Pastikan AppRoutes.login terdefinisi
   }
 }

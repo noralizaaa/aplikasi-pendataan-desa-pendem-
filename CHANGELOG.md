@@ -5,7 +5,94 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),  
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# Changelog
 
+This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [0.15.0] - 2025-05-27
+> Created by Bayu Ardiyansyah
+
+> Introduced List Submissions Screen with Enhanced Data Display, Search, Sort, and Delete Capabilities; Refined User Input Form Workflow.
+
+### 🎉 Added
+-   **New Feature: List Submissions Screen (`ListSubmissionFormScreen`, `ListSubmissionFormController`, `ListSubmissionFormBinding`):**
+  -   Users are now directed to this screen after selecting a form type from the main user screen.
+  -   Displays a list of previously submitted entries for the selected form, specific to the logged-in user.
+  -   Includes a prominent "Create New Entry" button that navigates to the `InputUserScreen`.
+-   **Submission Identifier Display:** Submissions in the list now display key identifiers (e.g., Name, NIK/KK) extracted from the actual submitted form data, rather than just the submitter's username. Prioritized codes for extraction include "NAMA_LENGKAP", "NAMA_KEPALA_KELUARGA", "NIK", "NO_KK".
+-   **Search Functionality for Submissions:** Added a search bar on the `ListSubmissionFormScreen` to filter submissions based on the extracted display identifier (case-insensitive).
+-   **Sorting Functionality for Submissions:** Implemented options to sort submissions by "Latest", "Oldest", "Identifier A-Z", and "Identifier Z-A".
+-   **Delete Functionality for Submissions:** Added a "Delete" button for each submission item, including a confirmation dialog, allowing users to remove their own entries.
+-   **Refresh Capability:** Added pull-to-refresh functionality on the `ListSubmissionFormScreen` to reload form structure and submission list.
+
+### 🛠️ Changed
+-   **Navigation Flow:** Tapping a form card on the `UserScreen` now navigates to the new `ListSubmissionFormScreen` (showing existing submissions for that form) instead of directly to the `InputUserScreen` (for new entry).
+-   **`ListSubmissionFormController`:**
+  -   Refactored to fetch and manage both the selected form's structure (`FormItem`) and its associated submissions (`FormSubmission`).
+  -   Introduced a `DisplayableSubmission` helper class to hold the original submission and its extracted/formatted display identifiers for easier UI rendering, searching, and sorting.
+  -   Search and sort logic now operates on these extracted, case-insensitive identifiers.
+-   **`ListSubmissionFormScreen` UI:**
+  -   Significantly redesigned to closely match the provided UI mock-up (`gambar.png`).
+  -   Features a new header section with an integrated search bar and a gradient background.
+  -   Includes a "Riwayat Pendataan" (Submission History) title and a sort order dropdown.
+  -   Submission items are displayed as cards with primary identifier text, submission date, and "Edit" (placeholder) / "Delete" buttons.
+  -   A full-width "Buat Pendataan Baru" (Create New Entry) button is fixed at the bottom of the screen.
+-   **`InputUserController` & `InputUserScreen`:**
+  -   Resolved an error related to `DropdownButtonFormField` value assignment.
+  -   Improved null-safety for accessing `question.validation` properties within `InputUserController`.
+  -   Refined form state initialization (`_initializeStates` in `InputUserController`) for better reset behavior, especially for checkboxes and dropdowns, to support multiple submissions within the same session.
+  -   Snackbar notification for successful form submission is now consistently displayed, and the form is reset for a new entry instead of navigating back.
+-   **Date Formatting:** Consistently used `intl` package for date formatting (`dd MMM yy, HH:mm` with 'id_ID' locale) on the `ListSubmissionFormScreen`.
+
+### 🐛 Fixed
+-   **(Underlying) Potential for `DropdownButtonFormField` value type error in `InputUserScreen`:** Corrected logic for setting the `value` property to ensure it's a valid `String?` from the available options.
+-   **(Underlying) Potential for null access when handling `question.validation` in `InputUserController`:** Improved safe access patterns.
+
+---
+
+## [0.14.1] - 2025-05-27
+> Created by Bayu Ardiyansyah
+> 
+> Improved Admin Form Builder Usability and Controller Optimizations.
+
+### 🎉 Added
+-   **Admin Form Builder:** Added a modern and elegant confirmation dialog ('Yes/No') before saving a form to prevent accidental saves.
+
+### 🛠️ Changed
+-   **Admin Form Builder:** Form sections (`ExpansionTile`) on the builder page are now initially collapsed by default for a cleaner and tidier initial view.
+-   **Admin Form Builder:** Optimized the `getAvailableControlledGroupTags` method in `AdminFormBuilderController` for improved efficiency in fetching available group tags.
+
+---
+## [0.14.0] - 2025-05-27
+> Created by Bayu Ardiyansyah
+
+> Enhanced Form Authorization, User Display Logic, and Fixed Landing Page UI
+
+### 🎉 Added
+-   **Dynamic Form Authorization via `managedAccounts`:** `UserController` now actively checks Firestore `adminForms/{formId}/managedAccounts/{userId}` to determine form access for users without global `hasAuthority`, enabling granular form permissions.
+-   **Firebase Auth Integration in `UserController`:** `UserController` now directly utilizes `FirebaseAuth.instance` to get current user details (UID for `managedAccounts` check, `displayName`/`email` for default user naming).
+-   **Enhanced Debugging Logs in `UserController`:** Incorporated detailed logging for argument processing in `onInit` and throughout the `WorkspaceFormData` lifecycle to significantly improve troubleshooting capabilities.
+
+### 🛠️ Changed
+-   **Refactored `UserController.fetchFormData()` Logic:**
+  -   Supports two main authorization paths: global admins (argument `hasAuthority: true`) fetching all forms defined in `adminForms`, and regular users fetching forms based on their specific permissions in `managedAccounts`.
+  -   Form data for authorized users is now directly sourced from `adminForms/{formId}` documents.
+-   **Adapted `FormDataModel.fromMap()`:** Modified the factory constructor to correctly parse data fields from `adminForms` documents (e.g., mapping Firestore `title` field to `nama` in model) and to use the Firestore document ID as `idForm`.
+-   **Improved `UserScreen` Display Logic:**
+  -   Refined conditional rendering in `Obx` widget to prioritize displaying the list of forms if `sortedFormDataList` is populated (either via global admin access or `managedAccounts` authorization).
+  -   Updated conditions for showing `_buildNoDataMessage()` versus `_buildNoAuthorityMessage()` to more accurately reflect data availability and user login status.
+-   **Robust Argument Handling in `UserController.onInit()`:** Enhanced `onInit` to gracefully manage scenarios where `Get.arguments` might be `null` or not a `Map`, defaulting `userHasAuthority` to `false` which then correctly triggers the `managedAccounts` authorization check.
+-   **Landing Page `BottomArcClipper` Logic:** Adjusted the `BottomArcClipper` and internal padding/spacing within the top clipped section of the Landing Page for a more refined curve and content placement.
+
+### 🐛 Fixed
+-   **User Form List Not Displaying for Specifically Authorized Users:** Resolved the critical issue where users with specific form permissions (via `managedAccounts`) could not see their assigned forms. This was addressed by implementing the new `managedAccounts` authorization logic in `UserController` and correcting UI display conditions in `UserScreen`.
+-   **Misleading "Akses Terbatas" Message:** Corrected the scenario where "Akses Terbatas" was shown even if forms were successfully fetched (e.g., via `managedAccounts` but `hasAuthority` argument was `false` or not received), by adjusting the UI rendering priorities in `UserScreen`.
+-   **Landing Page Bottom Overflow:** Addressed and resolved the "Bottom Overflowed" issue on the `LandingPageScreen` by adjusting vertical paddings, `SizedBox` heights, image scaling within the top section, and refining the layout (including `Spacer` usage and `MainAxisAlignment`) of elements in the lower section containing the "START" button.
+-   **(Underlying) Argument Reception Issue in `UserController`:** While the root cause of arguments not being passed via `Get.toNamed` still requires user investigation on the calling side, `UserController` now more gracefully defaults to a state that triggers `managedAccounts` checks, making it more resilient to missing arguments.
+---
 
 ## [0.13.1] - 2025-05-27
 > Created by Lutfi Indra

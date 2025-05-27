@@ -5,6 +5,10 @@ import 'package:aplikasi_pendataan_desa/presentation/LandingPage/LandingPage.dar
 import 'package:aplikasi_pendataan_desa/presentation/login/login_screen.dart';
 import 'package:aplikasi_pendataan_desa/presentation/login/login_controller.dart';
 import 'package:aplikasi_pendataan_desa/presentation/splash/splash_screen.dart';
+import 'package:aplikasi_pendataan_desa/presentation/user/InputFormUser/Input_User_Screen.dart';
+import 'package:aplikasi_pendataan_desa/presentation/user/InputFormUser/input_user_controller.dart';
+import 'package:aplikasi_pendataan_desa/presentation/user/ListSubmissionForm/list_submission_form_controller.dart';
+import 'package:aplikasi_pendataan_desa/presentation/user/ListSubmissionForm/list_submission_form_screen.dart';
 import 'package:aplikasi_pendataan_desa/presentation/user/user_controller.dart';
 import 'package:aplikasi_pendataan_desa/presentation/user/user_screen.dart';
 import 'package:aplikasi_pendataan_desa/presentation/admin/admin_screen.dart';
@@ -126,6 +130,25 @@ class AllAccountBinding extends Bindings {
     );
   }
 }
+
+class InputUserBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<InputUserController>(
+          () => InputUserController(),
+    );
+  }
+}
+
+class ListSubmissionFormBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<ListSubmissionFormController>(
+          () => ListSubmissionFormController(),
+    );
+  }
+}
+
 // --- END NEW BINDING ---
 
 // Enum untuk lingkungan (opsional, tapi baik untuk konfigurasi)
@@ -176,7 +199,8 @@ class AppRoutes {
   static const String adminAccount = '/admin-account'; // Standalone Admin Account Page / Kategori Manajemen Akun
   static const String formAccountManagement = '/form-account-management'; // Page for managing accounts of a specific form
   static const String allAccountManagement = '/all_account_management'; // --- NEW ROUTE ---
-
+  static const INPUT_FORM_USER = '/input-form-user';
+  static const LIST_SUBMISSION_FORM = '/list-submission-form';
   static String initialRoute = splash;
 
   static List<GetPage> routes = [
@@ -236,6 +260,16 @@ class AppRoutes {
       page: () => const AllAccountPage(),
       binding: AllAccountBinding(),
     ),
+    GetPage(
+      name: AppRoutes.INPUT_FORM_USER,
+      page: () => const InputUserScreen(),
+      binding: InputUserBinding(),
+    ),
+    GetPage( // <-- TAMBAHKAN BLOK INI
+    name: AppRoutes.LIST_SUBMISSION_FORM,
+    page: () => const ListSubmissionFormScreen(),
+    binding: ListSubmissionFormBinding(),
+    )
     // --- END NEW GETPAGE ENTRY ---
   ];
 }

@@ -179,6 +179,11 @@ class FormQuestion {
   final int? repeatCount;
   final DependentOptionsConfig? dependentOptions;
 
+  // Properti untuk grup pertanyaan berulang
+  final bool isRepeatableGroupController;
+  final String? controlledGroupTag;
+  final String? belongsToGroupTag;
+
   FormQuestion({
     required this.id,
     this.code,
@@ -192,6 +197,9 @@ class FormQuestion {
     this.repeatable = false,
     this.repeatCount,
     this.dependentOptions,
+    this.isRepeatableGroupController = false,
+    this.controlledGroupTag,
+    this.belongsToGroupTag,
   });
 
   factory FormQuestion.fromMap(Map<String, dynamic> map) {
@@ -208,12 +216,18 @@ class FormQuestion {
           : null,
       conditionalJumps: (map['conditionalJumps'] as List<dynamic>?)
           ?.map((j) => ConditionalJump.fromMap(j as Map<String, dynamic>))
-          .toList() ?? [],
+          .toList() ??
+          [],
       repeatable: map['repeatable'] as bool? ?? false,
       repeatCount: map['repeatCount'] as int?,
       dependentOptions: map['dependentOptions'] != null
-          ? DependentOptionsConfig.fromMap(map['dependentOptions'] as Map<String, dynamic>)
+          ? DependentOptionsConfig.fromMap(
+          map['dependentOptions'] as Map<String, dynamic>)
           : null,
+      isRepeatableGroupController:
+      map['isRepeatableGroupController'] as bool? ?? false,
+      controlledGroupTag: map['controlledGroupTag'] as String?,
+      belongsToGroupTag: map['belongsToGroupTag'] as String?,
     );
   }
 
@@ -227,27 +241,51 @@ class FormQuestion {
       'hasOtherOption': hasOtherOption,
       'conditionalJumps': conditionalJumps.map((j) => j.toMap()).toList(),
       'repeatable': repeatable,
+      'isRepeatableGroupController': isRepeatableGroupController,
     };
-    if (code != null && code!.isNotEmpty) map['code'] = code;
-    if (validation != null && validation!.toMap().isNotEmpty) map['validation'] = validation!.toMap();
-    if (repeatCount != null) map['repeatCount'] = repeatCount;
-    if (dependentOptions != null) map['dependentOptions'] = dependentOptions!.toMap();
+    if (code != null && code!.isNotEmpty) {
+      map['code'] = code;
+    }
+    if (validation != null && validation!.toMap().isNotEmpty) {
+      map['validation'] = validation!.toMap();
+    }
+    if (repeatCount != null) {
+      map['repeatCount'] = repeatCount;
+    }
+    if (dependentOptions != null) {
+      map['dependentOptions'] = dependentOptions!.toMap();
+    }
+    if (controlledGroupTag != null && controlledGroupTag!.isNotEmpty) {
+      map['controlledGroupTag'] = controlledGroupTag;
+    }
+    if (belongsToGroupTag != null && belongsToGroupTag!.isNotEmpty) {
+      map['belongsToGroupTag'] = belongsToGroupTag;
+    }
     return map;
   }
 
   FormQuestion copyWith({
     String? id,
-    String? code, bool setCodeNull = false,
+    String? code,
+    bool setCodeNull = false,
     String? questionText,
     QuestionType? type,
     List<String>? options,
     bool? isRequired,
     bool? hasOtherOption,
-    ValidationRule? validation, bool setValidationNull = false,
+    ValidationRule? validation,
+    bool setValidationNull = false,
     List<ConditionalJump>? conditionalJumps,
     bool? repeatable,
-    int? repeatCount, bool setRepeatCountNull = false,
-    DependentOptionsConfig? dependentOptions, bool setDependentOptionsNull = false,
+    int? repeatCount,
+    bool setRepeatCountNull = false,
+    DependentOptionsConfig? dependentOptions,
+    bool setDependentOptionsNull = false,
+    bool? isRepeatableGroupController,
+    String? controlledGroupTag,
+    bool setControlledGroupTagNull = false,
+    String? belongsToGroupTag,
+    bool setBelongsToGroupTagNull = false,
   }) {
     return FormQuestion(
       id: id ?? this.id,
@@ -258,10 +296,21 @@ class FormQuestion {
       isRequired: isRequired ?? this.isRequired,
       hasOtherOption: hasOtherOption ?? this.hasOtherOption,
       validation: setValidationNull ? null : (validation ?? this.validation),
-      conditionalJumps: conditionalJumps ?? List<ConditionalJump>.from(this.conditionalJumps),
+      conditionalJumps:
+      conditionalJumps ?? List<ConditionalJump>.from(this.conditionalJumps),
       repeatable: repeatable ?? this.repeatable,
       repeatCount: setRepeatCountNull ? null : (repeatCount ?? this.repeatCount),
-      dependentOptions: setDependentOptionsNull ? null : (dependentOptions ?? this.dependentOptions),
+      dependentOptions: setDependentOptionsNull
+          ? null
+          : (dependentOptions ?? this.dependentOptions),
+      isRepeatableGroupController:
+      isRepeatableGroupController ?? this.isRepeatableGroupController,
+      controlledGroupTag: setControlledGroupTagNull
+          ? null
+          : (controlledGroupTag ?? this.controlledGroupTag),
+      belongsToGroupTag: setBelongsToGroupTagNull
+          ? null
+          : (belongsToGroupTag ?? this.belongsToGroupTag),
     );
   }
 }
