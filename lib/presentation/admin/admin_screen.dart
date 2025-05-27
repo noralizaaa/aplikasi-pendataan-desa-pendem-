@@ -2,31 +2,28 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart'; // Make sure this is imported
+import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 import 'package:aplikasi_pendataan_desa/presentation/admin/admin_controller.dart';
 import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_page.dart';
 import 'package:aplikasi_pendataan_desa/presentation/admin/Admin_Profile/admin_account_page.dart';
-
-// Import AppRoutes
-import '../../../infrastructure/navigation/routes.dart'; // Adjust path if necessary
-// Import FormItem model (jika masih diperlukan di file ini, jika tidak bisa dihapus)
-// import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart';
-
+import '../../../infrastructure/navigation/routes.dart';
 
 class AdminScreen extends GetView<AdminController> {
   const AdminScreen({super.key});
 
   static const Color pageBackgroundColor = Color(0xFFF2FAFF);
-  static const Color primaryHeaderColor = Color(0xFFFFCC80); // A light orange
-  static const Color accentHeaderColor = Color(0xFFFF9800); // A more vibrant orange
-  static const Color iconColor = Color(0xFFF57C00); // A darker orange for icons
+  static const Color primaryHeaderColor = Color(0xFFFFCC80);
+  static const Color accentHeaderColor = Color(0xFFFF9800);
+  static const Color iconColor = Color(0xFFF57C00);
   static const Color cardBackgroundColor = Colors.white;
   static const Color bottomNavIconColor = Color(0xFFF57C00);
   static const Color titlePageColor = Colors.black87;
 
   List<Widget> get _pages => [
-    _DashboardContentOnly(controller: controller), // Our BI Dashboard
+    _DashboardContentOnly(controller: controller),
     const AdminFormPage(),
     const AdminAccountPage(),
   ];
@@ -38,91 +35,103 @@ class AdminScreen extends GetView<AdminController> {
       body: Column(
         children: [
           Container(
-            // Tinggi header bisa disesuaikan jika perlu untuk mengakomodasi konten
-            padding: const EdgeInsets.only(top: 80.0, left: 24.0, right: 24.0, bottom: 80.0), // Tambah padding bottom
-            width: double.infinity, // Pastikan container mengambil lebar penuh
+            padding: const EdgeInsets.only(
+                top: 40.0, left: 24.0, right: 24.0, bottom: 20.0),
+            width: double.infinity,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  accentHeaderColor.withOpacity(1.0), // Kurangi opasitas dari 1.0 ke 0.8
-                  primaryHeaderColor.withOpacity(0.5), // Sama untuk warna terang
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.only(
-                bottomRight: Radius.circular(80),
-                // bottomRight: Radius.circular(30), // Opsional, jika ingin simetris
-              ),
+                gradient: LinearGradient(
+                  colors: [
+                    accentHeaderColor.withOpacity(0.9),
+                    primaryHeaderColor.withOpacity(0.7),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.only(
+                  bottomRight: Radius.circular(60),
+                  bottomLeft: Radius.circular(10),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4)
+                  )
+                ]
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center, // Pusatkan konten vertikal jika tinggi tetap
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                SizedBox(height: MediaQuery.of(context).padding.top),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Obx(() => Text(
-                      'Hello, ${controller.adminName.value.isNotEmpty ? controller.adminName.value : 'Admin'}',
-                      style: const TextStyle(
-                        fontSize: 28, // Sedikit lebih kecil agar pas
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    )),
+                    Expanded(
+                      child: Obx(() => Text(
+                        'Hello, ${controller.adminName.value.isNotEmpty ? controller.adminName.value : 'Admin'}',
+                        style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [Shadow(blurRadius: 2, color: Colors.black26, offset: Offset(1,1))]
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )),
+                    ),
                     InkWell(
                       onTap: () {
                         Get.toNamed(AppRoutes.adminProfil);
                       },
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius: BorderRadius.circular(25),
                       child: CircleAvatar(
-                        radius: 28,
-                        backgroundColor: Colors.white.withOpacity(0.8),
-                        child: const Icon(Icons.person, size: 40, color: AdminScreen.iconColor),
+                        radius: 25,
+                        backgroundColor: Colors.white.withOpacity(0.3),
+                        child: const Icon(Icons.person_rounded,
+                            size: 30, color: Colors.white),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 40), // Sesuaikan spacing
+                const SizedBox(height: 25),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white.withOpacity(0.95),
+                    borderRadius: BorderRadius.circular(25),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        spreadRadius: 1,
-                        blurRadius: 5,
-                        offset: const Offset(0, 3),
+                        color: Colors.black.withOpacity(0.08),
+                        spreadRadius: 0,
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
                   child: TextField(
-                    // Hubungkan dengan controller untuk update query pencarian
                     onChanged: (value) {
                       controller.updateGlobalSearchQuery(value);
                     },
-                    // Anda bisa juga menggunakan TextEditingController jika perlu mengontrol teks dari controller
-                    // controller: controller.searchBarTextController, // Jika Anda membuatnya di AdminController
                     decoration: InputDecoration(
-                      hintText: 'Cari berdasarkan judul form...', // Updated hint text
-                      hintStyle: TextStyle(color: Colors.grey[600]),
-                      border: InputBorder.none,
-                      icon: Icon(Icons.search, color: Colors.grey[600]),
-                      // Tambahkan tombol clear (X) pada search bar
-                      suffixIcon: Obx(() => controller.globalSearchQuery.value.isNotEmpty
-                          ? IconButton(
-                        icon: Icon(Icons.clear, color: Colors.grey[600]),
-                        onPressed: () {
-                          controller.clearGlobalSearchQuery();
-                          // Jika menggunakan TextEditingController di AdminScreen:
-                          // _searchFocusNode.unfocus(); // Untuk menutup keyboard
-                          // _localSearchController.clear(); // Jika ada controller lokal di UI
-                        },
-                      )
-                          : const SizedBox.shrink()), // Kosong jika tidak ada query
+                        hintText: 'Cari berdasarkan judul form...',
+                        hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
+                        border: InputBorder.none,
+                        prefixIcon: Icon(Icons.search, color: Colors.grey.shade600, size: 22),
+                        suffixIcon: Obx(() =>
+                        controller.globalSearchQuery.value.isNotEmpty
+                            ? IconButton(
+                          icon: Icon(Icons.clear_rounded, color: Colors.grey.shade500, size: 20),
+                          onPressed: () {
+                            controller.clearGlobalSearchQuery();
+                            FocusScope.of(context).unfocus();
+                          },
+                        )
+                            : const SizedBox.shrink()),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14)
                     ),
+                    style: const TextStyle(fontSize: 15, color: Colors.black87),
                   ),
                 ),
               ],
@@ -142,37 +151,42 @@ class AdminScreen extends GetView<AdminController> {
         currentIndex: controller.selectedPageIndex.value,
         onTap: controller.onPageChanged,
         selectedItemColor: bottomNavIconColor,
-        unselectedItemColor: Colors.grey,
+        unselectedItemColor: Colors.grey.shade500,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11.5),
+        unselectedLabelStyle: const TextStyle(fontSize: 11),
         showUnselectedLabels: true,
         type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        elevation: 8.0,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.assessment_outlined), label: 'Form'),
-          BottomNavigationBarItem(icon: Icon(Icons.account_circle_rounded), label: 'Account'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.file_copy_rounded), label: 'Form'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.manage_accounts_rounded), label: 'Account'),
         ],
       )),
     );
   }
 }
 
-
 class _DashboardContentOnly extends StatelessWidget {
   final AdminController controller;
   const _DashboardContentOnly({required this.controller});
 
   static const Color cardBgColor = AdminScreen.cardBackgroundColor;
-  static const Color titleColor = Colors.black87;
+  static const Color titleColor = AdminScreen.titlePageColor;
   static const Color subtitleColor = Colors.black54;
-  static const Color dateColor = Colors.grey;
-  static const Color iconDetailColor = AdminScreen.iconColor;
-  static const Color filterChipColor = AdminScreen.primaryHeaderColor;
-
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      if (controller.isDashboardLoading.value && controller.filteredFormSubmissions.isEmpty) {
-        return const Center(child: CircularProgressIndicator(color: AdminScreen.accentHeaderColor));
+      if (controller.isDashboardLoading.value &&
+          controller.filteredFormSubmissions.isEmpty &&
+          controller.submissionTrend.isEmpty) {
+        return const Center(
+            child: CircularProgressIndicator(color: AdminScreen.accentHeaderColor));
       }
 
       return RefreshIndicator(
@@ -183,93 +197,329 @@ class _DashboardContentOnly extends StatelessWidget {
           children: [
             _buildDateFilterSection(context),
             const SizedBox(height: 20),
-
             _buildMetricCards(),
-            const SizedBox(height: 20),
-
+            const SizedBox(height: 24),
             Text(
-              'Submission Trend (Daily)',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: titleColor),
+              'Tren Submission Harian',
+              style: Get.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600, color: titleColor),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Container(
-              height: 200,
-              padding: const EdgeInsets.all(8), // Tambahkan padding agar chart tidak terlalu mepet
+              height: 220,
+              padding: const EdgeInsets.fromLTRB(0, 16, 16, 12),
               decoration: BoxDecoration(
                 color: cardBgColor,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 2,
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              alignment: Alignment.center,
-              // Cek jika _fullSubmissionTrend (data master sebelum filter tanggal) kosong
-              // atau submissionTrend (setelah filter tanggal) kosong
-              child: controller.submissionTrend.isEmpty && controller.selectedStartDate.value == null
-                  ? _buildDummyChartWithLabel("No trend data available overall.")
-                  : controller.submissionTrend.isEmpty && controller.selectedStartDate.value != null
-                  ? _buildDummyChartWithLabel("No trend data for selected date range.")
-                  : const Text( // Ganti ini dengan implementasi chart Anda
-                'Chart Placeholder (Implement with charts_flutter or fl_chart)',
-                style: TextStyle(color: subtitleColor),
-              ),
-            ),
-            const SizedBox(height: 20),
+              child: Obx(() {
+                bool noOverallData = !controller.isDashboardLoading.value &&
+                    controller.submissionTrend.isEmpty &&
+                    controller.selectedStartDate.value == null;
+                bool noFilteredData = !controller.isDashboardLoading.value &&
+                    controller.submissionTrend.isEmpty &&
+                    controller.selectedStartDate.value != null;
 
+                if (controller.isDashboardLoading.value &&
+                    controller.submissionTrend.isEmpty) {
+                  return const Center(
+                      child: CircularProgressIndicator(
+                          color: AdminScreen.accentHeaderColor, strokeWidth: 2.5));
+                } else if (noOverallData) {
+                  return _buildDummyChartWithLabel(
+                      "Belum ada data tren submission secara keseluruhan.", isEmpty: true);
+                } else if (noFilteredData) {
+                  return _buildDummyChartWithLabel(
+                      "Tidak ada data tren untuk rentang tanggal yang dipilih.",
+                      isEmpty: true);
+                } else if (controller.submissionTrend.isEmpty &&
+                    !controller.isDashboardLoading.value) {
+                  return _buildDummyChartWithLabel(
+                      "Tidak ada data untuk ditampilkan pada chart.", isEmpty: true);
+                }
+
+                List<FlSpot> spots = [];
+                List<String> dateLabels = [];
+                final trendEntries = controller.submissionTrend.entries.toList();
+
+                double minY = 0;
+                double maxY = 5;
+
+                if (trendEntries.isNotEmpty) {
+                  maxY = trendEntries
+                      .map((e) => e.value)
+                      .reduce((a, b) => a > b ? a : b)
+                      .toDouble();
+                  if (maxY < 5) maxY = 5;
+                  if (maxY == 0) maxY = 1;
+                }
+
+                for (int i = 0; i < trendEntries.length; i++) {
+                  spots.add(FlSpot(i.toDouble(), trendEntries[i].value.toDouble()));
+                  dateLabels.add(trendEntries[i].key);
+                }
+
+                if (spots.isEmpty && !controller.isDashboardLoading.value) {
+                  return _buildDummyChartWithLabel(
+                      "Tidak ada poin data untuk diplot pada chart.", isEmpty: true);
+                }
+
+                return LineChart(
+                  LineChartData(
+                    minY: minY,
+                    maxY: maxY,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: true,
+                      horizontalInterval:
+                      (maxY / 4).roundToDouble() > 0 ? (maxY / 4).roundToDouble() : 1,
+                      verticalInterval:
+                      spots.length > 10 ? (spots.length / 7).ceilToDouble() : 1,
+                      getDrawingHorizontalLine: (value) =>
+                          FlLine(color: Colors.grey.shade200, strokeWidth: 0.8),
+                      getDrawingVerticalLine: (value) =>
+                          FlLine(color: Colors.grey.shade200, strokeWidth: 0.8),
+                    ),
+                    titlesData: FlTitlesData(
+                      show: true,
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 32,
+                          interval: spots.length > 7
+                              ? (spots.length / (spots.length > 20 ? 6 : 4)).ceilToDouble()
+                              : 1,
+                          getTitlesWidget: (double value, TitleMeta meta) {
+                            // Ensure index is valid
+                            final int index = value.toInt();
+                            if (index < 0 || index >= dateLabels.length) {
+                              return const SizedBox.shrink();
+                            }
+
+                            // Parse and format date
+                            try {
+                              final DateTime date = DateFormat('yyyy-MM-dd').parse(dateLabels[index]);
+                              final String formattedDate = DateFormat('dd\nMMM', 'id_ID').format(date);
+                              return SideTitleWidget(
+                                meta: meta, // Required parameter
+                                space: 6.0,
+                                child: Text(
+                                  formattedDate,
+                                  style: TextStyle(
+                                    color: subtitleColor ?? Colors.grey.shade600, // Fallback color, non-const
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 9,
+                                  ),
+                                ),
+                                fitInside: SideTitleFitInsideData(
+                                  enabled: spots.length > 10, // Enable only for dense data
+                                  distanceFromEdge: 6.0,
+                                  parentAxisSize: meta.parentAxisSize, axisPosition: meta.axisPosition,
+                                ),
+                              );
+                            } catch (e) {
+                              debugPrint('Error parsing date at index $index: $e');
+                              return const SizedBox.shrink();
+                            }
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 38,
+                          interval: (maxY / 4).roundToDouble() > 0 ? (maxY / 4).roundToDouble() : 1,
+                          getTitlesWidget: (double value, TitleMeta meta) {
+                            // Only show integer, non-negative values
+                            if (value != value.toInt() || value < 0) {
+                              return const SizedBox.shrink();
+                            }
+
+                            // Use formattedValue for consistency
+                            String text;
+                            if (value == meta.min || value == meta.max) {
+                              text = meta.formattedValue;
+                            } else if (meta.appliedInterval != null &&
+                                meta.appliedInterval! > 0 &&
+                                value % meta.appliedInterval! == 0) {
+                              text = meta.formattedValue;
+                            } else {
+                              return const SizedBox.shrink();
+                            }
+
+                            return SideTitleWidget(
+                              meta: meta, // Required parameter
+                              space: 4.0,
+                              child: Text(
+                                text,
+                                style: TextStyle(
+                                  color: subtitleColor ?? Colors.grey.shade600, // Fallback color, non-const
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              fitInside: SideTitleFitInsideData(
+                                enabled: maxY > 10, // Enable only for large Y-axis ranges
+                                distanceFromEdge: 4.0,
+                                parentAxisSize: meta.parentAxisSize, axisPosition: meta.axisPosition,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    borderData: FlBorderData(
+                      show: true,
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey.shade400, width: 1),
+                        left: BorderSide(color: Colors.grey.shade400, width: 1),
+                        right: BorderSide.none,
+                        top: BorderSide.none,
+                      ),
+                    ),
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: spots,
+                        isCurved: true,
+                        gradient: const LinearGradient(
+                          colors: [AdminScreen.primaryHeaderColor, AdminScreen.accentHeaderColor],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        barWidth: 4,
+                        isStrokeCapRound: true,
+                        dotData: FlDotData(
+                          show: spots.length <= 15,
+                          getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                            radius: 3.5,
+                            color: Colors.white,
+                            strokeWidth: 1.5,
+                            strokeColor: AdminScreen.accentHeaderColor,
+                          ),
+                        ),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          gradient: LinearGradient(
+                            colors: [
+                              AdminScreen.primaryHeaderColor.withOpacity(0.3),
+                              AdminScreen.accentHeaderColor.withOpacity(0.1),
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
+                      ),
+                    ],
+                    lineTouchData: LineTouchData(
+                      handleBuiltInTouches: true,
+                      touchTooltipData: LineTouchTooltipData(
+                        tooltipBorderRadius: BorderRadius.circular(8.0),
+                        getTooltipColor: (LineBarSpot spot) => AdminScreen.accentHeaderColor,
+                        getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                          return touchedBarSpots.map((barSpot) {
+                            final flSpot = barSpot;
+                            if (flSpot.x.toInt() >= 0 && flSpot.x.toInt() < dateLabels.length) {
+                              DateTime date = DateFormat('yyyy-MM-dd').parse(dateLabels[flSpot.x.toInt()]);
+                              String formattedDate = DateFormat('EEE, dd MMM yy', 'id_ID').format(date);
+                              return LineTooltipItem(
+                                '$formattedDate\n',
+                                const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: flSpot.y.toInt().toString(),
+                                    style: TextStyle(
+                                      color: Colors.yellowAccent[400],
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  const TextSpan(
+                                    text: ' isian',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                                textAlign: TextAlign.center,
+                              );
+                            }
+                            return null;
+                          }).where((item) => item != null).toList().cast<LineTooltipItem>();
+                        },
+                      ),
+                    ),
+                  ),
+                  duration: const Duration(milliseconds: 300),
+                );
+              }),
+            ),
+            const SizedBox(height: 24),
             Text(
               'Submissions per Form',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: titleColor),
+              style: Get.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: titleColor),
             ),
-            const SizedBox(height: 10),
-            // Gunakan controller.filteredFormSubmissions untuk menampilkan daftar form yang sudah difilter
-            controller.filteredFormSubmissions.isEmpty
+            const SizedBox(height: 12),
+            Obx(() => controller.filteredFormSubmissions.isEmpty && !controller.isDashboardLoading.value
                 ? _buildNoDataMessage(
                 controller.globalSearchQuery.value.isNotEmpty
-                    ? 'No forms found matching "${controller.globalSearchQuery.value}".'
+                    ? 'Tidak ada form cocok dengan "${controller.globalSearchQuery.value}".'
                     : controller.selectedStartDate.value != null
-                    ? 'No form submissions found for the selected date range.'
-                    : 'No form submissions available.'
+                    ? 'Tidak ada submission form untuk rentang tanggal yang dipilih.'
+                    : 'Belum ada submission form.'
             )
                 : Column(
               children: controller.filteredFormSubmissions.map((entry) {
                 return _buildFormSubmissionItem(entry);
               }).toList(),
-            ),
-            const SizedBox(height: 20),
-
-            _buildFormAccessSection(), // Widget ini sudah menggunakan controller.filteredFormAccessCounts
-            const SizedBox(height: 20),
-
+            )),
+            const SizedBox(height: 24),
+            _buildFormAccessSection(),
+            const SizedBox(height: 24),
             Text(
-              'User Activity',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: titleColor),
+              'Aktivitas Pengguna',
+              style: Get.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: titleColor),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Container(
-              height: 100,
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: cardBgColor,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
+                boxShadow: [ BoxShadow( color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 5, offset: const Offset(0, 2)) ],
+              ),
+              child: Obx(() => controller.totalActiveUsers.value == 0 && !controller.isDashboardLoading.value
+                  ? _buildNoDataMessage('Tidak ada data aktivitas pengguna.')
+                  : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.supervised_user_circle_outlined, color: Colors.green.shade600, size: 28),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Total Pengguna Aktif: ${controller.totalActiveUsers.value}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: titleColor),
                   ),
                 ],
-              ),
-              alignment: Alignment.center,
-              child: controller.totalActiveUsers.value == 0
-                  ? _buildNoDataMessage('No user activity data available.')
-                  : Text(
-                'Total Active Users: ${controller.totalActiveUsers.value}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: titleColor),
+              )
               ),
             ),
+            const SizedBox(height: 30),
           ],
         ),
       );
@@ -280,52 +530,53 @@ class _DashboardContentOnly extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Rentang Tanggal',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+        Text(
+          'Filter Rentang Tanggal',
+          style: Get.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: AdminScreen.titlePageColor.withOpacity(0.85)),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
               child: InkWell(
-                onTap: () => controller.pickDateRange(context),
-                borderRadius: BorderRadius.circular(12),
+                onTap: () => controller.openCustomDateRangePicker(context), // Memanggil dialog kustom
+                borderRadius: BorderRadius.circular(10),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                   decoration: BoxDecoration(
                     color: AdminScreen.cardBackgroundColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 5,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                    boxShadow: [ BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1)) ],
                   ),
                   child: Obx(() {
-                    String startDate = controller.selectedStartDate.value != null
-                        ? DateFormat('dd MMM yyyy', 'id_ID').format(controller.selectedStartDate.value!)
-                        : 'Pilih Tanggal Mulai';
-                    String endDate = controller.selectedEndDate.value != null
-                        ? DateFormat('dd MMM yyyy', 'id_ID').format(controller.selectedEndDate.value!)
-                        : 'Pilih Tanggal Akhir';
+                    String startDateText = controller.selectedStartDate.value != null
+                        ? DateFormat('dd MMM yy', 'id_ID').format(controller.selectedStartDate.value!)
+                        : 'Mulai';
+                    String endDateText = controller.selectedEndDate.value != null
+                        ? DateFormat('dd MMM yy', 'id_ID').format(controller.selectedEndDate.value!)
+                        : 'Akhir';
+
+                    String displayText = 'Pilih Rentang Tanggal';
+                    if (controller.selectedStartDate.value != null && controller.selectedEndDate.value != null) {
+                      bool isSingleDay = isSameDay(controller.selectedStartDate.value, controller.selectedEndDate.value);
+                      if (isSingleDay) {
+                        displayText = startDateText;
+                      } else {
+                        displayText = '$startDateText - $endDateText';
+                      }
+                    } else if (controller.selectedStartDate.value != null) {
+                      displayText = startDateText;
+                    }
+
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Flexible(
                           child: Text(
-                            (controller.selectedStartDate.value != null && controller.selectedEndDate.value != null)
-                                ? '$startDate - $endDate'
-                                : (controller.selectedStartDate.value != null ? startDate : 'Pilih Rentang Tanggal'),
+                            displayText,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 14.5,
                               color: controller.selectedStartDate.value != null
                                   ? AdminScreen.titlePageColor
                                   : Colors.grey.shade600,
@@ -336,8 +587,8 @@ class _DashboardContentOnly extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Icon(
-                          Icons.calendar_today_outlined,
+                        const Icon( // Ikon kalender tetap di sini untuk indikasi visual
+                          Icons.calendar_today_outlined, // Menggunakan ikon yang lebih standar
                           color: AdminScreen.accentHeaderColor,
                           size: 20,
                         ),
@@ -347,34 +598,31 @@ class _DashboardContentOnly extends StatelessWidget {
                 ),
               ),
             ),
-            Obx(() => controller.selectedStartDate.value != null
-                ? Padding(
-              padding: const EdgeInsets.only(left: 10.0),
-              child: InkWell(
-                onTap: controller.resetDateFilter,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(12.0),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade400, // Warna lebih soft
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.15),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 22, // Sesuaikan ukuran ikon
+            Obx(() => (controller.selectedStartDate.value != null || controller.selectedEndDate.value != null)
+                ? Padding( // Widget Padding LUAR untuk tombol reset
+              padding: const EdgeInsets.only(left: 10.0), // PASTIKAN ADA PROPERTI PADDING INI
+              child: Material(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  onTap: controller.resetDateFilter,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.all(10.0), // Padding DALAM untuk konten tombol
+                    decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.red.shade200, width: 1)
+                    ),
+                    child: Icon(
+                      Icons.close_rounded,
+                      color: Colors.red.shade700,
+                      size: 20,
+                    ),
                   ),
                 ),
               ),
             )
-                : const SizedBox.shrink() // Kosong jika tidak ada tanggal dipilih
+                : const SizedBox.shrink()
             ),
           ],
         ),
@@ -383,56 +631,69 @@ class _DashboardContentOnly extends StatelessWidget {
   }
 
   Widget _buildMetricCards() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildMetricCard(
-            title: 'Total Submissions',
-            // Gunakan totalSubmissions yang sudah difilter oleh tanggal dan search
-            value: controller.totalSubmissions.value.toString(),
-            icon: Icons.checklist_rtl_outlined,
-            iconColor: Colors.blue.shade700,
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _buildMetricCard(
+              title: 'Total Isian',
+              value: controller.totalSubmissions.value.toString(),
+              icon: Icons.post_add_rounded,
+              iconColor: Colors.blue.shade600,
+            ),
           ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildMetricCard(
-            title: 'Active Users',
-            value: controller.totalActiveUsers.value.toString(),
-            icon: Icons.people_outline,
-            iconColor: Colors.purple.shade700,
+          const SizedBox(width: 16),
+          Expanded(
+            child: _buildMetricCard(
+              title: 'Pengguna Aktif',
+              value: controller.totalActiveUsers.value.toString(),
+              icon: Icons.group_rounded,
+              iconColor: Colors.teal.shade600,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildMetricCard({required String title, required String value, required IconData icon, required Color iconColor}) {
     return Card(
-      elevation: 2, // Kurangi elevasi agar lebih soft
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // Sesuaikan radius
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       color: cardBgColor,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: iconColor, size: 26), // Sesuaikan ukuran ikon
-                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                      color: iconColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8)
+                  ),
+                  child: Icon(icon, color: iconColor, size: 22),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     title,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: subtitleColor),
+                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: subtitleColor.withOpacity(0.9)),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8), // Sesuaikan spacing
+            const SizedBox(height: 10),
             Text(
               value,
-              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: titleColor), // Sesuaikan ukuran font
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: titleColor.withOpacity(0.85)),
             ),
           ],
         ),
@@ -447,29 +708,30 @@ class _DashboardContentOnly extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       color: cardBgColor,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0), // Sesuaikan padding
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         child: Row(
           children: [
-            Icon(Icons.description_outlined, color: AdminScreen.accentHeaderColor, size: 22), // Sesuaikan warna dan ukuran
+            Icon(Icons.article_outlined, color: AdminScreen.accentHeaderColor.withOpacity(0.8), size: 24),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    entry['formTitle'] ?? 'Untitled Form', // Fallback jika null
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: titleColor),
+                    entry['formTitle'] ?? 'Untitled Form',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: titleColor.withOpacity(0.9)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Submissions: ${entry['count']}',
-                    style: TextStyle(fontSize: 13, color: subtitleColor),
+                    'Jumlah Isian: ${entry['count']}',
+                    style: TextStyle(fontSize: 13, color: subtitleColor.withOpacity(0.9)),
                   ),
                 ],
               ),
             ),
+            Icon(Icons.bar_chart_rounded, color: Colors.grey.shade400, size: 20)
           ],
         ),
       ),
@@ -481,21 +743,20 @@ class _DashboardContentOnly extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Form Access Overview',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: titleColor),
+          'Gambaran Akses Form',
+          style: Get.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: titleColor),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Obx(() {
-          // Gunakan controller.filteredFormAccessCounts yang sudah difilter oleh search
-          if (controller.filteredFormAccessCounts.isEmpty) {
+          if (controller.filteredFormAccessCounts.isEmpty && !controller.isDashboardLoading.value) {
             return _buildNoDataMessage(
                 controller.globalSearchQuery.value.isNotEmpty
-                    ? 'No forms found matching "${controller.globalSearchQuery.value}" in access overview.'
-                    : 'No forms found or no access data available.'
+                    ? 'Tidak ada form cocok dengan "${controller.globalSearchQuery.value}" pada gambaran akses.'
+                    : 'Tidak ada data akses form.'
             );
           }
           return Column(
-            children: controller.filteredFormAccessCounts.map((entry) { // Gunakan filtered list
+            children: controller.filteredFormAccessCounts.map((entry) {
               return _buildFormAccessItem(entry);
             }).toList(),
           );
@@ -514,7 +775,7 @@ class _DashboardContentOnly extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         child: Row(
           children: [
-            Icon(Icons.lock_open_outlined, color: AdminScreen.accentHeaderColor, size: 22),
+            Icon(Icons.how_to_reg_outlined, color: AdminScreen.accentHeaderColor.withOpacity(0.8), size: 24),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -522,70 +783,60 @@ class _DashboardContentOnly extends StatelessWidget {
                 children: [
                   Text(
                     entry['formTitle'] ?? 'Untitled Form',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: titleColor),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: titleColor.withOpacity(0.9)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Users with Access: ${entry['accessCount']}',
-                    style: TextStyle(fontSize: 13, color: subtitleColor),
+                    'Pengguna dengan Akses: ${entry['accessCount']}',
+                    style: TextStyle(fontSize: 13, color: subtitleColor.withOpacity(0.9)),
                   ),
                 ],
               ),
             ),
+            Icon(Icons.people_alt_outlined, color: Colors.grey.shade400, size: 20)
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDummyChartWithLabel(String message) { // Terima pesan sebagai argumen
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300, width: 1.0),
+  Widget _buildDummyChartWithLabel(String message, {bool isEmpty = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 10.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+              isEmpty ? Icons.info_outline_rounded : Icons.insert_chart_outlined_rounded, // Ikon diganti
+              size: isEmpty ? 40 : 44,
+              color: Colors.grey.shade400
           ),
-          child: CustomPaint(
-            painter: _DummyChartPainter(),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600, height: 1.3),
           ),
-        ),
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.signal_cellular_nodata_rounded, size: 40, color: Colors.grey.shade400), // Ikon yang lebih relevan
-            const SizedBox(height: 10),
-            Text(
-              message, // Gunakan pesan dari argumen
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
-            ),
-            // Hilangkan "(Data Dummy)" karena pesan sudah lebih deskriptif
-          ],
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildNoDataMessage(String message) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 32.0, horizontal: 16.0), // Tambah padding
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 20.0),
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.info_outline_rounded, size: 50, color: Colors.grey.shade400), // Ikon yang lebih modern
+            Icon(Icons.search_off_rounded, size: 50, color: Colors.grey.shade400),
             const SizedBox(height: 15),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade600, height: 1.4), // Tambah line height
+              style: TextStyle(fontSize: 15, color: Colors.grey.shade600, height: 1.4),
             ),
           ],
         ),
@@ -597,46 +848,9 @@ class _DashboardContentOnly extends StatelessWidget {
 class _DummyChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint linePaint = Paint()
-      ..color = Colors.grey.shade300
-      ..strokeWidth = 0.8; // Garis lebih tipis
-
-    // Draw horizontal lines
-    for (int i = 1; i <= 4; i++) { // Ubah agar garis tidak di tepi
-      final y = size.height / 5 * i;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
-    }
-
-    // Draw vertical lines
-    for (int i = 1; i <= 4; i++) { // Ubah agar garis tidak di tepi
-      final x = size.width / 5 * i;
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), linePaint);
-    }
-
-    // Draw a simple "trend" line (example only)
-    final Paint trendPaint = Paint()
-      ..color = Colors.blueAccent.withOpacity(0.5) // Warna lebih soft
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final Path path = Path();
-    path.moveTo(size.width * 0.05, size.height * 0.7); // Mulai sedikit dari tepi
-    path.cubicTo(
-      size.width * 0.25, size.height * 0.5, // Kontrol poin 1
-      size.width * 0.35, size.height * 0.6, // Kontrol poin 2
-      size.width * 0.5, size.height * 0.4,  // Titik tengah
-    );
-    path.cubicTo(
-      size.width * 0.65, size.height * 0.2, // Kontrol poin 3
-      size.width * 0.75, size.height * 0.55,// Kontrol poin 4
-      size.width * 0.95, size.height * 0.3, // Akhir sedikit dari tepi
-    );
-    canvas.drawPath(path, trendPaint);
+    // Kosongkan karena pesan teks sudah cukup
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -3,6 +3,29 @@
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## [0.17.0] - 2025-05-28
+> Created by Bayu Ardiyansyah
+> Improved Admin Dashboard Date Range Picker with Custom Pop-up Calendar and Resolved Related Issues
+
+### 🎉 Added
+-   **Custom Pop-up Date Range Picker (`AdminScreen`):** Implemented a new custom dialog utilizing `TableCalendar` for selecting date ranges on the Admin Dashboard. This provides a more compact, pop-up style picker instead of the default full-screen behavior on mobile devices.
+-   **State Management for Custom Calendar Dialog (`AdminController`):** Added new Rx variables (`focusedCalendarDay`, `calendarRangeStart`, `calendarRangeEnd`, `calendarRangeSelectionMode`) to manage the state of the `TableCalendar` within the custom dialog.
+-   **New Method for Custom Dialog (`AdminController`):** Introduced `openCustomDateRangePicker` method to launch the new `TableCalendar`-based pop-up dialog for date selection.
+
+### 🛠️ Changed
+-   **Admin Dashboard Date Filter UI (`AdminScreen`):** Modified the `_buildDateFilterSection` to trigger the new `openCustomDateRangePicker` method, replacing the direct call to `showDateRangePicker` or an embedded `TableCalendar` for a consistent pop-up experience.
+-   **Date Selection Logic Synchronization (`AdminController`):** Ensured that date selections from the new custom dialog correctly update the primary `selectedStartDate` and `selectedEndDate` observables, which in turn trigger the dashboard data filters via existing `ever` listeners. The original `pickDateRangeWithDefaultDialog` (using `showDateRangePicker`) was also updated to sync with `TableCalendar` state variables if used.
+
+### 🐛 Fixed
+-   **`isSameDay` Undefined Error (`AdminScreen`):** Ensured the `table_calendar` package is correctly imported in `AdminScreen.dart` so that utility functions like `isSameDay` are properly resolved and functional.
+-   **Full-Screen Date Picker Behavior on Mobile:** Addressed user feedback regarding the default `showDateRangePicker` appearing full-screen on mobile by providing the custom pop-up `TableCalendar` dialog as the primary date range selection mechanism.
+-   **Controller Method Naming for Clarity:** Renamed the controller method for the default date picker dialog to `pickDateRangeWithDefaultDialog` and ensured UI calls the appropriate method for the desired picker type (default or custom pop-up). *(Catatan: Pada interaksi terakhir, kita kembali ke `pickDateRange` untuk default dialog dan membuat `openCustomDateRangePicker` untuk yang baru. Pastikan nama metode konsisten dengan implementasi Anda).*
+-   **Error `_CustomDateRangePickerDialog` Undefined:** Resolved by defining the `_CustomDateRangePickerDialog` widget within `AdminScreen.dart` (atau memastikan impor yang benar jika di file terpisah) so it can be instantiated by `AdminController`'s `openCustomDateRangePicker` method via `Get.dialog()`.
+
+---
+
 ## [0.16.0] - 2025-05-28
 > Created by Bayu Ardiyansyah
 

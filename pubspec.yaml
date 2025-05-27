@@ -53,6 +53,8 @@ dev_dependencies:
   cupertino_icons: any
   uid: any
   intl: any
+  fl_chart: any
+  table_calendar: any
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -15,6 +15,7 @@ import 'presentation/theme/app_theme.dart';
 Future<void> main() async { // Jadikan main() sebagai async
   // Pastikan semua binding Flutter siap sebelum menjalankan kode plugin
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id_ID', null);
 
   // Inisialisasi Firebase
   // Ini harus dilakukan sebelum menjalankan aplikasi dan sebelum menggunakan layanan Firebase lainnya
