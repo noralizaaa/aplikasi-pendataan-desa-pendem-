@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.18.0] - 2025-05-28
-> Created by [Your Name / Team Name]
+> Created by Bayu Ardiyansyah
 
 > Implemented Cascading Dropdowns and Enhanced Validation for User Form Input Screen
 
