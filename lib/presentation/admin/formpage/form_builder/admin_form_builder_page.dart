@@ -35,23 +35,24 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     return result;
   }
 
-  InputDecoration _modernInputDecoration({
+  static InputDecoration _modernInputDecoration({
     required String labelText,
     String? hintText,
     bool isDense = false,
     Widget? prefixIcon,
     EdgeInsets? contentPadding,
+    // Widget? suffixIcon, // Pastikan parameter suffixIcon ada jika Anda menggunakannya di pemanggilan
   }) {
     return InputDecoration(
       labelText: labelText,
-      labelStyle: TextStyle(color: neutralLabelColor.withOpacity(0.9), fontSize: isDense ? 14 : 15),
-      floatingLabelStyle: const TextStyle(color: accentThemeColor, fontWeight: FontWeight.w500),
+      labelStyle: TextStyle(color: neutralLabelColor.withOpacity(0.9), fontSize: isDense ? 14 : 15), // neutralLabelColor harus static
+      floatingLabelStyle: const TextStyle(color: accentThemeColor, fontWeight: FontWeight.w500), // accentThemeColor harus static
       hintText: hintText ?? 'Masukkan $labelText...',
       hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
       prefixIcon: prefixIcon,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10.0),
-        borderSide: BorderSide(color: defaultTextFieldBorderColor.withOpacity(0.5)),
+        borderSide: BorderSide(color: defaultTextFieldBorderColor.withOpacity(0.5)), // defaultTextFieldBorderColor harus static
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10.0),
@@ -62,10 +63,11 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
         borderSide: const BorderSide(color: accentThemeColor, width: 1.8),
       ),
       filled: true,
-      fillColor: cardBgColor,
+      fillColor: cardBgColor, // cardBgColor harus static
       contentPadding: contentPadding ?? (isDense
           ? const EdgeInsets.symmetric(horizontal: 12, vertical: 12)
           : const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+      // suffixIcon: suffixIcon, // Aktifkan jika Anda menambahkan parameter suffixIcon
     );
   }
 
@@ -142,7 +144,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
               children: controller.sections.asMap().entries.map((entry) {
                 final sectionIndex = entry.key;
                 final section = entry.value;
-                return _buildSectionCard(section, sectionIndex);
+                return _buildSectionCard(controller.sections[sectionIndex].id, sectionIndex);
               }).toList(),
             )),
             const SizedBox(height: 24),
@@ -209,110 +211,197 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     );
   }
 
-  Widget _buildSectionCard(FormSection section, int sectionIndex) {
-    // sectionIndex adalah 0-based
-    String romanNumeral = _toRoman(sectionIndex + 1);
-    String displaySectionTitle;
+  // Ganti metode _buildSectionCard Anda yang ada dengan ini:
+  Widget _buildSectionCard(String sectionIdFromList, int sectionIndex) {
+    return Obx(() { // Bungkus dengan Obx untuk reaktivitas terhadap perubahan section
+      final section = controller.sections.firstWhere(
+            (s) => s.id == sectionIdFromList,
+        // orElse: () => FormSection(id: 'error', title: 'Error Section Not Found', questions: []), // Fallback jika diperlukan
+      );
 
-    if (section.title.trim().isEmpty) {
-      displaySectionTitle = 'Bagian $romanNumeral';
-    } else {
-      displaySectionTitle = '$romanNumeral ${section.title.trim()}';
-    }
+      String romanNumeral = _toRoman(sectionIndex + 1);
+      String displaySectionTitle = section.title.trim().isEmpty
+          ? 'Bagian $romanNumeral'
+          : '$romanNumeral ${section.title.trim()}';
 
-    String titleForDialog = section.title.trim().isEmpty ? "Bagian $romanNumeral" : section.title.trim();
+      if (section.isRepeatable) { // Akses properti isRepeatable dari model FormSection
+        displaySectionTitle += " (Berulang";
+        if (section.repeatTriggerQuestionCode != null && section.repeatTriggerQuestionCode!.isNotEmpty) {
+          displaySectionTitle += " - Pemicu: ${section.repeatTriggerQuestionCode}";
+        } else if (section.repeatTriggerQuestionId != null) {
+          FormQuestion? triggerQ = controller.findQuestionById(section.repeatTriggerQuestionId!);
+          if (triggerQ?.code != null && triggerQ!.code!.isNotEmpty) {
+            displaySectionTitle += " - Pemicu: ${triggerQ.code}";
+          } else if (triggerQ != null) {
+            displaySectionTitle += " - Pemicu: ID ${triggerQ.id.substring(0,5)}...";
+          }
+        }
+        displaySectionTitle += ")";
+      }
+      String titleForDialog = section.title.trim().isEmpty ? "Bagian $romanNumeral" : section.title.trim();
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 20),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      clipBehavior: Clip.antiAlias,
-      color: cardBgColor,
-      child: ExpansionTile(
-        key: ValueKey(section.id), // Use section.id for stable key
-        initiallyExpanded: false, // Defaultnya section tertutup
-        backgroundColor: cardBgColor,
-        collapsedBackgroundColor: cardBgColor,
-        iconColor: accentThemeColor,
-        collapsedIconColor: Colors.grey.shade700,
-        title: Text(
-          displaySectionTitle,
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
-          overflow: TextOverflow.ellipsis,
-        ),
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Edit Detail Bagian', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                    if (controller.sections.length > 1)
-                      IconButton(
-                        icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300),
-                        tooltip: 'Hapus Bagian Ini',
-                        onPressed: () {
-                          Get.defaultDialog(
-                              title: "Konfirmasi Hapus Bagian",
-                              middleText: "Anda yakin ingin menghapus bagian '$titleForDialog'?",
-                              textConfirm: "Hapus",
-                              textCancel: "Batal",
-                              confirmTextColor: Colors.white,
-                              buttonColor: Colors.red.shade400,
-                              cancelTextColor: Colors.grey.shade700,
-                              onConfirm: () { controller.removeSection(section.id); Get.back(); }
+      return Card(
+        margin: const EdgeInsets.only(bottom: 20),
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        clipBehavior: Clip.antiAlias,
+        color: cardBgColor,
+        child: ExpansionTile(
+          key: ValueKey(section.id),
+          initiallyExpanded: sectionIndex == 0 || section.questions.isNotEmpty || section.title.isNotEmpty || section.isRepeatable,
+          backgroundColor: cardBgColor,
+          collapsedBackgroundColor: cardBgColor,
+          iconColor: accentThemeColor,
+          collapsedIconColor: Colors.grey.shade700,
+          title: Text(
+            displaySectionTitle,
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
+            overflow: TextOverflow.ellipsis,
+          ),
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Edit Detail Bagian', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                      if (controller.sections.length > 1)
+                        IconButton(
+                          icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade300),
+                          tooltip: 'Hapus Bagian Ini',
+                          onPressed: () {
+                            Get.defaultDialog(
+                                title: "Konfirmasi Hapus Bagian",
+                                middleText: "Anda yakin ingin menghapus bagian '$titleForDialog'?",
+                                textConfirm: "Hapus", textCancel: "Batal",
+                                confirmTextColor: Colors.white, buttonColor: Colors.red.shade400,
+                                cancelTextColor: Colors.grey.shade700,
+                                onConfirm: () { controller.removeSection(section.id); Get.back(); }
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                  _PersistentTextField(
+                    fieldKey: ValueKey('${section.id}_section_title'),
+                    initialValue: section.title,
+                    onChanged: (text) => controller.updateSectionTitle(section.id, text),
+                    decoration: _modernInputDecoration(labelText: 'Judul Bagian', hintText: 'Kosongkan untuk nomor Romawi', isDense: true),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 12),
+                  _PersistentTextField(
+                    fieldKey: ValueKey('${section.id}_section_description'),
+                    initialValue: section.description ?? '',
+                    onChanged: (text) => controller.updateSectionDescription(section.id, text),
+                    decoration: _modernInputDecoration(labelText: 'Deskripsi Bagian', hintText: 'Opsional', isDense: true),
+                    maxLines: 2,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // --- UI UNTUK PENGATURAN REPEATABLE SECTION ---
+                  _buildExpansionTileForSettings(
+                    "Pengaturan Pengulangan Bagian",
+                    [
+                      SwitchListTile(
+                        title: const Text("Bagian ini dapat diulang?", style: TextStyle(fontSize: 14)),
+                        value: section.isRepeatable, // Gunakan dari section terbaru
+                        onChanged: (bool newValue) {
+                          controller.updateSectionRepeatability( // Panggil metode controller
+                            sectionId: section.id,
+                            isRepeatable: newValue,
+                            triggerQuestionId: newValue ? section.repeatTriggerQuestionId : null,
+                            triggerQuestionCode: newValue ? section.repeatTriggerQuestionCode : null,
+                            minRepeats: newValue ? (section.minRepeats ?? (section.repeatTriggerQuestionId != null ? 0 : 1)) : null,
+                            maxRepeats: newValue ? section.maxRepeats : null,
                           );
                         },
+                        activeColor: accentThemeColor, dense: true, contentPadding: EdgeInsets.zero,
                       ),
-                  ],
-                ),
-                _PersistentTextField(
-                  fieldKey: ValueKey('${section.id}_section_title'),
-                  initialValue: section.title,
-                  onChanged: (text) => controller.updateSectionTitle(section.id, text),
-                  decoration: _modernInputDecoration(labelText: 'Judul Bagian (Contoh: Keterangan Rumah Tangga)', hintText: 'Kosongkan untuk hanya menampilkan nomor Romawi', isDense: true),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 12),
-                _PersistentTextField(
-                  fieldKey: ValueKey('${section.id}_section_description'),
-                  initialValue: section.description ?? '',
-                  onChanged: (text) => controller.updateSectionDescription(section.id, text),
-                  decoration: _modernInputDecoration(labelText: 'Deskripsi Bagian', hintText: 'Deskripsi Bagian (Opsional)', isDense: true),
-                  maxLines: 2,
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 20),
-                Text("Pertanyaan untuk Bagian Ini:", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
-                const SizedBox(height: 10),
-
-                // --- PERUBAHAN DI SINI: Obx dihapus ---
-                if (section.questions.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: Center(child: Text("Belum ada pertanyaan di bagian ini.", style: TextStyle(color: Colors.grey.shade600))),
-                  )
-                else
-                  Column( // Langsung Column tanpa Obx
-                    children: section.questions.asMap().entries.map((entry) {
-                      final questionIndexInSection = entry.key;
-                      final question = entry.value;
-                      return _buildQuestionCard(section.id, sectionIndex, question, questionIndexInSection);
-                    }).toList(),
+                      if (section.isRepeatable) ...[ // Gunakan dari section terbaru
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: DropdownButtonFormField<String?>(
+                            value: section.repeatTriggerQuestionId, // Gunakan dari section terbaru
+                            decoration: _modernInputDecoration(
+                              labelText: 'Ulangi berdasarkan jawaban pertanyaan:',
+                              hintText: 'Pilih pertanyaan pemicu (tipe angka)',
+                              isDense: true,
+                            ),
+                            items: [
+                              const DropdownMenuItem<String?>(value: null, child: Text("(Tidak ada pemicu / Ulangi min. kali)", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey, fontSize: 13))),
+                              ...controller.getAllQuestionsForLinking(numericOnly: true).map((qMap) => // Panggil metode controller
+                              DropdownMenuItem<String?>(value: qMap['id'], child: Text("${qMap['code']} - ${qMap['text']}", style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis))
+                              ).toList(),
+                            ],
+                            onChanged: (String? selectedQId) {
+                              FormQuestion? triggerQ = controller.findQuestionById(selectedQId ?? '');
+                              controller.updateSectionRepeatability( // Panggil metode controller
+                                sectionId: section.id, isRepeatable: true,
+                                triggerQuestionId: selectedQId, triggerQuestionCode: triggerQ?.code,
+                                minRepeats: section.minRepeats, maxRepeats: section.maxRepeats,
+                              );
+                            },
+                            isExpanded: true,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(children: [
+                          Expanded(child: _PersistentTextField(
+                            fieldKey: ValueKey('${section.id}_min_repeats'),
+                            initialValue: section.minRepeats?.toString() ?? (section.repeatTriggerQuestionId != null ? '0' : '1'),
+                            decoration: _modernInputDecoration(labelText: 'Min Pengulangan', isDense: true),
+                            keyboardType: TextInputType.number,
+                            onChanged: (val) => controller.updateSectionRepeatability( // Panggil metode controller
+                                sectionId: section.id, isRepeatable: true, triggerQuestionId: section.repeatTriggerQuestionId, triggerQuestionCode: section.repeatTriggerQuestionCode,
+                                minRepeats: int.tryParse(val), maxRepeats: section.maxRepeats),
+                          )),
+                          const SizedBox(width: 8),
+                          Expanded(child: _PersistentTextField(
+                            fieldKey: ValueKey('${section.id}_max_repeats'),
+                            initialValue: section.maxRepeats?.toString() ?? '',
+                            decoration: _modernInputDecoration(labelText: 'Max Pengulangan (Opsional)', isDense: true),
+                            keyboardType: TextInputType.number,
+                            onChanged: (val) => controller.updateSectionRepeatability( // Panggil metode controller
+                                sectionId: section.id, isRepeatable: true, triggerQuestionId: section.repeatTriggerQuestionId, triggerQuestionCode: section.repeatTriggerQuestionCode,
+                                minRepeats: section.minRepeats, maxRepeats: int.tryParse(val)),
+                          )),
+                        ]),
+                      ],
+                    ],
+                    initiallyExpanded: section.isRepeatable, // Gunakan dari section terbaru
                   ),
-                // --- AKHIR PERUBAHAN ---
-
-                const SizedBox(height: 15),
-                _buildAddQuestionButton(section.id),
-              ],
+                  // --- AKHIR UI UNTUK PENGATURAN REPEATABLE SECTION ---
+                  const SizedBox(height: 20),
+                  Text("Pertanyaan untuk Bagian Ini:", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                  const SizedBox(height: 10),
+                  if (section.questions.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: Center(child: Text("Belum ada pertanyaan di bagian ini.", style: TextStyle(color: Colors.grey.shade600))),
+                    )
+                  else
+                    Column(
+                      children: section.questions.asMap().entries.map((entry) {
+                        final questionIndexInSection = entry.key;
+                        final questionItem = entry.value;
+                        // Kirim ID pertanyaan agar _buildQuestionCard bisa mengambil state terbaru
+                        return _buildQuestionCard(section.id, sectionIndex, questionItem.id, questionIndexInSection);
+                      }).toList(),
+                    ),
+                  const SizedBox(height: 15),
+                  _buildAddQuestionButton(section.id),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildGridNumericSettings(String sectionId, FormQuestion question) {
@@ -363,168 +452,166 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     );
   }
 
-// lib/presentation/admin/formpage/form_builder/admin_form_builder_page.dart
+  // Ganti metode _buildQuestionCard Anda yang ada dengan ini:
+  Widget _buildQuestionCard(String sectionId, int sectionIndexOverall, String questionIdFromList, int questionIndexInSection) {
+    return Obx(() {
+      final question = controller.sections
+          .firstWhereOrNull((s) => s.id == sectionId)
+          ?.questions
+          .firstWhereOrNull((q) => q.id == questionIdFromList);
 
-// ... (kode lain di atas _buildQuestionCard tetap sama) ...
-
-  Widget _buildQuestionCard(String sectionId, int sectionIndexOverall, FormQuestion question, int questionIndexInSection) {
-    // sectionIndexOverall adalah 0-based index dari section
-    // questionIndexInSection adalah 0-based index dari pertanyaan di dalam section tersebut
-    String displayCode = question.code != null && question.code!.isNotEmpty ? "(${question.code}) " : "";
-    String questionTypeString = question.type.toShortString();
-    if (questionTypeString.isNotEmpty) {
-      questionTypeString = (questionTypeString[0].toUpperCase() + questionTypeString.substring(1));
-      // Kustomisasi nama tampilan untuk GridNumerik
-      if (question.type == QuestionType.gridNumeric) {
-        questionTypeString = "Grid Numerik";
+      if (question == null) {
+        return const SizedBox.shrink(child: Text("Error: Pertanyaan tidak dapat dimuat"));
       }
-    }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16.0, top: 8.0),
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10.0),
-          border: Border.all(color: Colors.grey.shade200, width: 1.0),
-          boxShadow: [
-            BoxShadow(color: Colors.grey.shade100, blurRadius: 3, offset: const Offset(0,1))
-          ]
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Baris untuk header pertanyaan (nomor, tipe) dan tombol hapus
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  'Pertanyaan ${questionIndexInSection + 1} $displayCode($questionTypeString)',
-                  style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade700, fontWeight: FontWeight.w600),
-                  softWrap: true,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              IconButton(
-                  icon: Icon(Icons.delete_forever_outlined, color: Colors.red.shade300, size: 20,),
-                  tooltip: 'Hapus Pertanyaan',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  splashRadius: 20,
-                  onPressed: () {
-                    Get.defaultDialog(
-                        title: "Konfirmasi Hapus Pertanyaan",
-                        middleText: "Anda yakin ingin menghapus pertanyaan ini?",
-                        textConfirm: "Hapus", textCancel: "Batal",
-                        confirmTextColor: Colors.white, buttonColor: Colors.red.shade400,
-                        cancelTextColor: Colors.grey.shade700,
-                        onConfirm: () { controller.removeQuestion(sectionId, question.id); Get.back(); }
-                    );
-                  }
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
+      String displayCode = question.code != null && question.code!.isNotEmpty ? "(${question.code}) " : "";
+      String questionTypeString = question.type.toShortString();
+      if (questionTypeString.isNotEmpty) {
+        questionTypeString = (questionTypeString[0].toUpperCase() + questionTypeString.substring(1));
+        if (question.type == QuestionType.gridNumeric) {
+          questionTypeString = "Grid Numerik";
+        }
+      }
 
-          // TextField untuk Kode Pertanyaan
-          TextField(
-            key: ValueKey('${question.id}_code'), // Tambahkan key untuk kestabilan state controller
-            controller: TextEditingController(text: question.code ?? '')
-              ..selection = TextSelection.fromPosition(TextPosition(offset: (question.code ?? '').length)),
-            onChanged: (text) => controller.updateQuestionCode(sectionId, question.id, text),
-            decoration: _modernInputDecoration(
-                labelText: 'Kode Pertanyaan',
-                hintText: 'Otomatis: ${sectionIndexOverall + 1}XX atau sesuaikan',
-                isDense: true,
-                prefixIcon: Padding(padding: const EdgeInsets.all(10.0), child: Icon(Icons.tag, size: 18, color: Colors.grey.shade500))
-            ),
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 12),
-
-          // TextField untuk Teks Pertanyaan
-          TextField(
-            key: ValueKey('${question.id}_text'), // Tambahkan key
-            controller: TextEditingController(text: question.questionText)
-              ..selection = TextSelection.fromPosition(TextPosition(offset: question.questionText.length)),
-            onChanged: (text) => controller.updateQuestionText(sectionId, question.id, text),
-            decoration: _modernInputDecoration(labelText: 'Teks Pertanyaan', isDense: true,
-                prefixIcon: Padding(padding: const EdgeInsets.all(10.0), child: Icon(Icons.help_outline_rounded, size: 18, color: Colors.grey.shade500))
-            ),
-            maxLines: null, // Biarkan null agar bisa expand otomatis
-            style: const TextStyle(fontSize: 15),
-          ),
-          const SizedBox(height: 12),
-
-          // Pengaturan spesifik berdasarkan tipe pertanyaan
-          if (question.type == QuestionType.multipleChoice || question.type == QuestionType.checkboxes || question.type == QuestionType.dropdown)
-            _buildOptionsSection(sectionId, question),
-
-          if (question.type == QuestionType.gridNumeric)
-            _buildGridNumericSettings(sectionId, question), // Ini sudah ada dari perubahan sebelumnya
-
-          // Validasi (pastikan urutannya logis)
-          if (question.type == QuestionType.number || question.type == QuestionType.gridNumeric)
-            _buildNumberValidationSection(sectionId, question),
-          if (question.type == QuestionType.text || question.type == QuestionType.paragraph)
-            _buildTextValidationSection(sectionId, question),
-          if (question.type == QuestionType.date)
-            _buildDateValidationSection(sectionId, question),
-
-          // Aturan umum (PredefinedRule, Wajib diisi, Opsi Lainnya, dll.)
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: _buildPredefinedRuleDropdown(sectionId, question),
-          ),
-          const SizedBox(height: 12),
-          Row( // Wajib diisi & Opsi Lainnya
-            children: [
-              const Text('Wajib diisi', style: TextStyle(fontSize: 14)),
-              Switch(
-                value: question.isRequired,
-                onChanged: (value) => controller.updateQuestionRequired(sectionId, question.id, value),
-                activeColor: accentThemeColor,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              const Spacer(),
-              if (question.type == QuestionType.multipleChoice || question.type == QuestionType.checkboxes)
-                Flexible(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      const Flexible(
-                        child: Text(
-                          'Opsi "Lainnya"',
-                          style: TextStyle(fontSize: 14),
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: false,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Switch(
-                        value: question.hasOtherOption,
-                        onChanged: (value) => controller.updateQuestionHasOtherOption(sectionId, question.id, value),
-                        activeColor: accentThemeColor,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ],
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16.0, top: 8.0),
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10.0),
+            border: Border.all(color: Colors.grey.shade200, width: 1.0),
+            boxShadow: [
+              BoxShadow(color: Colors.grey.shade100, blurRadius: 3, offset: const Offset(0,1))
+            ]
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Pertanyaan ${questionIndexInSection + 1} $displayCode($questionTypeString)',
+                    style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade700, fontWeight: FontWeight.w600),
+                    softWrap: true,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-            ],
-          ),
-          _buildRepeatableSetting(sectionId, question),
-          _buildRepeatableGroupSettings(sectionId, question),
-          _buildConditionalJumpSetting(sectionId, question),
-          if (question.type == QuestionType.dropdown)
-            _buildDependentOptionsConfigurator(sectionId, question),
-        ],
-      ),
-    );
-  }
+                IconButton(
+                    icon: Icon(Icons.delete_forever_outlined, color: Colors.red.shade300, size: 20,),
+                    tooltip: 'Hapus Pertanyaan',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    splashRadius: 20,
+                    onPressed: () {
+                      Get.defaultDialog(
+                          title: "Konfirmasi Hapus Pertanyaan",
+                          middleText: "Anda yakin ingin menghapus pertanyaan '${question.questionText.isNotEmpty ? question.questionText : displayCode}'?",
+                          textConfirm: "Hapus", textCancel: "Batal",
+                          confirmTextColor: Colors.white, buttonColor: Colors.red.shade400,
+                          cancelTextColor: Colors.grey.shade700,
+                          onConfirm: () { controller.removeQuestion(sectionId, question.id); Get.back(); }
+                      );
+                    }
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _PersistentTextField(
+              fieldKey: ValueKey('${question.id}_code'),
+              initialValue: question.code ?? '',
+              onChanged: (text) => controller.updateQuestionCode(sectionId, question.id, text),
+              decoration: _modernInputDecoration(
+                  labelText: 'Kode Pertanyaan',
+                  hintText: 'Otomatis: ${sectionIndexOverall + 1}${(questionIndexInSection + 1).toString().padLeft(2,'0')} atau sesuaikan',
+                  isDense: true,
+                  prefixIcon: Padding(padding: const EdgeInsets.all(10.0), child: Icon(Icons.tag, size: 18, color: Colors.grey.shade500))
+              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 12),
+            _PersistentTextField(
+              fieldKey: ValueKey('${question.id}_text'),
+              initialValue: question.questionText,
+              onChanged: (text) => controller.updateQuestionText(sectionId, question.id, text),
+              decoration: _modernInputDecoration(labelText: 'Teks Pertanyaan', isDense: true,
+                  prefixIcon: Padding(padding: const EdgeInsets.all(10.0), child: Icon(Icons.help_outline_rounded, size: 18, color: Colors.grey.shade500))
+              ),
+              maxLines: null,
+              style: const TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 12),
 
+            if (question.type == QuestionType.multipleChoice || question.type == QuestionType.checkboxes || question.type == QuestionType.dropdown)
+              _buildOptionsSection(sectionId, question), // 'question' di sini adalah state terbaru dari Obx
+
+            if (question.type == QuestionType.gridNumeric)
+              _buildGridNumericSettings(sectionId, question), // 'question' di sini adalah state terbaru
+
+            // Validasi (pastikan urutannya logis)
+            // Selalu tampilkan predefined rule dropdown
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: _buildPredefinedRuleDropdown(sectionId, question), // 'question' di sini adalah state terbaru
+            ),
+            const SizedBox(height: 4), // Jarak sebelum expansion tile validasi lain
+
+            if (question.type == QuestionType.number || question.type == QuestionType.gridNumeric) // Grid numeric juga bisa punya validasi angka
+              _buildNumberValidationSection(sectionId, question), // 'question' di sini adalah state terbaru
+            if (question.type == QuestionType.text || question.type == QuestionType.paragraph)
+              _buildTextValidationSection(sectionId, question), // 'question' di sini adalah state terbaru
+            if (question.type == QuestionType.date)
+              _buildDateValidationSection(sectionId, question), // 'question' di sini adalah state terbaru
+
+            const SizedBox(height: 12),
+            Row( // Wajib diisi & Opsi Lainnya
+              children: [
+                const Text('Wajib diisi', style: TextStyle(fontSize: 14)),
+                Switch(
+                  value: question.isRequired, // 'question' dari Obx
+                  onChanged: (value) => controller.updateQuestionRequired(sectionId, question.id, value),
+                  activeColor: accentThemeColor,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                const Spacer(),
+                if (question.type == QuestionType.multipleChoice || question.type == QuestionType.checkboxes)
+                  Flexible(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        const Flexible(
+                          child: Text(
+                            'Opsi "Lainnya"',
+                            style: TextStyle(fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                            softWrap: false,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Switch(
+                          value: question.hasOtherOption, // 'question' dari Obx
+                          onChanged: (value) => controller.updateQuestionHasOtherOption(sectionId, question.id, value),
+                          activeColor: accentThemeColor,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            _buildRepeatableSetting(sectionId, question), // 'question' dari Obx (untuk repeatable individual question)
+            _buildRepeatableGroupSettings(sectionId, question), // 'question' dari Obx (untuk repeatable group question)
+            _buildConditionalJumpSetting(sectionId, question), // 'question' dari Obx
+            if (question.type == QuestionType.dropdown)
+              _buildDependentOptionsConfigurator(sectionId, question), // 'question' dari Obx
+          ],
+        ),
+      );
+    });
+  }
 
   Widget _buildRepeatableGroupSettings(String sectionId, FormQuestion question) {
     final String uniqueTagSuggestion = "grup_${question.id.substring(0, 5)}";
@@ -771,28 +858,104 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     );
   }
 
+  // Ganti metode _buildNumberValidationSection Anda dengan ini:
   Widget _buildNumberValidationSection(String sectionId, FormQuestion question) {
-    bool isValidationNotEmpty = question.validation != null &&
-        (question.validation!.minValue != null ||
-            question.validation!.maxValue != null);
+    // 'question' yang diterima di sini adalah state terbaru dari Obx di _buildQuestionCard
+    final ValidationRule validationRule = question.validation;
+
+    bool isBasicNumValidationNotEmpty = validationRule.minValue != null || validationRule.maxValue != null;
+    // Cek apakah comparisonOperator ada dan bukan 'none'
+    bool isComparisonRuleNotEmpty = (validationRule.comparisonOperator != null &&
+        validationRule.comparisonOperator != ComparisonOperatorType.none.toShortString()) &&
+        validationRule.compareToQuestionId != null &&
+        validationRule.compareToQuestionId!.isNotEmpty;
+
     return _buildExpansionTileForSettings(
-      'Pengaturan Validasi Angka',
+      'Pengaturan Validasi Angka & Perbandingan',
       [
-        TextField(
-          controller: TextEditingController(text: question.validation?.minValue?.toString() ?? ''),
+        _PersistentTextField(
+          fieldKey: ValueKey('${question.id}_validation_minValue'),
+          initialValue: validationRule.minValue?.toString() ?? '',
           keyboardType: TextInputType.number,
           decoration: _modernInputDecoration(labelText: 'Nilai Min.', hintText: 'Opsional', isDense: true),
-          onChanged: (value) { controller.updateValidation(sectionId, question.id, (question.validation ?? ValidationRule()).copyWith(minValue: num.tryParse(value), setMinValueNull: value.isEmpty)); },
+          onChanged: (value) { controller.updateValidation(sectionId, question.id,
+              validationRule.copyWith(minValue: num.tryParse(value), setMinValueNull: value.isEmpty));
+          },
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: TextEditingController(text: question.validation?.maxValue?.toString() ?? ''),
+        _PersistentTextField(
+          fieldKey: ValueKey('${question.id}_validation_maxValue'),
+          initialValue: validationRule.maxValue?.toString() ?? '',
           keyboardType: TextInputType.number,
           decoration: _modernInputDecoration(labelText: 'Nilai Max.', hintText: 'Opsional', isDense: true),
-          onChanged: (value) { controller.updateValidation(sectionId, question.id, (question.validation ?? ValidationRule()).copyWith(maxValue: num.tryParse(value), setMaxValueNull: value.isEmpty)); },
+          onChanged: (value) { controller.updateValidation(sectionId, question.id,
+              validationRule.copyWith(maxValue: num.tryParse(value), setMaxValueNull: value.isEmpty));
+          },
         ),
+        const SizedBox(height: 16),
+        Text("Validasi Perbandingan dengan Pertanyaan Lain:", style: TextStyle(fontWeight: FontWeight.w500, color: Colors.blueGrey.shade700, fontSize: 13)),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String?>(
+          value: validationRule.comparisonOperator ?? ComparisonOperatorType.none.toShortString(),
+          decoration: _modernInputDecoration(labelText: 'Operator Perbandingan', isDense: true),
+          items: ComparisonOperatorType.values.map((op) {
+            String displayText;
+            switch(op){
+              case ComparisonOperatorType.none: displayText = "Tidak ada perbandingan"; break;
+              case ComparisonOperatorType.lessThan: displayText = "Kurang Dari (<)"; break;
+              case ComparisonOperatorType.lessThanOrEqual: displayText = "Kurang Dari atau Sama Dengan (<=)"; break;
+              case ComparisonOperatorType.equal: displayText = "Sama Dengan (==)"; break;
+              case ComparisonOperatorType.notEqual: displayText = "Tidak Sama Dengan (!=)"; break;
+              case ComparisonOperatorType.greaterThan: displayText = "Lebih Dari (>)"; break;
+              case ComparisonOperatorType.greaterThanOrEqual: displayText = "Lebih Dari atau Sama Dengan (>=)"; break;
+            }
+            return DropdownMenuItem<String?>(
+                value: op.toShortString(),
+                child: Text(displayText, style: TextStyle(fontSize:14, fontStyle: op == ComparisonOperatorType.none ? FontStyle.italic : FontStyle.normal))
+            );
+          }).toList(),
+          onChanged: (String? selectedOpString) {
+            final selectedOperator = selectedOpString == ComparisonOperatorType.none.toShortString() ? null : selectedOpString;
+            controller.updateValidation(
+              sectionId, question.id,
+              validationRule.copyWith(
+                comparisonOperator: selectedOperator, setComparisonOperatorNull: selectedOperator == null,
+                compareToQuestionId: selectedOperator == null ? null : validationRule.compareToQuestionId,
+                setCompareToQuestionIdNull: selectedOperator == null,
+                compareToQuestionCode: selectedOperator == null ? null : validationRule.compareToQuestionCode,
+                setCompareToQuestionCodeNull: selectedOperator == null,
+              ),
+            );
+          },
+          isExpanded: true,
+        ),
+        // Dropdown untuk memilih pertanyaan pembanding hanya muncul jika operator dipilih
+        if (validationRule.comparisonOperator != null && validationRule.comparisonOperator != ComparisonOperatorType.none.toShortString()) ...[
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String?>(
+            value: validationRule.compareToQuestionId,
+            decoration: _modernInputDecoration(labelText: 'Bandingkan dengan Pertanyaan:', isDense: true),
+            items: [
+              const DropdownMenuItem<String?>(value: null, child: Text("Pilih pertanyaan...", style: TextStyle(fontStyle: FontStyle.italic, fontSize: 13))),
+              ...controller.getAllQuestionsForLinking(currentQuestionIdToExclude: question.id, numericOnly: true) // Hanya pertanyaan numerik
+                  .map((qMap) => DropdownMenuItem<String?>(value: qMap['id'], child: Text("${qMap['code']} - ${qMap['text']}", style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis)))
+                  .toList(),
+            ],
+            onChanged: (String? selectedTargetId) {
+              FormQuestion? targetQ = controller.findQuestionById(selectedTargetId ?? '');
+              controller.updateValidation(
+                sectionId, question.id,
+                validationRule.copyWith(
+                    compareToQuestionId: selectedTargetId, setCompareToQuestionIdNull: selectedTargetId == null,
+                    compareToQuestionCode: targetQ?.code, setCompareToQuestionCodeNull: selectedTargetId == null || targetQ?.code == null
+                ),
+              );
+            },
+            isExpanded: true,
+          ),
+        ],
       ],
-      initiallyExpanded: isValidationNotEmpty,
+      initiallyExpanded: isBasicNumValidationNotEmpty || isComparisonRuleNotEmpty,
     );
   }
 
@@ -1112,84 +1275,129 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     );
   }
 
+  Widget _buildDependentOptionsConfigurator(String sectionId, FormQuestion questionToList) {
+    return Obx(() {
+      final question = controller.sections
+          .firstWhereOrNull((s) => s.id == sectionId)
+          ?.questions
+          .firstWhereOrNull((q) => q.id == questionToList.id) ?? questionToList;
 
-  Widget _buildDependentOptionsConfigurator(String sectionId, FormQuestion question) {
-    final potentialParents = controller.getPotentialParentQuestions(sectionId, question.id);
-    FormQuestion? selectedParentQuestion;
+      print("--- START _buildDependentOptionsConfigurator for child Q: ${question.id} ---");
 
-    if (question.dependentOptions?.parentQuestionId != null &&
-        question.dependentOptions!.parentQuestionId.isNotEmpty) {
-      selectedParentQuestion = controller.findQuestionById(question.dependentOptions!.parentQuestionId);
-    }
+      final potentialParents = controller.getPotentialParentQuestions(sectionId, question.id);
+      print("Potential Parents count: ${potentialParents.length}");
 
-    return _buildExpansionTileForSettings(
-      'Opsi Bergantung (Cascading)',
-      [
-        if (potentialParents.isNotEmpty)
-          Padding(
+      FormQuestion? selectedParentQuestionObj; // Variabel baru untuk kejelasan
+      final String? storedParentIdInChild = question.dependentOptions?.parentQuestionId;
+      print("Stored Parent ID in child's dependentOptions: $storedParentIdInChild");
+
+      if (storedParentIdInChild != null && storedParentIdInChild.isNotEmpty) {
+        selectedParentQuestionObj = controller.findQuestionById(storedParentIdInChild);
+        if (selectedParentQuestionObj == null) {
+          print("ERROR: Parent object for ID '$storedParentIdInChild' NOT FOUND by findQuestionById.");
+        } else {
+          print("SUCCESS: Parent object FOUND: ID='${selectedParentQuestionObj.id}', Text='${selectedParentQuestionObj.questionText}'");
+          print("PARENT OBJECT OPTIONS (Length: ${selectedParentQuestionObj.options.length}): ${selectedParentQuestionObj.options}");
+        }
+      } else {
+        print("No parent ID stored in child's dependentOptions.");
+      }
+
+      final validParentQuestionIdsInDropdown = potentialParents.map((pQ) => pQ.id).toList();
+      String? effectiveParentIdForDropdownValue = storedParentIdInChild;
+      if (effectiveParentIdForDropdownValue != null && !validParentQuestionIdsInDropdown.contains(effectiveParentIdForDropdownValue)) {
+        print("Warning: Stored parent ID '$effectiveParentIdForDropdownValue' is not in current valid dropdown items. Resetting dropdown value to null.");
+        effectiveParentIdForDropdownValue = null;
+      }
+      print("Effective Parent ID for Dropdown 'value' property: $effectiveParentIdForDropdownValue");
+
+      // Kondisi utama untuk menampilkan UI mapping
+      // Kita cek sekali lagi di sini dengan objek yang baru di-fetch
+      bool showMappingInterface = selectedParentQuestionObj != null && selectedParentQuestionObj.options.isNotEmpty;
+      print(">>> Condition to show mapping UI: showMappingInterface = $showMappingInterface");
+      if (selectedParentQuestionObj == null) print("    Reason: selectedParentQuestionObj is NULL");
+      if (selectedParentQuestionObj != null && selectedParentQuestionObj.options.isEmpty) print("    Reason: selectedParentQuestionObj.options IS EMPTY");
+      if (selectedParentQuestionObj != null && selectedParentQuestionObj.options.isNotEmpty) print("    Reason: selectedParentQuestionObj IS NOT NULL and options IS NOT EMPTY");
+
+
+      return _buildExpansionTileForSettings(
+        'Opsi Bergantung (Cascading)',
+        [
+          Padding( // Selalu tampilkan dropdown pemilihan parent
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: DropdownButtonFormField<String?>(
-              value: question.dependentOptions?.parentQuestionId,
-              decoration: _modernInputDecoration(labelText: 'Bergantung pada Pertanyaan (Induk)', isDense: true),
+              key: ValueKey('${question.id}_parent_dd_${effectiveParentIdForDropdownValue ?? "no_parent_selected"}'),
+              value: effectiveParentIdForDropdownValue,
+              decoration: _modernInputDecoration(
+                  labelText: 'Bergantung pada Pertanyaan (Induk)',
+                  isDense: true
+              ),
               hint: const Text('Pilih Pertanyaan Induk'),
               items: [
                 const DropdownMenuItem<String?>(
                   value: null,
-                  child: Text("Tidak Bergantung / Hapus Ketergantungan", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+                  child: Text("Tidak Bergantung / Hapus", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
                 ),
-                ...potentialParents.map((parentQ) {
-                  String parentSectionTitle = "Lain Bagian";
-                  String parentSectionRoman = "";
-                  int parentSectionIndex = controller.sections.indexWhere((s) => s.questions.any((qInS) => qInS.id == parentQ.id));
-                  if (parentSectionIndex != -1) {
-                    final sec = controller.sections[parentSectionIndex];
-                    parentSectionRoman = _toRoman(parentSectionIndex + 1);
-                    parentSectionTitle = sec.title.isNotEmpty ? sec.title : "Bagian $parentSectionRoman";
-                  }
-                  String parentQCodeDisplay = parentQ.code != null && parentQ.code!.isNotEmpty ? parentQ.code! : "N/A";
-
-                  return DropdownMenuItem<String?>(
-                    value: parentQ.id,
-                    child: Text(
-                      '$parentQCodeDisplay - ${parentQ.questionText.length > 15 ? parentQ.questionText.substring(0, 12) + "..." : parentQ.questionText} (di: $parentSectionTitle)',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }).toList(),
+                if (potentialParents.isNotEmpty) // Hanya tampilkan jika ada calon induk
+                  ...potentialParents.map((parentQ) {
+                    String parentSectionTitle = "Lain Bagian";
+                    String parentSectionRoman = "";
+                    int parentSectionIndex = controller.sections.indexWhere((s) => s.questions.any((qInS) => qInS.id == parentQ.id));
+                    if (parentSectionIndex != -1) {
+                      final sec = controller.sections[parentSectionIndex];
+                      parentSectionRoman = _toRoman(parentSectionIndex + 1);
+                      parentSectionTitle = sec.title.isNotEmpty ? sec.title : "Bagian $parentSectionRoman";
+                    }
+                    String parentQCodeDisplay = parentQ.code != null && parentQ.code!.isNotEmpty ? parentQ.code! : "N/A";
+                    return DropdownMenuItem<String?>(
+                      value: parentQ.id,
+                      child: Text(
+                        '$parentQCodeDisplay - ${parentQ.questionText.length > 15 ? parentQ.questionText.substring(0, 12) + "..." : parentQ.questionText} (di: $parentSectionTitle)',
+                        overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14),
+                      ),
+                    );
+                  }).toList()
+                else // Jika potentialParents kosong, tambahkan item ini
+                  const DropdownMenuItem<String?>(
+                    value: null, // atau nilai dummy yang tidak akan pernah terpilih
+                    enabled: false, // Buat tidak bisa dipilih
+                    child: Text("Tidak ada calon induk tersedia", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+                  ),
               ],
               onChanged: (String? newParentId) {
+                print("DROPDOWN PARENT CHANGED. New Parent ID selected: $newParentId");
                 controller.setParentQuestionForDependency(sectionId, question.id, newParentId);
               },
               isExpanded: true,
             ),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Text(
-              'Tidak ada pertanyaan lain dengan opsi yang bisa dijadikan induk dalam form ini.',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-            ),
           ),
-        const SizedBox(height: 16),
-        if (selectedParentQuestion != null && selectedParentQuestion.options.isNotEmpty) ...[
-          Text(
-            'Atur opsi untuk pertanyaan ini berdasarkan jawaban dari "${selectedParentQuestion.code != null && selectedParentQuestion.code!.isNotEmpty ? selectedParentQuestion.code! + " - " : ""}${selectedParentQuestion.questionText}":',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade800),
-          ),
-          const SizedBox(height: 8),
-          if (selectedParentQuestion.options.isEmpty)
+
+          const SizedBox(height: 10), // Jarak sebelum pesan error atau UI mapping
+
+          // Pesan error jika parent ID tersimpan tapi objeknya tidak ditemukan
+          if (storedParentIdInChild != null && storedParentIdInChild.isNotEmpty && selectedParentQuestionObj == null)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Text('Pertanyaan Induk yang dipilih tidak memiliki opsi yang telah ditentukan.', style: TextStyle(color: Colors.orange.shade700)),
-            )
-          else
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Text(
+                'Pesan Info: Pertanyaan Induk (ID: $storedParentIdInChild) yang sebelumnya dipilih tidak ditemukan. Mungkin telah dihapus atau ID berubah. Silakan pilih ulang dari daftar di atas.',
+                style: TextStyle(color: Colors.amber.shade900, fontSize: 12, fontStyle: FontStyle.italic),
+              ),
+            ),
+
+          // Tampilkan UI mapping opsi
+          if (showMappingInterface) ...[
+            // Jika showMappingInterface true, selectedParentQuestionObj dijamin tidak null.
+            Text(
+              'Atur opsi anak untuk pertanyaan "${question.questionText}" berdasarkan jawaban dari "${selectedParentQuestionObj!.code ?? "Induk"}" (${selectedParentQuestionObj.questionText}):',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade800),
+            ),
+            const SizedBox(height: 8),
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: selectedParentQuestion.options.length,
+              itemCount: selectedParentQuestionObj.options.length,
               itemBuilder: (context, index) {
-                final parentOption = selectedParentQuestion!.options[index];
+                final parentOption = selectedParentQuestionObj!.options[index];
                 final currentChildOptions = question.dependentOptions?.optionMapping[parentOption] ?? [];
                 return _buildParentOptionMappingTile(
                   sectionId,
@@ -1199,19 +1407,20 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                 );
               },
             ),
-        ] else if (question.dependentOptions?.parentQuestionId != null && question.dependentOptions!.parentQuestionId.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Text(
-                (selectedParentQuestion == null)
-                    ? 'Pertanyaan Induk yang dipilih (ID: ${question.dependentOptions!.parentQuestionId}) tidak ditemukan.'
-                    : 'Pertanyaan Induk "${selectedParentQuestion.questionText}" tidak memiliki opsi yang ditentukan.',
-                style: TextStyle(color: Colors.orange.shade700, fontSize: 13)
-            ),
-          )
-      ],
-      initiallyExpanded: question.dependentOptions != null && question.dependentOptions!.parentQuestionId.isNotEmpty,
-    );
+          ]
+          // Pesan jika parent ditemukan tapi tidak punya opsi
+          else if (storedParentIdInChild != null && storedParentIdInChild.isNotEmpty && selectedParentQuestionObj != null && selectedParentQuestionObj.options.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                  'Info: Pertanyaan Induk "${selectedParentQuestionObj.questionText}" (${selectedParentQuestionObj.code ?? selectedParentQuestionObj.id}) TIDAK MEMILIKI OPSI. Harap tambahkan opsi pada pertanyaan induk tersebut agar bisa mengatur dependensi.',
+                  style: TextStyle(color: Colors.orange.shade700, fontSize: 12.5, fontStyle: FontStyle.italic)
+              ),
+            )
+        ],
+        initiallyExpanded: question.dependentOptions != null && question.dependentOptions!.parentQuestionId.isNotEmpty,
+      );
+    });
   }
 
   Widget _buildParentOptionMappingTile(String sectionId, String questionId, String parentOptionValue, List<String> currentChildOptions) {
@@ -1254,170 +1463,24 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     );
   }
 
+  // Di dalam kelas AdminFormBuilderPage
+
+// Metode ini sekarang hanya menampilkan StatefulWidget dialog kustom
   void _showEditChildOptionsDialog(
       String sectionId,
       String questionId,
       String parentOptionValue,
       List<String> initialChildOptions
       ) {
-    final List<TextEditingController> optionControllers =
-    initialChildOptions.map((opt) => TextEditingController(text: opt)).toList();
-    final List<TextEditingController> removedControllersForDisposal = [];
-
-    if (optionControllers.isEmpty) {
-      optionControllers.add(TextEditingController());
-    }
-
     Get.dialog(
-      AlertDialog(
-        title: Text('Atur Opsi Anak untuk Induk: "$parentOptionValue"', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-        content: StatefulBuilder(builder: (BuildContext dialogContext, StateSetter setStateDialog) {
-          return SizedBox(
-            width: MediaQuery.of(dialogContext).size.width * 0.8,
-            height: MediaQuery.of(dialogContext).size.height * 0.5,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Daftar opsi yang akan muncul jika jawaban pertanyaan induk adalah \"$parentOptionValue\":", style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
-                const SizedBox(height: 15),
-                Expanded(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: optionControllers.length,
-                    itemBuilder: (ctx, index) {
-                      final currentItemController = optionControllers[index];
-                      return Padding(
-                        key: ValueKey(currentItemController),
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: currentItemController,
-                                decoration: _modernInputDecoration(labelText: 'Opsi Anak ${index + 1}', isDense: true)
-                                    .copyWith(
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                    fillColor: Colors.grey.shade50
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.remove_circle_outline_rounded, color: Colors.red.shade300, size: 22),
-                              // Di dalam IconButton onPressed untuk menghapus opsi anak:
-                              onPressed: () {
-                                setStateDialog(() {
-                                  FocusScope.of(dialogContext).unfocus();
-                                  final removedController = optionControllers.removeAt(index);
-
-                                  // !! PERUBAHAN DI SINI !!
-                                  // Coba reset value controller secara eksplisit untuk "memutus" koneksi
-                                  // dengan text input service sebelum dipindahkan.
-                                  // dispose() seharusnya melakukan ini, tapi kita coba lebih awal.
-                                  try {
-                                    removedController.value = TextEditingValue.empty; // Mengosongkan teks, seleksi, dan composing region
-                                  } catch (e) {
-                                    // Tangani jika controller sudah terlanjur disposed karena suatu hal (seharusnya tidak terjadi di sini)
-                                    print("Error saat mencoba reset value controller yang akan dihapus: $e");
-                                  }
-
-                                  removedControllersForDisposal.add(removedController);
-                                });
-                              },
-                              splashRadius: 18,
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    icon: Icon(Icons.add_circle_rounded, color: AdminFormBuilderPage.accentThemeColor, size: 20),
-                    label: Text('Tambah Opsi Anak Lagi', style: TextStyle(color: AdminFormBuilderPage.accentThemeColor, fontSize: 14)),
-                    onPressed: () {
-                      setStateDialog(() {
-                        optionControllers.add(TextEditingController());
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
-        actionsAlignment: MainAxisAlignment.spaceBetween,
-        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        actions: [
-          OutlinedButton(
-            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
-            onPressed: () {
-              Get.back();
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                for (var c in optionControllers) { c.dispose(); }
-                for (var c in removedControllersForDisposal) { c.dispose(); }
-              });
-            },
-            style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.grey.shade300)),
-          ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
-            label: const Text('Simpan Opsi Ini'),
-            style: ElevatedButton.styleFrom(backgroundColor: AdminFormBuilderPage.accentThemeColor, foregroundColor: Colors.white),
-            // Ini adalah bagian onPressed untuk ElevatedButton.icon (Tombol "Simpan Opsi Ini")
-            // di dalam _showEditChildOptionsDialog
-
-            onPressed: () {
-              // 1. Ambil data opsi anak yang baru dari controller yang masih aktif
-              final newChildOptions = optionControllers
-                  .map((c) => c.text.trim())
-                  .where((text) => text.isNotEmpty) // Filter opsi yang kosong setelah di-trim
-                  .toList();
-
-              // 2. Panggil method pada controller utama Anda untuk menyimpan/memperbarui mapping opsi
-              // Pastikan 'controller' di sini adalah instance AdminFormBuilderController yang benar
-              controller.updateMappingForParentOption(sectionId, questionId, parentOptionValue, newChildOptions);
-
-              // 3. Dispose SEMUA TextEditingController (baik yang masih di optionControllers
-              //    maupun yang sudah dipindahkan ke removedControllersForDisposal)
-              //    SECARA LANGSUNG sebelum memanggil Get.back().
-              try {
-                // Dispose controller yang masih terkait dengan TextField yang mungkin masih ada di UI
-                // (meskipun akan segera ditutup)
-                for (var c in optionControllers) {
-                  c.dispose();
-                }
-
-                // Dispose controller yang TextField-nya sudah dihapus dari UI sebelumnya
-                for (var c in removedControllersForDisposal) {
-                  c.dispose();
-                }
-              } catch (e) {
-                // Tambahkan logging jika ada error saat proses dispose, meskipun jarang terjadi
-                // jika controller belum di-dispose sebelumnya.
-                print("Error saat melakukan dispose pada TextEditingControllers di tombol Simpan: $e");
-              }
-
-              // 4. (Opsional tapi disarankan) Bersihkan list untuk menghindari referensi gantung,
-              //    meskipun dialog akan ditutup dan variabel lokal ini akan hilang.
-              optionControllers.clear();
-              removedControllersForDisposal.clear();
-
-              // 5. Tutup dialog
-              Get.back();
-
-              // Tidak ada lagi WidgetsBinding.instance.addPostFrameCallback untuk disposal di sini
-              // karena sudah dilakukan secara langsung di atas.
-            },
-          ),
-        ],
+      _EditChildOptionsDialog( // Panggil StatefulWidget dialog kustom Anda
+        pageController: controller, // Teruskan AdminFormBuilderController utama
+        sectionId: sectionId,
+        questionId: questionId,
+        parentOptionValue: parentOptionValue,
+        initialChildOptions: initialChildOptions,
       ),
-      barrierDismissible: false,
+      barrierDismissible: false, // Pengguna harus menekan tombol Batal atau Simpan
     );
   }
 
@@ -1546,6 +1609,168 @@ class _PersistentTextField extends StatefulWidget {
   State<_PersistentTextField> createState() => _PersistentTextFieldState();
 }
 
+
+class _EditChildOptionsDialog extends StatefulWidget {
+  final AdminFormBuilderController pageController; // Untuk memanggil updateMappingForParentOption
+  final String sectionId;
+  final String questionId;
+  final String parentOptionValue;
+  final List<String> initialChildOptions;
+
+  const _EditChildOptionsDialog({
+    // Key? key, // Tidak wajib untuk dialog via Get.dialog
+    required this.pageController,
+    required this.sectionId,
+    required this.questionId,
+    required this.parentOptionValue,
+    required this.initialChildOptions,
+  }); // : super(key: key);
+
+  @override
+  State<_EditChildOptionsDialog> createState() => _EditChildOptionsDialogState();
+}
+
+class _EditChildOptionsDialogState extends State<_EditChildOptionsDialog> {
+  late List<TextEditingController> _optionControllers;
+
+  @override
+  void initState() {
+    super.initState();
+    _optionControllers = widget.initialChildOptions
+        .map((opt) => TextEditingController(text: opt))
+        .toList();
+    if (_optionControllers.isEmpty) {
+      // Selalu mulai dengan satu field jika kosong
+      _optionControllers.add(TextEditingController());
+    }
+  }
+
+  @override
+  void dispose() {
+    // Dispose semua controller saat dialog ini di-dispose
+    for (var controller in _optionControllers) {
+      controller.dispose();
+    }
+    print("AdminFormBuilderPage: _EditChildOptionsDialog disposed ${_optionControllers.length} controllers.");
+    super.dispose();
+  }
+
+  void _addOptionField() {
+    setState(() {
+      _optionControllers.add(TextEditingController());
+    });
+  }
+
+  void _removeOptionField(int index) {
+    setState(() {
+      FocusScope.of(context).unfocus();
+      // Controller yang dihapus akan di-dispose secara otomatis oleh metode dispose() utama widget ini
+      // ketika dialog ditutup, atau jika Anda ingin langsung dispose di sini:
+      // _optionControllers[index].dispose();
+      _optionControllers.removeAt(index);
+      // Jika setelah dihapus menjadi kosong, tambahkan satu field lagi agar tidak pernah benar-benar kosong
+      if (_optionControllers.isEmpty) {
+        _optionControllers.add(TextEditingController());
+      }
+    });
+  }
+
+  void _saveOptions() {
+    final newChildOptions = _optionControllers
+        .map((c) => c.text.trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+
+    widget.pageController.updateMappingForParentOption(
+        widget.sectionId, widget.questionId, widget.parentOptionValue, newChildOptions);
+
+    Get.back(); // Tutup dialog. dispose() akan dipanggil otomatis.
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Atur Opsi Anak untuk Induk: "${widget.parentOptionValue}"',
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      contentPadding: const EdgeInsets.fromLTRB(20, 15, 20, 0), // Sesuaikan padding
+      content: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.9, // Lebar dialog responsif
+        child: Column(
+          mainAxisSize: MainAxisSize.min, // Agar tinggi dialog menyesuaikan konten
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Opsi anak yang akan muncul jika jawaban induk adalah \"${widget.parentOptionValue}\":",
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+            const SizedBox(height: 15),
+            Flexible( // Membuat ListView scrollable jika kontennya melebihi tinggi dialog
+              child: ListView.builder(
+                shrinkWrap: true, // Penting di dalam Column MainAxisSize.min
+                itemCount: _optionControllers.length,
+                itemBuilder: (ctx, index) {
+                  return Padding(
+                    key: ObjectKey(_optionControllers[index]), // Gunakan ObjectKey untuk stabilitas
+                    padding: const EdgeInsets.only(bottom: 10.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _optionControllers[index],
+                            decoration: AdminFormBuilderPage._modernInputDecoration( // Akses helper static
+                                labelText: 'Opsi Anak ${index + 1}',
+                                isDense: true
+                            ).copyWith(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                fillColor: Colors.grey.shade50
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.remove_circle_outline_rounded, color: Colors.red.shade300, size: 22),
+                          onPressed: () => _removeOptionField(index),
+                          splashRadius: 18,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 5),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: Icon(Icons.add_circle_rounded, color: AdminFormBuilderPage.accentThemeColor, size: 20),
+                label: Text('Tambah Opsi Anak', style: TextStyle(color: AdminFormBuilderPage.accentThemeColor, fontSize: 14, fontWeight: FontWeight.w500)),
+                onPressed: _addOptionField,
+                style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 0)),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actionsAlignment: MainAxisAlignment.spaceBetween,
+      actionsPadding: const EdgeInsets.fromLTRB(16, 16, 16, 12), // Sesuaikan padding
+      actions: [
+        OutlinedButton(
+          child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+          onPressed: () {
+            Get.back(); // Menutup dialog akan memicu dispose() pada _EditChildOptionsDialogState
+          },
+          style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.grey.shade300)),
+        ),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+          label: const Text('Simpan Opsi Ini'),
+          style: ElevatedButton.styleFrom(backgroundColor: AdminFormBuilderPage.accentThemeColor, foregroundColor: Colors.white),
+          onPressed: _saveOptions,
+        ),
+      ],
+    );
+  }
+}
+
+
 class _PersistentTextFieldState extends State<_PersistentTextField> {
   late TextEditingController _textController;
 
@@ -1584,6 +1809,9 @@ class _PersistentTextFieldState extends State<_PersistentTextField> {
       keyboardType: widget.keyboardType,
     );
   }
+
+
+
 
   @override
   void dispose() {

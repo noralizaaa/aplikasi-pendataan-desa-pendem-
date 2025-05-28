@@ -3,7 +3,46 @@
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
 
+## [0.18.0] - 2025-05-28
+> Created by [Your Name / Team Name]
+
+> Implemented Cascading Dropdowns and Enhanced Validation for User Form Input Screen
+
+### 🎉 Added
+-   **Cascading Dropdown Functionality (`InputUserScreen`, `InputUserController`):**
+  -   Implemented logic in `InputUserScreen` for `QuestionType.dropdown` to dynamically filter and display options based on the selected value of a designated parent question, according to `dependentOptions` mapping defined in the form structure.
+  -   Added `_resetDependentChildrenAnswers` method in `InputUserController` to clear/reset child dropdown answers when the parent question's selection changes, ensuring data integrity.
+-   **Client-Side Validation Feedback (`InputUserScreen`):**
+  -   Integrated `validator` functions with `TextFormField` (for text, paragraph, number, date), `DropdownButtonFormField`, and `FormField<List<String>>` (for checkboxes) to provide immediate input validation feedback to the user.
+  -   Utilized `autovalidateMode.onUserInteraction` for a responsive validation experience.
+  -   Wrapped form content in `InputUserScreen` with a `Form` widget and associated it with `controller.formKey`.
+
+### 🛠️ Changed
+-   **`InputUserController._initializeStates()`:**
+  -   Improved state initialization to ensure all answer slots for various question types (including `checkboxes`, `dropdown`, `gridNumeric`) and for new instances in repeatable groups are consistently set with appropriate default values (e.g., `''`, `null`, `[]`, `{}`), preventing potential null errors and `setState called during build` issues in the UI.
+-   **`InputUserController.updateUserAnswer()`:**
+  -   Refined logic to call `_resetDependentChildrenAnswers` only when a parent question's value actually changes, to correctly update dependent child dropdowns.
+  -   Adjusted how numeric answers from `isRepeatableGroupController` questions are stored back into `userAnswers` (as String) for consistency with `TextFormField`.
+-   **`InputUserController.submitForm()`:**
+  -   Now triggers `formKey.currentState!.validate()` first for built-in `TextFormField` validations.
+  -   Enhanced the `_performLocalValidation` helper method (now a class method) to more robustly handle `ValidationRule?` (nullable rule object from `FormQuestion.validation`) and safely access its properties (`rule?.minLength`, etc.).
+  -   Clarified NIK validation within `_performLocalValidation` to be triggered by `rule.predefinedRule == 'nik'` on a text field.
+  -   Maintained example placeholder for hardcoded cross-question validation (e.g., "Q203 <= Q112") as the model `ValidationRule` does not yet support defining this dynamically.
+-   **`InputUserScreen._buildQuestionInput()`:**
+  -   Significantly refactored `case QuestionType.dropdown:` to implement the cascading logic, dynamically building `items` based on parent selection and `dependentOptions`.
+  -   Removed direct default value assignments for Rx variables from within the build method; now relies entirely on controller's initialization logic in `_initializeStates` and `_adjustRepeatableGroupAnswers`.
+  -   Ensured `ValueKey`s are consistently applied for input field widgets for better state management.
+-   **`InputUserScreen._buildQuestionsForSection()`:**
+  -   Maintained `Obx` wrapper for individual questions for reactive visibility and rendering of repeatable groups.
+  -   Improved keying for elements within `List.generate` for repeatable groups.
+
+### 🐛 Fixed
+-   **Cascading Dropdown Not Filtering Options:** Resolved the primary issue where child dropdowns in `InputUserScreen` displayed all master options instead of contextually filtered options based on the parent question's selection.
+-   **Potential `setState called during build` errors in `InputUserScreen`:** Addressed by centralizing answer slot initialization in `InputUserController` and ensuring `_buildQuestionInput` is primarily for reading and rendering state.
+-   **Null Safety Issues in `InputUserController._performLocalValidation`:** Correctly handled nullable `ValidationRule` object and its properties.
+-   **`DropdownButtonFormField` errors:** Addressed `items` and `onChanged` requirements and ensured `value` is valid within the current set of displayable items for dropdowns, especially dependent ones.
 
 ---
 
