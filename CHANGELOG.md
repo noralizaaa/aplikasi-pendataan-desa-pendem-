@@ -4,6 +4,63 @@ This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [0.19.1] - 2025-05-30
+> Contributed by: [Bayu Ardiyansyah]
+
+> Major Refactor of User Input Form Controller for Edit Mode, Jump Logic, and Submission Feedback. This version includes extensive fixes for initial data display in edit mode and save button responsiveness.
+
+### 🎉 Added
+- **Edit Mode Data Loading (`InputUserController`):**
+  - Implemented logic to fetch existing `FormSubmission` data when `submissionId` is provided as an argument, enabling an "edit mode".
+  - Introduced `loadedSubmission` (Rx<FormSubmission?>) to store fetched submission data.
+  - New method `_populateAnswersFromSubmission()` to map saved answers from `loadedSubmission` to internal state variables (`userAnswers`, `repeatableGroupCounts`, `repeatableGroupAnswers`).
+- **Type-Safe Answer Mapping (`InputUserController`):**
+  - Added `_mapAnswerToCorrectType()` helper to ensure answers from Firestore are correctly typed (e.g., `Timestamp` to `String` for dates, `List<String>` for checkboxes, `num` for numeric grid cells) before populating UI-bound states.
+- **Initial Visibility Evaluation for Jumps (`InputUserController`):**
+  - New method `_evaluateAllQuestionVisibilitiesInitialPass()` designed to iterate through all questions after data (either new or from submission) is loaded. It evaluates unconditional and conditional jumps based on current answers to set the initial `questionVisibility` state correctly, ensuring only relevant questions are displayed when a form is first opened in new or edit mode.
+- **Refined Jump Logic Helpers (`InputUserController`):**
+  - Introduced `_getJumpTarget()` to determine the composite jump target string without side effects.
+  - Introduced `_determineNextVisibleIdAfterJump()` to resolve a composite jump target to a specific next question ID.
+  - Modified `_updateVisibilityBasedOnJump()` (called by initial pass) and `_performJumpAndUpdateVisibility()` (called by dynamic answer changes) for clearer visibility state management and answer clearing for skipped questions.
+- **Firestore Data Preparation (`InputUserController`):**
+  - Added `_prepareAnswerForFirestore()` to convert UI/state answers to appropriate Firestore types (e.g., `String` date to `Timestamp`, `String` number to `num`) before submission.
+
+### 🛠️ Changed
+- **Argument Handling in `onInit` (`InputUserController`):**
+  - Refined argument parsing to correctly extract `formId` and `submissionId` when arguments are passed as a `Map`.
+  - Improved error messages for invalid or missing arguments.
+- **Data Fetching Orchestration (`InputUserController`):**
+  - Consolidated data fetching into `fetchFormAndPotentialSubmissionData()` which now handles loading both form structure and existing submission data sequentially if in edit mode.
+- **State Initialization (`InputUserController`):**
+  - `_initializeStatesBasedOnMode()` now correctly branches logic for new forms versus populating from `loadedSubmission` in edit mode before evaluating initial question visibility.
+  - Ensures default answer structures are created before attempting to populate them from a submission, especially for repeatable groups.
+- **Jump Evaluation Flow (`InputUserController`):**
+  - `evaluateAndExecuteJumps()` (for dynamic answer changes) now correctly makes the next sequential question visible if no jump occurs and then recursively calls itself for the newly visible question to handle chained logic.
+  - Added `_isCurrentlyEvaluatingJumps` flag to prevent re-entrant calls during jump evaluations.
+- **Submission Logic (`InputUserController`):**
+  - `submitForm()` now differentiates between adding a new submission and updating an existing one (using `submissionId.value`) by calling `.add()` or `.set(..., SetOptions(merge: true))` on the Firestore collection.
+  - Added an `updatedAt` timestamp when updating an existing submission.
+  - Improved `isLoading` state management during submission.
+  - Added a slight delay before navigation/reset after Snackbar display to ensure users see the feedback.
+- **Answer Clearing (`InputUserController`):**
+  - `_clearAnswersForSkippedQuestions()` now resets answers to their type-specific defaults rather than just removing keys, ensuring consistent state.
+  - `_resetDependentChildrenAnswers()` made more robust.
+
+### 🐛 Fixed
+- **Method Name Typos (`InputUserController`):**
+  - Exhaustively corrected all previously reported method name typos (e.g., `findQuestionById`, `_getFirstQuestionIdOfSection`, `_getSectionIdForQuestion`, `_clearAnswersForSkippedQuestions`, `_resetDependentChildrenAnswers`, `getAnswerByQuestionId`, `findQuestionByCode`) throughout the controller to resolve "method isn't defined" errors.
+- **Initial Form State in Edit Mode (`InputUserController`):**
+  - Addressed the issue where edit mode would display all questions instead of applying jump logic based on loaded answers by implementing `_evaluateAllQuestionVisibilitiesInitialPass()`.
+- **Save Button Feedback (`InputUserController`):**
+  - Ensured `isLoading` is set correctly before and after Firestore operations in `submitForm()`.
+  - Ensured `Get.snackbar` for success/error is called reliably after the Firestore operation and before UI state changes that might obscure it.
+- **Snackbar Display Timing**: While a delay was added, very fast operations or specific UI rebuild sequences might occasionally affect Snackbar visibility consistency.
+- **Complex Initial Jump Logic in Edit Mode**: While `_evaluateAllQuestionVisibilitiesInitialPass()` aims to set initial visibility correctly, forms with very complex, deeply nested, or backward jumps based on pre-filled data might still require further fine-tuning and extensive testing to ensure perfect initial display.
+- **Grid Question Jumps**: The current jump logic is primarily triggered by `onChanged` of standard input fields. Jumps *from* a grid question (e.g., an unconditional jump after the grid is "completed") are not explicitly handled by cell changes. This might require a dedicated "next" button for grids or a different trigger mechanism if post-grid jumps are needed.
+
+### ⚠️ Known Issues / Areas for Further Testing
+- **Routes back in Management Mode (`ListSubmissionFormScreen`):** After I save the edit form, it still returns to the management page but when I press the back icon, it returns to the edit page!!!
+---
 ## [0.19.0] - 2025-05-30
 > Contributed by: [Bayu Ardiyansyah]
 

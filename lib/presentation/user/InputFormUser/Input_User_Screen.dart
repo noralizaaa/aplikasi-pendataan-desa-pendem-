@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Untuk TextInputFormatter
 import 'package:get/get.dart';
-import './input_user_controller.dart';
+import '../../../infrastructure/navigation/routes.dart';
+import 'input_user_controller.dart';
 import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart'; // Untuk QuestionType, dll.
 import 'package:intl/intl.dart';
 
@@ -89,7 +90,8 @@ class InputUserScreen extends GetView<InputUserController> {
                 buttonColor: accentHeaderColor,
                 cancelTextColor: Colors.grey.shade700,
                 onConfirm: () {
-                  Get.back();
+                  Get.toNamed(AppRoutes.LIST_SUBMISSION_FORM); // Menutup dialog
+                  print("AppBar Action: Tombol 'Ya, Kirim' ditekan. Akan memanggil controller.submitForm()"); // DEBUG
                   controller.submitForm();
                 },
                 radius: 10,
@@ -104,6 +106,13 @@ class InputUserScreen extends GetView<InputUserController> {
           return const Center(child: CircularProgressIndicator(color: accentHeaderColor));
         }
         if (controller.errorMessage.value.isNotEmpty && controller.loadedForm.value == null) {
+          final currentErrorMessage = controller.errorMessage.value;
+          // Cek apakah error disebabkan oleh masalah fundamental dengan argumen ID
+          bool isFatalArgumentError = currentErrorMessage.contains("Argumen ID Form tidak ditemukan") ||
+              currentErrorMessage.contains("Tipe argumen ID Form tidak valid") ||
+              currentErrorMessage.contains("ID Form yang diterima kosong") ||
+              currentErrorMessage.contains("ID Form kosong atau tidak valid"); // Termasuk pesan dari guard fetchFormStructure
+
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(20.0),
@@ -112,16 +121,24 @@ class InputUserScreen extends GetView<InputUserController> {
                 children: [
                   Icon(Icons.error_outline_rounded, color: Colors.red.shade400, size: 50),
                   const SizedBox(height: 10),
-                  Text(controller.errorMessage.value,
+                  Text(currentErrorMessage,
                       style: const TextStyle(color: Colors.red, fontSize: 16),
                       textAlign: TextAlign.center),
                   const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text("Coba Lagi"),
-                    onPressed: () => controller.fetchFormStructure(),
-                    style: ElevatedButton.styleFrom(backgroundColor: accentHeaderColor, foregroundColor: Colors.white),
-                  )
+                  if (!isFatalArgumentError) // Hanya tampilkan "Coba Lagi Memuat" jika errornya bukan karena ID form yang salah dari awal
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text("Coba Lagi Memuat Form"),
+                      onPressed: () => controller.fetchFormStructure(),
+                      style: ElevatedButton.styleFrom(backgroundColor: accentHeaderColor, foregroundColor: Colors.white),
+                    )
+                  else // Jika error karena ID, sarankan untuk kembali
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text("Kembali"),
+                      onPressed: () => Get.back(),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade600, foregroundColor: Colors.white),
+                    ),
                 ],
               ),
             ),
@@ -773,9 +790,12 @@ class InputUserScreen extends GetView<InputUserController> {
                                           fillColor: Colors.white,
                                           filled: true,
                                         ),
-                                        keyboardType: TextInputType.number,
-                                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')), // Izinkan angka, titik, dan koma
+                                        ],
                                         onChanged: (value) {
+                                          // Kirim nilai dengan koma jika pengguna mengetik koma
                                           controller.updateGridAnswer(question.id, repeatIndex, rowLabel, colLabel, subColLabel, value);
                                         },
                                         validator: (cellValueString) {

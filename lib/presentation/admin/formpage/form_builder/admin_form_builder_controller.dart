@@ -98,10 +98,12 @@ class AdminFormBuilderController extends GetxController {
         formTitle.value = formItem.title;
         formDescription.value = formItem.description;
         _clearAllSectionExpansionControllers();
-        for (var section in sections) {
+        // sections.assignAll(formItem.sections); // sections dari FormItem sudah List<FormSection>
+        // Initialize expansion controllers for loaded sections
+        sections.assignAll(formItem.sections.map((section) {
           sectionExpansionControllers[section.id] = ExpansionTileController();
-        }
-        sections.assignAll(formItem.sections); // sections dari FormItem sudah List<FormSection>
+          return section;
+        }).toList());
         titleController.text = formItem.title;
         descriptionController.text = formItem.description;
         _originalCreatedAt = formItem.createdAt;
@@ -127,14 +129,19 @@ class AdminFormBuilderController extends GetxController {
   // --- MANAJEMEN BAGIAN (SECTION) ---
   void addSection() {
     final newSection = FormSection(
-      id: UId.getId(), // Pastikan UId.getId() menghasilkan ID yang unik
+      id: UId.getId(),
       title: '',
       questions: [],
       isRepeatable: false,
     );
+    final newExpansionController = ExpansionTileController();
     sections.add(newSection);
-    // Buat dan simpan ExpansionTileController untuk section baru
-    sectionExpansionControllers[newSection.id] = ExpansionTileController();
+    sectionExpansionControllers[newSection.id] = newExpansionController;
+
+    // Jika section pertama pada form baru, buat dia expanded
+    if (!isEditMode && sections.length == 1) {
+      newExpansionController.expand(); // Panggil expand di sini
+    }
   }
 
   void updateSectionTitle(String sectionId, String title) {
@@ -476,6 +483,25 @@ class AdminFormBuilderController extends GetxController {
   }
   void removeMappingForParentOption(String sectionId, String questionId, String parentOptionValue) { /* ... Implementasi Anda ... */ }
 
+  // ***** START: NEW METHOD FOR UNCONDITIONAL JUMP *****
+  void updateUnconditionalJump(String sectionId, String questionId, String? newTargetCompositeValue) {
+    _updateQuestionProperty(sectionId, questionId, (q) {
+      // If newTargetCompositeValue is effectively empty (null or empty string), treat as null
+      final targetToSet = (newTargetCompositeValue != null && newTargetCompositeValue.trim().isEmpty)
+          ? null
+          : newTargetCompositeValue;
+
+      // This assumes your FormQuestion.copyWith method can handle
+      // 'unconditionalJumpTarget' and 'setUnconditionalJumpTargetNull'
+      return q.copyWith(
+        unconditionalJumpTarget: targetToSet,
+        setUnconditionalJumpTargetNull: targetToSet == null,
+      );
+    });
+  }
+  // ***** END: NEW METHOD FOR UNCONDITIONAL JUMP *****
+
+
   Future<void> saveForm() async {
     Get.dialog(
       AlertDialog(
@@ -525,11 +551,20 @@ class AdminFormBuilderController extends GetxController {
       if(isEditMode && _originalFormVersion != null){
         double currentV = double.tryParse(_originalFormVersion!) ?? 1.0;
         currentV += 0.1;
-        newVersion = currentV.toStringAsFixed(1);
-        if (newVersion.split('.')[1] == '10') { // Misal 1.9 -> 1.10 jadi 2.0
-          newVersion = (currentV.floor() + 1).toStringAsFixed(1); // Menjadi X.0
+        // Handle precision issues with floating point arithmetic for versioning
+        String tempVersion = currentV.toStringAsFixed(2); // e.g. "1.90" + 0.1 = "2.00"
+        if (tempVersion.endsWith('0') && tempVersion.length > 3) { // e.g. "2.00" not "2.0"
+          tempVersion = double.parse(tempVersion).toStringAsFixed(1); // "2.0"
         }
+        newVersion = tempVersion;
+
+        // Specific check for .9 + .1 becoming .0 of next integer
+        // E.g., 1.9 -> 2.0.  If currentV was 1.9, currentV + 0.1 = 2.0.
+        // toStringAsFixed(1) handles this correctly.
+        // Example: (1.9 + 0.1).toStringAsFixed(1) = "2.0"
+        // Example: (1.0 + 0.1).toStringAsFixed(1) = "1.1"
       }
+
 
       final formToSave = FormItem(
         id: formIdToSave,

@@ -330,6 +330,7 @@ class FormQuestion {
   final List<String> gridRowLabels;
   final List<String> gridColumnLabels;
   final List<String> gridSubColumnLabels;
+  final String? unconditionalJumpTarget;
 
   FormQuestion({
     required this.id,
@@ -351,6 +352,7 @@ class FormQuestion {
     this.gridRowLabels = const [],
     this.gridColumnLabels = const [],
     this.gridSubColumnLabels = const [],
+    this.unconditionalJumpTarget,
   }) : validation = validation ?? ValidationRule.empty();
 
   factory FormQuestion.fromMap(Map<String, dynamic> map) {
@@ -428,6 +430,8 @@ class FormQuestion {
     List<String>? gridRowLabels,
     List<String>? gridColumnLabels,
     List<String>? gridSubColumnLabels,
+    String? unconditionalJumpTarget,
+    bool setUnconditionalJumpTargetNull = false,
   }) {
     return FormQuestion(
       id: id ?? this.id,
@@ -449,6 +453,7 @@ class FormQuestion {
       gridRowLabels: gridRowLabels ?? List<String>.from(this.gridRowLabels),
       gridColumnLabels: gridColumnLabels ?? List<String>.from(this.gridColumnLabels),
       gridSubColumnLabels: gridSubColumnLabels ?? List<String>.from(this.gridSubColumnLabels),
+      unconditionalJumpTarget: setUnconditionalJumpTargetNull ? null : unconditionalJumpTarget ?? this.unconditionalJumpTarget,
     );
   }
 }

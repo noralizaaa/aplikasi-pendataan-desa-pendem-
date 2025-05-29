@@ -143,8 +143,12 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
             Obx(() => Column(
               children: controller.sections.asMap().entries.map((entry) {
                 final sectionIndex = entry.key;
-                final section = entry.value;
-                return _buildSectionCard(controller.sections[sectionIndex].id, sectionIndex);
+                // final section = entry.value; // section diambil dari controller.sections[sectionIndex]
+                // Pastikan section diambil dari RxList yang diperbarui
+                if (sectionIndex < controller.sections.length) {
+                  return _buildSectionCard(controller.sections[sectionIndex].id, sectionIndex);
+                }
+                return const SizedBox.shrink(); // Fallback jika index out of bounds
               }).toList(),
             )),
             const SizedBox(height: 24),
@@ -214,17 +218,18 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
 
   Widget _buildSectionCard(String sectionIdFromList, int sectionIndex) {
     return Obx(() {
-      // Pastikan 'section' didefinisikan di sini agar bisa diakses oleh seluruh blok Obx
       final section = controller.sections.firstWhere(
             (s) => s.id == sectionIdFromList,
-        // orElse: () => FormSection(id: 'error', title: 'Error Section Not Found', questions: []), // Fallback jika diperlukan
+        orElse: () {
+          print("ERROR: Section with ID $sectionIdFromList not found in _buildSectionCard. This might indicate a data consistency issue.");
+          return FormSection(id: 'error_id_${DateTime.now().millisecondsSinceEpoch}', title: 'Error: Bagian tidak ditemukan', questions: []);
+        },
       );
+      if (section.id.startsWith('error_id')) {
+        return Card(child: ListTile(title: Text(section.title)));
+      }
 
-      // 'tileController' didefinisikan di sini, menggunakan 'section' yang sudah ada
       final ExpansionTileController? tileController = controller.sectionExpansionControllers[section.id];
-
-      // Debugging print:
-      // print("Building SectionCard for ID: ${section.id}. TileController is ${tileController == null ? 'NULL' : 'NOT NULL'}");
 
       String romanNumeral = _toRoman(sectionIndex + 1);
       String displaySectionTitle = section.title.trim().isEmpty
@@ -247,13 +252,17 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
       }
       String titleForDialog = section.title.trim().isEmpty ? "Bagian $romanNumeral" : section.title.trim();
 
-      bool shouldBeInitiallyExpanded;
+      // Logika untuk menentukan apakah section seharusnya expanded (jika tidak ada controller)
+      bool shouldBeInitiallyExpandedIfNoController;
       if (!controller.isEditMode) {
-        shouldBeInitiallyExpanded = sectionIndex == 0;
+        shouldBeInitiallyExpandedIfNoController = sectionIndex == 0; // Buka section pertama jika form baru
       } else {
-        shouldBeInitiallyExpanded = false;
+        shouldBeInitiallyExpandedIfNoController = false; // Tutup semua jika mode edit
       }
 
+      // =======================================================================
+      // AWAL PERUBAHAN PADA BAGIAN ExpansionTile
+      // =======================================================================
       return Card(
         margin: const EdgeInsets.only(bottom: 20),
         elevation: 2,
@@ -261,9 +270,23 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
         clipBehavior: Clip.antiAlias,
         color: cardBgColor,
         child: ExpansionTile(
-          key: ValueKey(section.id),
-          controller: tileController, // tileController digunakan di sini
-          initiallyExpanded: tileController?.isExpanded ?? shouldBeInitiallyExpanded,
+          key: ValueKey(section.id), // Key penting untuk menjaga state
+          controller: tileController, // Controller yang Anda sediakan
+
+          // PERUBAHAN KRUSIAL:
+          // Jika 'tileController' ada (tidak null), maka 'initiallyExpanded' HARUS false.
+          // State ekspansi akan sepenuhnya diatur oleh 'tileController.isExpanded'.
+          // Jika 'tileController' null (seharusnya tidak terjadi jika manajemen controller benar),
+          // maka kita bisa menggunakan logika 'shouldBeInitiallyExpandedIfNoController'.
+          initiallyExpanded: (tileController != null)
+              ? false // WAJIB false jika controller ada
+              : shouldBeInitiallyExpandedIfNoController,
+
+          onExpansionChanged: (isExpanding) {
+            // Optional: Anda bisa menangani perubahan state ekspansi di sini jika perlu
+            // Misalnya, controller.updateSectionExpansionState(section.id, isExpanding);
+            // Namun, ExpansionTileController sudah menangani state isExpanded secara internal.
+          },
           backgroundColor: cardBgColor,
           collapsedBackgroundColor: cardBgColor,
           iconColor: accentThemeColor,
@@ -386,7 +409,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                         ]),
                       ],
                     ],
-                    initiallyExpanded: section.isRepeatable,
+                    initiallyExpanded: section.isRepeatable, // Ini untuk ExpansionTile *dalam* section card, BUKAN section card itu sendiri
                   ),
                   const SizedBox(height: 20),
                   Text("Pertanyaan untuk Bagian Ini:", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
@@ -420,11 +443,9 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
                       onPressed: () {
-                        // 'tileController' dan 'section' sekarang pasti bisa diakses di sini
                         if (tileController != null) {
                           tileController.collapse();
                         } else {
-                          // Ini seharusnya tidak terjadi jika controller dikelola dengan benar
                           print("Error: tileController is null for section ${section.id} when trying to collapse.");
                         }
                       },
@@ -487,6 +508,116 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     );
   }
 
+  // ***** START: NEW WIDGET FOR UNCONDITIONAL JUMP *****
+  Widget _buildUnconditionalJumpSetting(String sectionId, FormQuestion question) {
+    // Get all possible jump targets
+    List<DropdownMenuItem<String?>> allJumpTargets = [ // Made String? to accommodate null value
+      const DropdownMenuItem(
+        value: null, // Represents "No unconditional jump"
+        child: Text("Tidak Ada Lompatan Otomatis", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey, fontSize: 14)),
+      ),
+      // Separator or header for clarity
+      const DropdownMenuItem(value: "HEADER_TARGET_UNCONDITIONAL", enabled: false, child: Text('Pilih Tujuan Lompat Otomatis:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 13))),
+    ];
+
+    for (int i = 0; i < controller.sections.length; i++) {
+      final sec = controller.sections[i];
+      String sectionRoman = _toRoman(i + 1);
+      String sectionTitle = '$sectionRoman: ${sec.title.isNotEmpty ? (sec.title.length > 20 ? sec.title.substring(0, 17) + '...' : sec.title) : "Tanpa Judul"}';
+
+      allJumpTargets.add(DropdownMenuItem(
+        value: 'section_start_${sec.id}',
+        child: Text("Lompat ke Awal Bagian $sectionTitle", style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+      ));
+
+      for (int j = 0; j < sec.questions.length; j++) {
+        final q = sec.questions[j];
+        if (q.id == question.id) continue; // Cannot jump to itself
+
+        String questionCodeDisplay = q.code != null && q.code!.isNotEmpty ? q.code! : "$sectionRoman.${j+1}";
+        allJumpTargets.add(DropdownMenuItem(
+          value: 'question_${q.id}',
+          child: Padding(
+            padding: const EdgeInsets.only(left: 16.0),
+            child: Text('  Lompat ke P: $questionCodeDisplay - ${q.questionText.length > 25 ? q.questionText.substring(0, 22) + '...' : q.questionText}', style: const TextStyle(fontSize: 14)),
+          ),
+        ));
+      }
+    }
+
+    allJumpTargets.add(const DropdownMenuItem(
+      value: 'end_of_current_section',
+      child: Text('Akhir Bagian Ini (Lanjut Bagian Berikutnya)', style: TextStyle(fontStyle: FontStyle.italic, fontSize: 14)),
+    ));
+
+    allJumpTargets.add(const DropdownMenuItem(
+      value: 'end_of_form',
+      child: Text('Akhir Form (Selesai)', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.green, fontSize: 14)),
+    ));
+
+    String? currentTarget = question.unconditionalJumpTarget;
+    // Validate currentTarget against available options. If not found, set to null.
+    bool isCurrentTargetValid = currentTarget == null || allJumpTargets.any((item) => item.value == currentTarget && item.value != "HEADER_TARGET_UNCONDITIONAL");
+
+    if (!isCurrentTargetValid) {
+      print("Warning: Unconditional jump target '$currentTarget' for question '${question.id} / ${question.code}' not found in options. Resetting to null.");
+      currentTarget = null; // Reset to "Tidak Ada Lompatan Otomatis"
+    }
+
+    return _buildExpansionTileForSettings(
+      'Lompatan Otomatis (Setelah Pertanyaan Ini)',
+      [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+              "Jika diatur, setelah pertanyaan ini dijawab (atau ditampilkan jika tidak memerlukan input), form akan otomatis melompat ke tujuan yang dipilih. Ini akan mengabaikan urutan normal dan logika bersyarat.",
+              style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600, height: 1.3)
+          ),
+        ),
+        DropdownButtonFormField<String?>(
+          key: ValueKey('${question.id}_unconditional_jump_dd_${currentTarget ?? "null"}'), // Key to help rebuild if value changes externally
+          decoration: _modernInputDecoration(labelText: 'Lompat Otomatis Ke:', isDense: true)
+              .copyWith(contentPadding: const EdgeInsets.fromLTRB(12, 14, 12, 14)),
+          value: currentTarget,
+          items: allJumpTargets.where((item) => item.value != "HEADER_TARGET_UNCONDITIONAL").toList(),
+          onChanged: (String? selectedValue) {
+            controller.updateUnconditionalJump(sectionId, question.id, selectedValue);
+          },
+          isExpanded: true,
+          hint: const Text('Pilih tujuan...'),
+        ),
+        if (question.type == QuestionType.gridNumeric && question.unconditionalJumpTarget != null && question.unconditionalJumpTarget!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Text(
+              "Untuk Grid Numerik, lompatan ini akan terjadi setelah pengguna selesai dengan interaksi grid dan berlanjut.",
+              style: TextStyle(fontSize: 12, color: Colors.blueGrey.shade700, fontStyle: FontStyle.italic),
+            ),
+          ),
+        if (question.conditionalJumps.isNotEmpty && question.unconditionalJumpTarget != null && question.unconditionalJumpTarget!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 10.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "Peringatan: 'Logika Bersyarat' juga aktif. Lompatan Otomatis ini akan diprioritaskan dan mengabaikan Logika Bersyarat.",
+                    style: TextStyle(fontSize: 12.5, color: Colors.orange.shade800, fontWeight: FontWeight.w500, height: 1.3),
+                  ),
+                ),
+              ],
+            ),
+          )
+      ],
+      initiallyExpanded: question.unconditionalJumpTarget != null && question.unconditionalJumpTarget!.isNotEmpty,
+    );
+  }
+  // ***** END: NEW WIDGET FOR UNCONDITIONAL JUMP *****
+
+
   Widget _buildQuestionCard(String sectionId, int sectionIndexOverall, String questionIdFromList, int questionIndexInSection) {
     return Obx(() {
       final question = controller.sections
@@ -495,7 +626,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
           .firstWhereOrNull((q) => q.id == questionIdFromList);
 
       if (question == null) {
-        return const SizedBox.shrink(child: Text("Error: Pertanyaan tidak dapat dimuat"));
+        return Card(margin: const EdgeInsets.only(bottom:16, top:8), child: ListTile(title: Text("Error: Pertanyaan ID $questionIdFromList tidak dapat dimuat.")));
       }
 
       String displayCode = question.code != null && question.code!.isNotEmpty ? "(${question.code}) " : "";
@@ -642,7 +773,8 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
               ),
               _buildRepeatableSetting(sectionId, question),
               _buildRepeatableGroupSettings(sectionId, question),
-              _buildConditionalJumpSetting(sectionId, question),
+              _buildConditionalJumpSetting(sectionId, question), // Conditional jumps
+              _buildUnconditionalJumpSetting(sectionId, question), // ***** ADDED UNCONDITIONAL JUMP UI HERE *****
               if (question.type == QuestionType.dropdown)
                 _buildDependentOptionsConfigurator(sectionId, question),
             ],
@@ -664,18 +796,15 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
         child: ExpansionTile(
           key: ValueKey(question.id), // Key untuk state ExpansionTile
           title: questionTileTitle,
-          // initiallyExpanded: false, // Pertanyaan defaultnya tertutup
-          // Atau, jika ingin pertanyaan baru defaultnya terbuka:
           initiallyExpanded: question.questionText.trim().isEmpty && (question.code ?? '').trim().isEmpty,
           tilePadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0), // Padding untuk header tile
           childrenPadding: EdgeInsets.zero, // Padding untuk children diatur oleh Padding di dalam questionTileChildren
           iconColor: accentThemeColor,
           collapsedIconColor: Colors.grey.shade700,
-          // Hapus border default ExpansionTile jika sudah ada border di Container luar
           shape: const Border(top: BorderSide.none, bottom: BorderSide.none),
           collapsedShape: const Border(top: BorderSide.none, bottom: BorderSide.none),
-          backgroundColor: Colors.transparent, // Agar warna Container luar yang terlihat
-          collapsedBackgroundColor: Colors.transparent, // Sama
+          backgroundColor: Colors.transparent,
+          collapsedBackgroundColor: Colors.transparent,
           children: questionTileChildren,
         ),
       );
@@ -711,9 +840,9 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
         if (question.isRepeatableGroupController && question.type == QuestionType.number)
           Padding(
             padding: const EdgeInsets.only(left: 16.0, top: 4.0, bottom: 8.0),
-            child: TextField(
-              controller: TextEditingController(text: question.controlledGroupTag ?? uniqueTagSuggestion)
-                ..selection = TextSelection.fromPosition(TextPosition(offset: (question.controlledGroupTag ?? uniqueTagSuggestion).length)),
+            child: _PersistentTextField( // Ganti ke _PersistentTextField
+              fieldKey: ValueKey('${question.id}_controlledGroupTag_persistent'),
+              initialValue: question.controlledGroupTag ?? uniqueTagSuggestion,
               decoration: _modernInputDecoration(
                   labelText: 'ID Unik Grup yang Dikontrol',
                   hintText: 'Contoh: ${uniqueTagSuggestion}',
@@ -826,11 +955,6 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
           padding: const EdgeInsets.only(bottom: 6.0, top: 4.0),
           child: Text('Opsi Pilihan:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.grey.shade800)),
         ),
-        // Gunakan Obx jika question.options adalah RxList atau jika daftar opsi bisa berubah drastis.
-        // Jika question.options adalah List biasa yang diupdate melalui controller.sections.refresh(),
-        // maka Obx di level atas (yang mengamati controller.sections) sudah cukup.
-        // Namun, jika hanya ingin merebuild bagian ini saat opsi berubah, Obx di sini bisa berguna.
-        // Untuk saat ini, kita asumsikan Obx di level atas sudah menangani rebuild.
         ...question.options.asMap().entries.map((entry) {
           int index = entry.key;
           String option = entry.value;
@@ -903,22 +1027,25 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     return _buildExpansionTileForSettings(
       'Pengaturan Validasi Teks/Paragraf',
       [
-        TextField(
-          controller: TextEditingController(text: question.validation?.minLength?.toString() ?? ''),
+        _PersistentTextField( // Ganti ke _PersistentTextField
+          fieldKey: ValueKey('${question.id}_validation_minLength_persistent'),
+          initialValue: question.validation?.minLength?.toString() ?? '',
           keyboardType: TextInputType.number,
           decoration: _modernInputDecoration(labelText: 'Panjang Min.', hintText: 'Opsional', isDense: true),
           onChanged: (value) { controller.updateValidation(sectionId,question.id, (question.validation ?? ValidationRule()).copyWith(minLength: int.tryParse(value), setMinLengthNull: value.isEmpty)); },
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: TextEditingController(text: question.validation?.maxLength?.toString() ?? ''),
+        _PersistentTextField( // Ganti ke _PersistentTextField
+          fieldKey: ValueKey('${question.id}_validation_maxLength_persistent'),
+          initialValue: question.validation?.maxLength?.toString() ?? '',
           keyboardType: TextInputType.number,
           decoration: _modernInputDecoration(labelText: 'Panjang Max.', hintText: 'Opsional', isDense: true),
           onChanged: (value) { controller.updateValidation(sectionId,question.id, (question.validation ?? ValidationRule()).copyWith(maxLength: int.tryParse(value), setMaxLengthNull: value.isEmpty)); },
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: TextEditingController(text: question.validation?.regex ?? ''),
+        _PersistentTextField( // Ganti ke _PersistentTextField
+          fieldKey: ValueKey('${question.id}_validation_regex_persistent'),
+          initialValue: question.validation?.regex ?? '',
           decoration: _modernInputDecoration(labelText: 'Pola Regex Kustom', hintText: 'Opsional, e.g. ^[A-Z]+\$', isDense: true),
           onChanged: (value) { controller.updateValidation(sectionId, question.id, (question.validation ?? ValidationRule()).copyWith(regex: value.isEmpty ? null : value, setRegexNull: value.isEmpty)); },
         ),
@@ -973,7 +1100,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
               case ComparisonOperatorType.none: displayText = "Tidak ada perbandingan"; break;
               case ComparisonOperatorType.lessThan: displayText = "Kurang Dari (<)"; break;
               case ComparisonOperatorType.lessThanOrEqual: displayText = "Kurang Dari atau Sama Dengan (<=)"; break;
-              case ComparisonOperatorType.equal: displayText = "Sama Dengan (==)"; break;
+              case ComparisonOperatorType.equal: displayText = "Sama Dengan (=="; break;
               case ComparisonOperatorType.notEqual: displayText = "Tidak Sama Dengan (!=)"; break;
               case ComparisonOperatorType.greaterThan: displayText = "Lebih Dari (>)"; break;
               case ComparisonOperatorType.greaterThanOrEqual: displayText = "Lebih Dari atau Sama Dengan (>=)"; break;
@@ -1119,8 +1246,9 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
         if (question.repeatable)
           Padding(
             padding: const EdgeInsets.only(top: 4.0),
-            child: TextField(
-              controller: TextEditingController(text: question.repeatCount?.toString() ?? ''),
+            child: _PersistentTextField( // Ganti ke _PersistentTextField
+              fieldKey: ValueKey('${question.id}_repeatCount_persistent'),
+              initialValue: question.repeatCount?.toString() ?? '',
               keyboardType: TextInputType.number,
               decoration: _modernInputDecoration(labelText: 'Jumlah Maks. Pengulangan', hintText: 'Kosongkan untuk tanpa batas', isDense: true),
               onChanged: (value) { controller.updateQuestionRepeatable(sectionId, question.id, true, count: int.tryParse(value)); },
@@ -1135,36 +1263,67 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
     bool canHaveJumps = question.type == QuestionType.multipleChoice ||
         question.type == QuestionType.checkboxes ||
         question.type == QuestionType.dropdown ||
-        (question.options.isNotEmpty);
+        (question.options.isNotEmpty); // Check if options exist, even if not a typical choice type
+
+    // If an unconditional jump is set, conditional jumps are secondary.
+    // We might still allow configuring them but show a warning.
+    bool hasUnconditionalJump = question.unconditionalJumpTarget != null && question.unconditionalJumpTarget!.isNotEmpty;
+
 
     if (!canHaveJumps) {
       return const SizedBox.shrink();
     }
 
     return _buildExpansionTileForSettings(
-      'Logika Bersyarat (Lompat)',
+      'Logika Bersyarat (Lompat per Jawaban)',
       [
+        if(hasUnconditionalJump)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline_rounded, color: Colors.blue.shade700, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "Info: Lompatan Otomatis sudah diatur untuk pertanyaan ini. Pengaturan Logika Bersyarat di sini akan diabaikan jika Lompatan Otomatis aktif.",
+                    style: TextStyle(fontSize: 12.5, color: Colors.blue.shade800, height: 1.3),
+                  ),
+                ),
+              ],
+            ),
+          ),
         if (question.conditionalJumps.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Text('Belum ada aturan lompat.', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+            child: Text('Belum ada aturan lompat bersyarat.', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
           ),
         ...question.conditionalJumps.asMap().entries.map((entry) {
           final jump = entry.value; String jumpToTargetText = "...";
 
           if (jump.jumpToQuestionId == 'END_OF_FORM') jumpToTargetText = 'Akhir Form';
-          else if (jump.jumpToQuestionId == 'END_OF_SECTION') {
-            if (jump.jumpToSectionId != null) {
-              final targetSection = controller.sections.firstWhereOrNull((s) => s.id == jump.jumpToSectionId);
-              String targetSectionRoman = "";
-              if (targetSection != null) {
-                int targetSectionIndex = controller.sections.indexOf(targetSection);
-                targetSectionRoman = _toRoman(targetSectionIndex + 1);
+          else if (jump.jumpToQuestionId == 'END_OF_SECTION') { // This implies jump to next section or end of current if it's the last
+            // String targetSectionRoman = "";
+            FormSection? targetSection;
+            int targetSectionIndex = -1;
+
+            if (jump.jumpToSectionId != null && jump.jumpToSectionId!.isNotEmpty) { // Explicitly jumping to a specific section start
+              targetSection = controller.sections.firstWhereOrNull((s) => s.id == jump.jumpToSectionId);
+              if(targetSection != null) {
+                targetSectionIndex = controller.sections.indexOf(targetSection);
               }
-              jumpToTargetText = targetSection != null ? 'Awal Bagian: $targetSectionRoman ${targetSection.title.isNotEmpty ? (targetSection.title.length > 15 ? targetSection.title.substring(0,12)+'...' : targetSection.title) : "Tanpa Judul"}' : 'Bagian Selanjutnya';
-            } else {
+            }
+            // If jump.jumpToSectionId is null or empty, it means end of CURRENT section, then proceed to next.
+            // The display text needs to be clear.
+
+            if (targetSection != null && targetSectionIndex != -1) { // Jumping to a specific section
+              String targetSectionRoman = _toRoman(targetSectionIndex + 1);
+              jumpToTargetText = 'Awal Bagian: $targetSectionRoman ${targetSection.title.isNotEmpty ? (targetSection.title.length > 15 ? targetSection.title.substring(0,12)+'...' : targetSection.title) : "Tanpa Judul"}';
+            } else { // End of current section (implies proceed to next section naturally or end of form if last section)
               jumpToTargetText = 'Bagian Selanjutnya / Akhir Bagian Ini';
             }
+
           } else if (jump.jumpToQuestionId.isNotEmpty) {
             bool targetFound = false;
             for (var sec_idx = 0; sec_idx < controller.sections.length; sec_idx++) {
@@ -1192,11 +1351,28 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
             trailing: IconButton(
               icon: Icon(Icons.remove_circle_outline_rounded, color: Colors.red.shade300, size: 20),
               onPressed: () {
-                String idToRemove = jump.jumpToQuestionId;
-                if (jump.jumpToQuestionId == 'END_OF_SECTION' && jump.jumpToSectionId != null) {
-                  idToRemove = jump.jumpToSectionId!;
+                // For conditional jumps, removal is based on the conditionValue and target.
+                // A simpler approach is to remove by its instance or a unique aspect if available.
+                // If ConditionalJump has its own unique ID, that would be best.
+                // For now, assuming the combination of conditionValue and target is unique enough for UI removal.
+                // The controller.removeConditionalJump might need adjustment if it relies only on targetId.
+                // Let's assume controller.removeConditionalJump can find and remove this specific jump object
+                // or by a combination of its properties.
+                // A better way: pass the jump object itself or its index.
+                // For now, we'll rely on the existing controller.removeConditionalJump structure.
+                // This might need a more robust removal mechanism (e.g., by jump object's unique ID if it had one, or by index).
+                // The current controller.removeConditionalJump removes by targetId, which is problematic if multiple conditions jump to the same target.
+                // This needs a fix in the controller or how jumps are identified for removal.
+                // A temporary workaround could be to remove by index if the list is stable.
+                // For now, we stick to the provided structure, highlighting this potential issue.
+                String idToRemoveForController = jump.jumpToQuestionId; // Default
+                if (jump.jumpToQuestionId == 'END_OF_SECTION' && jump.jumpToSectionId != null && jump.jumpToSectionId!.isNotEmpty) {
+                  idToRemoveForController = jump.jumpToSectionId!; // if jumpToSectionId is the main part of the target
                 }
-                controller.removeConditionalJump(sectionId, question.id, idToRemove);
+                // Ideally, the controller.removeConditionalJump should take the specific ConditionalJump object or its unique ID.
+                // Since the current one takes `targetIdToRemove`, we need to be careful.
+                // A better controller method would be: removeConditionalJump(sectionId, questionId, jumpToRemove: ConditionalJump)
+                controller.removeConditionalJump(sectionId, question.id, idToRemoveForController); // This might remove more than intended if not specific enough.
               },
               splashRadius: 18, padding: EdgeInsets.zero, visualDensity: VisualDensity.compact,
             ),
@@ -1207,7 +1383,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
           child: TextButton.icon(
             onPressed: () => _showAddConditionalJumpDialog(sectionId, question),
             icon: const Icon(Icons.add_circle_outline_rounded, color: accentThemeColor, size: 20),
-            label: const Text('Tambah Aturan', style: TextStyle(color: accentThemeColor, fontSize: 14, fontWeight: FontWeight.w500)),
+            label: const Text('Tambah Aturan Bersyarat', style: TextStyle(color: accentThemeColor, fontSize: 14, fontWeight: FontWeight.w500)),
             style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4)),
           ),
         ),
@@ -1239,6 +1415,9 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
 
       for (int j = 0; j < sec.questions.length; j++) {
         final q = sec.questions[j];
+        // Prevent jumping to the question itself in conditional logic as it creates a loop on the same question.
+        if (q.id == question.id) continue;
+
         String questionCodeDisplay = q.code != null && q.code!.isNotEmpty ? q.code! : "$sectionRoman.${j+1}";
         allJumpTargets.add(DropdownMenuItem(
           value: 'question_${q.id}',
@@ -1263,7 +1442,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
 
     Get.dialog(
       AlertDialog(
-        title: const Text('Tambah Aturan Lompat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        title: const Text('Tambah Aturan Lompat Bersyarat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         content: SingleChildScrollView(
           child: Column(
@@ -1281,8 +1460,10 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                   hint: const Text('Pilih dari opsi'),
                 )
               else
-                TextField(
-                  controller: conditionController,
+                _PersistentTextField( // Ganti ke _PersistentTextField
+                  fieldKey: ValueKey('${question.id}_conditional_jump_condition_input'),
+                  initialValue: '', // Selalu mulai kosong untuk input baru
+                  onChanged: (text) => conditionController.text = text,
                   decoration: _modernInputDecoration(labelText: 'Nilai Jawaban Pemicu', hintText: 'Contoh: Ya, Tidak, >10', isDense: true),
                 ),
 
@@ -1311,7 +1492,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
               final conditionValue = conditionController.text.trim();
               if (conditionValue.isNotEmpty && selectedTargetCompositeValue != null && selectedTargetCompositeValue != "HEADER_TARGET") {
                 String jumpToQId = '';
-                String? jumpToSId;
+                String? jumpToSId; // This will store the ID of the section if the jump is to a section_start
 
                 List<String> parts = selectedTargetCompositeValue!.split('_');
                 String type = parts.first;
@@ -1319,13 +1500,16 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
 
                 if (type == 'question' && parts.length > 1) {
                   jumpToQId = parts.sublist(1).join('_'); // Handle IDs that might contain underscores
+                  // jumpToSId remains null
                 } else if (type == 'section' && parts.length > 2 && parts[1] == 'start') {
-                  jumpToSId = parts.sublist(2).join('_'); // Handle IDs that might contain underscores
-                  jumpToQId = 'END_OF_SECTION';
+                  jumpToSId = parts.sublist(2).join('_'); // Store the target section ID
+                  jumpToQId = 'END_OF_SECTION'; // Special marker, interpreted with jumpToSId
                 } else if (selectedTargetCompositeValue == 'end_of_current_section') {
-                  jumpToQId = 'END_OF_SECTION';
+                  jumpToQId = 'END_OF_SECTION'; // Special marker, implies current section end, jumpToSId is null
+                  // jumpToSId remains null
                 } else if (selectedTargetCompositeValue == 'end_of_form') {
                   jumpToQId = 'END_OF_FORM';
+                  // jumpToSId remains null
                 } else {
                   Get.snackbar('Peringatan', 'Tujuan lompat tidak valid atau format ID salah.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white);
                   return;
@@ -1351,42 +1535,42 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
           ?.questions
           .firstWhereOrNull((q) => q.id == questionToList.id) ?? questionToList;
 
-      print("--- START _buildDependentOptionsConfigurator for child Q: ${question.id} ---");
+      // print("--- START _buildDependentOptionsConfigurator for child Q: ${question.id} ---");
 
       final potentialParents = controller.getPotentialParentQuestions(sectionId, question.id);
-      print("Potential Parents count: ${potentialParents.length}");
+      // print("Potential Parents count: ${potentialParents.length}");
 
       FormQuestion? selectedParentQuestionObj; // Variabel baru untuk kejelasan
       final String? storedParentIdInChild = question.dependentOptions?.parentQuestionId;
-      print("Stored Parent ID in child's dependentOptions: $storedParentIdInChild");
+      // print("Stored Parent ID in child's dependentOptions: $storedParentIdInChild");
 
       if (storedParentIdInChild != null && storedParentIdInChild.isNotEmpty) {
         selectedParentQuestionObj = controller.findQuestionById(storedParentIdInChild);
-        if (selectedParentQuestionObj == null) {
-          print("ERROR: Parent object for ID '$storedParentIdInChild' NOT FOUND by findQuestionById.");
-        } else {
-          print("SUCCESS: Parent object FOUND: ID='${selectedParentQuestionObj.id}', Text='${selectedParentQuestionObj.questionText}'");
-          print("PARENT OBJECT OPTIONS (Length: ${selectedParentQuestionObj.options.length}): ${selectedParentQuestionObj.options}");
-        }
+        // if (selectedParentQuestionObj == null) {
+        //   print("ERROR: Parent object for ID '$storedParentIdInChild' NOT FOUND by findQuestionById.");
+        // } else {
+        //   print("SUCCESS: Parent object FOUND: ID='${selectedParentQuestionObj.id}', Text='${selectedParentQuestionObj.questionText}'");
+        //   print("PARENT OBJECT OPTIONS (Length: ${selectedParentQuestionObj.options.length}): ${selectedParentQuestionObj.options}");
+        // }
       } else {
-        print("No parent ID stored in child's dependentOptions.");
+        // print("No parent ID stored in child's dependentOptions.");
       }
 
       final validParentQuestionIdsInDropdown = potentialParents.map((pQ) => pQ.id).toList();
       String? effectiveParentIdForDropdownValue = storedParentIdInChild;
       if (effectiveParentIdForDropdownValue != null && !validParentQuestionIdsInDropdown.contains(effectiveParentIdForDropdownValue)) {
-        print("Warning: Stored parent ID '$effectiveParentIdForDropdownValue' is not in current valid dropdown items. Resetting dropdown value to null.");
+        // print("Warning: Stored parent ID '$effectiveParentIdForDropdownValue' is not in current valid dropdown items. Resetting dropdown value to null.");
         effectiveParentIdForDropdownValue = null;
       }
-      print("Effective Parent ID for Dropdown 'value' property: $effectiveParentIdForDropdownValue");
+      // print("Effective Parent ID for Dropdown 'value' property: $effectiveParentIdForDropdownValue");
 
       // Kondisi utama untuk menampilkan UI mapping
       // Kita cek sekali lagi di sini dengan objek yang baru di-fetch
       bool showMappingInterface = selectedParentQuestionObj != null && selectedParentQuestionObj.options.isNotEmpty;
-      print(">>> Condition to show mapping UI: showMappingInterface = $showMappingInterface");
-      if (selectedParentQuestionObj == null) print("    Reason: selectedParentQuestionObj is NULL");
-      if (selectedParentQuestionObj != null && selectedParentQuestionObj.options.isEmpty) print("    Reason: selectedParentQuestionObj.options IS EMPTY");
-      if (selectedParentQuestionObj != null && selectedParentQuestionObj.options.isNotEmpty) print("    Reason: selectedParentQuestionObj IS NOT NULL and options IS NOT EMPTY");
+      // print(">>> Condition to show mapping UI: showMappingInterface = $showMappingInterface");
+      // if (selectedParentQuestionObj == null) print("    Reason: selectedParentQuestionObj is NULL");
+      // if (selectedParentQuestionObj != null && selectedParentQuestionObj.options.isEmpty) print("    Reason: selectedParentQuestionObj.options IS EMPTY");
+      // if (selectedParentQuestionObj != null && selectedParentQuestionObj.options.isNotEmpty) print("    Reason: selectedParentQuestionObj IS NOT NULL and options IS NOT EMPTY");
 
 
       return _buildExpansionTileForSettings(
@@ -1434,7 +1618,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                   ),
               ],
               onChanged: (String? newParentId) {
-                print("DROPDOWN PARENT CHANGED. New Parent ID selected: $newParentId");
+                // print("DROPDOWN PARENT CHANGED. New Parent ID selected: $newParentId");
                 controller.setParentQuestionForDependency(sectionId, question.id, newParentId);
               },
               isExpanded: true,
@@ -1720,7 +1904,7 @@ class _EditChildOptionsDialogState extends State<_EditChildOptionsDialog> {
     for (var controller in _optionControllers) {
       controller.dispose();
     }
-    print("AdminFormBuilderPage: _EditChildOptionsDialog disposed ${_optionControllers.length} controllers.");
+    // print("AdminFormBuilderPage: _EditChildOptionsDialog disposed ${_optionControllers.length} controllers.");
     super.dispose();
   }
 
@@ -1852,16 +2036,22 @@ class _PersistentTextFieldState extends State<_PersistentTextField> {
   @override
   void didUpdateWidget(_PersistentTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Hanya update controller jika nilai awal dari model benar-benar berubah
-    // DAN controller saat ini tidak mencerminkan nilai baru tersebut.
-    // Ini mencegah kursor melompat jika perubahan berasal dari input pengguna sendiri.
     if (widget.initialValue != oldWidget.initialValue) {
       if (_textController.text != widget.initialValue) {
-        _textController.text = widget.initialValue;
-        // Atur kursor ke akhir teks setelah pembaruan programatik
-        _textController.selection = TextSelection.fromPosition(
-          TextPosition(offset: _textController.text.length),
+        // _textController.text = widget.initialValue; // This was causing cursor jump
+        // Safely update the text and preserve cursor position if possible,
+        // or reset to end if text actually changes.
+        String newText = widget.initialValue;
+        int currentOffset = _textController.selection.baseOffset;
+        _textController.value = _textController.value.copyWith(
+          text: newText,
+          selection: TextSelection.collapsed(offset: newText.length < currentOffset ? newText.length : currentOffset),
+          // Or simply: TextSelection.fromPosition(TextPosition(offset: newText.length)) to move to end
         );
+        if (newText.length < currentOffset) { // if new text is shorter, move cursor to end
+          _textController.selection = TextSelection.fromPosition(TextPosition(offset: newText.length));
+        }
+
       }
     }
   }

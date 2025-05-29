@@ -115,13 +115,24 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
       child: Column(
         children: [
           AppBar(
+            // AWAL PENAMBAHAN UNTUK Get.back()
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back), // Anda bisa mengganti ikon ini jika mau
+              color: Colors.white, // Warna ikon, bisa juga diatur via iconTheme di AppBar
+              tooltip: 'Kembali', // Opsional, untuk aksesibilitas
+              onPressed: () {
+                Get.back(); // Memanggil fungsi Get.back() saat tombol ditekan
+              },
+            ),
+            // AKHIR PENAMBAHAN
+
             title: Obx(() => Text(
               controller.formStructure.value?.title ?? 'Daftar Isian',
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
             )),
             backgroundColor: Colors.transparent,
             elevation: 0,
-            iconTheme: const IconThemeData(color: Colors.white),
+            iconTheme: const IconThemeData(color: Colors.white), // Ini akan berlaku untuk ikon di `actions` juga
             centerTitle: true,
           ),
           Padding(
