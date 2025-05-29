@@ -5,6 +5,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.18.1] - 2025-05-29
+> Created by Febri Bagus Triwibowo
+
+> Redesigned User Profile UI and Added Username Edit Dialog with Consistent Admin Styling
+
+### 🎉 Added
+- **Confirmation Dialog on Logout (`UserProfileController`):**
+  - Added a pop-up confirmation dialog that appears when the logout button is pressed, prompting the user to confirm before proceeding.
+- **Username Edit Dialog (`UserProfileController.promptEditUsernameDialog()`):**
+  - Introduced a new method to show an `AlertDialog` for editing username, consistent with `AdminProfileController`.
+  - Dialog uses `usernameController` for text input and includes "Simpan" and "Batal" actions.
+  - On valid input and save, it calls `saveUsername()` and refreshes user data using `_loadUserProfile()`.
+
+- **Admin-Style Info Card Widget (`UserProfileScreen._buildInfoCard_AdminStyle()`):**
+  - Added a reusable card widget visually aligned with admin profile screen.
+  - Supports optional edit icon via `onEdit` callback.
+  - Displays items such as Username, Role, and (optionally) Program ID.
+- **New Color Constants for Styling:**
+  - Defined constants like `dialogBackgroundColor`, `buttonSaveColor`, `pageBackgroundColor`, `headerBackgroundColorForCard`, `iconColorForCard`, `primaryTextColor`, `secondaryTextColor`, `labelTextColor`, `editIconColor` to maintain design consistency with admin profile.
+
+### 🛠️ Changed
+- **`saveUsername()` in `UserProfileController`:**
+  - Refactored to be invoked from `promptEditUsernameDialog()` after validation.
+  - After Firestore update, it calls `_loadUserProfile()` to sync state with the server.
+
+- **`_loadUserProfile()` Enhancement:**
+  - Now sets the initial value of `usernameController.text` during profile load and also refreshes it just before displaying the edit dialog.
+
+- **User Profile Display (`UserProfileScreen`):**
+  - Switched from inline username editing via `_buildEditableInfoCard` to a dialog-based approach.
+  - Updated username and role UI elements to use `_buildInfoCard_AdminStyle()` for consistent styling.
+  - Displayed additional info ("ID Program Terkait") if available.
+
+- **Page Layout and Loading State:**
+  - Scaffold's `backgroundColor` updated to use `pageBackgroundColor`.
+  - Wrapped main content with `Obx` to globally show `CircularProgressIndicator` based on `controller.isLoading` and `controller.userProfile`, ensuring a consistent loading experience similar to `AdminProfilePage`.
+
+### 🐛 Fixed
+- **Inconsistent Username Display:** Ensured `usernameController.text` is always synced with the actual stored username.
+- **Loading State Glitch on Profile Screen:** Unified loading behavior across user and admin profile screens to avoid flickering or partial renders.
+- **Removed Legacy Code:** Deleted `_buildEditableInfoCard` as it was replaced by dialog-based editing for better UX.
+
+---
+
 ## [0.18.0] - 2025-05-28
 > Created by Bayu Ardiyansyah
 
