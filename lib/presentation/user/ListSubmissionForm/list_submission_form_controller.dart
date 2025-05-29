@@ -201,8 +201,21 @@ class ListSubmissionFormController extends GetxController {
   }
 
   void editSubmission(FormSubmission submission) {
-    Get.snackbar('Info', 'Fitur Edit untuk submission ID: ${submission.id} belum diimplementasikan.',
-        snackPosition: SnackPosition.BOTTOM);
+    if (formId.value.isEmpty || submission.id == null) {
+      Get.snackbar('Error', 'Tidak bisa mengedit, ID Form atau ID Submission tidak valid.',
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+    // Navigasi ke layar InputFormUser dengan membawa argumen
+    // yang menandakan ini adalah mode edit.
+    // Kita akan mengirim Map yang berisi formId dan submissionId.
+    Get.toNamed(
+      AppRoutes.INPUT_FORM_USER,
+      arguments: {
+        'formId': formId.value,
+        'submissionId': submission.id, // Mengirim ID submission yang akan diedit
+      },
+    );
   }
 
   void deleteSubmission(FormSubmission submission, String displayIdentifier) {

@@ -4,9 +4,48 @@ This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [0.19.0] - 2025-05-30
+> Contributed by: [Bayu Ardiyansyah]
+
+> Enhanced Admin Form Builder with Collapsible Sections/Questions, Question Descriptions, and Improved User Input Display.
+
+### 🎉 Added
+- **Question Description Feature (`FormQuestion`, `AdminFormBuilderPage`, `InputUserScreen`):**
+  - Introduced a new `description` field to the `FormQuestion` model to store detailed explanations for each question.
+  - **Admin Form Builder:** Admins can now add and edit a multi-line description for every question via a dedicated `_PersistentTextField` in `_buildQuestionCard`. This allows for clearer instructions or context.
+  - **User Input Form:** The question description (if provided) is now displayed directly below the main question text in `InputUserScreen` (`_buildQuestionLabel`), improving clarity for users filling out the form.
+- **Collapsible Sections in Admin Form Builder (`AdminFormBuilderPage`):**
+  - Implemented a "Tutup Bagian Ini" (Collapse This Section) button at the bottom of each expanded section's content. This allows admins to easily minimize long sections without needing to scroll back to the section header.
+  - Utilizes `ExpansionTileController` instances managed within `AdminFormBuilderController` for programmatic control of section expansion state.
+- **Collapsible Questions in Admin Form Builder (`AdminFormBuilderPage`):**
+  - Each question card in `_buildQuestionCard` is now an `ExpansionTile`, allowing individual questions to be collapsed or expanded.
+  - The question header (displaying number, type, code, and delete button) serves as the `ExpansionTile` title.
+  - All question settings (code, text, description fields, options, validation rules, conditional logic, etc.) are now neatly contained within the expandable/collapsible content of the question's `ExpansionTile`.
+  - Questions default to a collapsed state (or new ones expanded based on content) to enhance initial UI compactness for complex forms.
+- **Navigation for Future Edit Submission (`ListSubmissionFormController`):**
+  - The `editSubmission` method in `ListSubmissionFormController` now navigates to `InputFormUserScreen`, correctly passing both `formId` and the specific `submission.id` as arguments. This prepares the groundwork for implementing form submission editing functionality.
+
+### 🛠️ Changed
+- **Default Expansion Behavior for Sections (`AdminFormBuilderPage`):**
+  - Modified the `initiallyExpanded` logic for sections in `_buildSectionCard`:
+    - When creating a new form, only the first section is expanded by default.
+    - When editing an existing form, all sections are collapsed by default, providing a more manageable initial view for potentially long forms.
+- **Question Card UI Refactor (`AdminFormBuilderPage`):**
+  - The `_buildQuestionCard` method was significantly refactored to implement the `ExpansionTile` structure for each question, encapsulating all its editable details and configuration settings.
+- **`ExpansionTileController` Management for Sections (`AdminFormBuilderController`):**
+  - Implemented robust creation, storage (in a `Map`), and removal of `ExpansionTileController` instances associated with each form section.
+  - Corrected lifecycle management by ensuring controllers are properly associated and cleared when sections are added, removed, or when the form is loaded/re-initialized.
+
+### 🐛 Fixed
+- **Scope Resolution for Section `tileController` (`AdminFormBuilderPage`):**
+  - Ensured the `ExpansionTileController` instance (`tileController`) for each section is correctly defined and accessible within its intended scope in `_buildSectionCard`, particularly for the "Collapse This Section" button's `onPressed` callback, resolving "Undefined name 'tileController'" errors.
+- **`ExpansionTileController` Usage (`AdminFormBuilderController`):**
+  - Corrected the handling of `ExpansionTileController` by removing erroneous calls to a non-existent `dispose()` method. These controllers do not require manual disposal; clearing references from the management `Map` is sufficient.
+
+---
 
 ## [0.18.1] - 2025-05-29
-> Created by Febri Bagus Triwibowo
+> Created by [Febri Bagus Triwibowo]
 
 > Redesigned User Profile UI and Added Username Edit Dialog with Consistent Admin Styling
 
@@ -50,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.18.0] - 2025-05-28
-> Created by Bayu Ardiyansyah
+> Created by [Bayu Ardiyansyah]
 
 > Implemented Cascading Dropdowns and Enhanced Validation for User Form Input Screen
 
@@ -91,7 +130,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.17.6] - 2025-05-28
-> Created by Febri Bagus Triwibowo  
+> Created by [Febri Bagus Triwibowo]  
 > Improved login feedback handling and enhanced visual consistency on splash screen.
 
 ### 🎉 Added
@@ -108,7 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.17.5] - 2025-05-28
-> Created by Lutfi Indra
+> Created by [Lutfi Indra]
 > Improved UI clarity for admin account management, enhanced user data synchronization, and fixed user display name retrieval.
 
 ### 🎉 Added
@@ -129,7 +168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.17.0] - 2025-05-28
-> Created by Bayu Ardiyansyah
+> Created by [Bayu Ardiyansyah]
 > Improved Admin Dashboard Date Range Picker with Custom Pop-up Calendar and Resolved Related Issues
 
 ### 🎉 Added
@@ -150,7 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.16.0] - 2025-05-28
-> Created by Bayu Ardiyansyah
+> Created by [Bayu Ardiyansyah]
 
 > Added Dynamic Grid Numeric Question Type to Admin Form Builder and Fixed Critical Text Input Issues.
 
@@ -184,7 +223,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.15.0] - 2025-05-27
-> Created by Bayu Ardiyansyah
+> Created by [Bayu Ardiyansyah]
 
 > Introduced List Submissions Screen with Enhanced Data Display, Search, Sort, and Delete Capabilities; Refined User Input Form Workflow.
 
@@ -225,7 +264,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.14.1] - 2025-05-27
-> Created by Bayu Ardiyansyah
+> Created by [Bayu Ardiyansyah]
 > 
 > Improved Admin Form Builder Usability and Controller Optimizations.
 
@@ -238,7 +277,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 ## [0.14.0] - 2025-05-27
-> Created by Bayu Ardiyansyah
+> Created by [Bayu Ardiyansyah]
 
 > Enhanced Form Authorization, User Display Logic, and Fixed Landing Page UI
 
@@ -266,7 +305,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.13.1] - 2025-05-27
-> Created by Lutfi Indra
+> Created by [Lutfi Indra]
 
 >  Resolved Login/Profile Bugs and Improved User Interface
 
@@ -284,7 +323,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.12.1] - 2025-05-27
-> Created by Bayu Ardiyansyah
+> Created by [Bayu Ardiyansyah]
 
 > Enhanced Admin Dashboard with BI Features, Advanced Date Filtering, and Improved UI Consistency
 
@@ -326,6 +365,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.12.0] - 2025-05-26
+> Created by [Bayu Ardiyansyah]
+
 > Form Builder Functionality Enhancements and Stability Fixes
 
 ### 🎉 Added
@@ -346,7 +387,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.11.0] - 2025-05-26
-> Created by Bayu Ardiyansyah
+> Created by [Bayu Ardiyansyah]
 
 > Introduction of Global Account Management Page and Enhanced UI/UX for All Account Operations
 
@@ -387,7 +428,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.10.0] - 2025-05-26
-> Created by Bayu Ardiyansyah
+> Created by [Bayu Ardiyansyah]
 
 > Enhancements to Form-Specific Account Management: New User Creation and UI/UX Overhaul for Dialogs
 
@@ -427,7 +468,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.9.0] - 2025-05-26
-> Created by Bayu Ardiyansyah
+> Created by [Bayu Ardiyansyah]
 
 > Iterative UI/UX Refinements, Form Display Logic, and Bug Fixes
 
@@ -470,7 +511,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.8.0] - 2025-05-25
-> Created by Bayu Ardiyansyah
+> Created by [Bayu Ardiyansyah]
 
 ### 🎉 Added
 - **Dedicated Admin Profile Page (`AdminProfilPage`):**
@@ -519,7 +560,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.7.0] - 2025-05-25
-> Created by **Bayu Ardiyansyah**
+> Created by [Bayu Ardiyansyah]
 
 ### 🎉 Added
 - **Form Builder Module (Advanced):**
@@ -613,7 +654,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.5.0] - 2025-05-25
-> Created by **Bayu Ardiyansyah**
+> Created by [Bayu Ardiyansyah]
 
 ### 🎉 Added
 - **User Profile Management Feature:**
@@ -655,7 +696,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.4.0] - 2025-05-24
-> Created by **Bayu Ardiyansyah**
+> Created by [Bayu Ardiyansyah]
 
 ### 🎉 Added
 - **Firebase Integration (Core Setup):**
@@ -687,7 +728,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.3.1] - 2025-05-24
-> Created by **Bayu Ardiyansyah**
+> Created by [Bayu Ardiyansyah]
 
 ### 🛠️ Changed
 - **LoginScreen UI/UX Enhancements:**
@@ -698,7 +739,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.3.0] - 2025-05-21
-> Created by **Bayu Ardiyansyah**
+> Created by [Bayu Ardiyansyah]
 
 ### 🎉 Added
 - **PrototypeScreen Redesign:**
@@ -735,7 +776,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.2.0] - 2025-05-15
-> Created by **Bayu Ardiyansyah**
+> Created by [Bayu Ardiyansyah]
 
 ### 🎉 Added
 - **Splash Screen Implementation:**
@@ -766,7 +807,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.1.0] - 2025-05-10
-> Created by **Bayu Ardiyansyah**
+> Created by [Bayu Ardiyansyah]
 
 ### 🎉 Added
 - **Project Initialization:**

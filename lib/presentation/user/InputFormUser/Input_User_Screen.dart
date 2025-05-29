@@ -75,7 +75,7 @@ class InputUserScreen extends GetView<InputUserController> {
               padding: EdgeInsets.all(16.0),
               child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
               : IconButton(
-            icon: const Icon(Icons.save_alt_rounded),
+            icon: const Icon(Icons.save),
             tooltip: 'Kirim Form',
             onPressed: controller.isLoading.value ? null : () {
               Get.defaultDialog(
@@ -304,38 +304,64 @@ class InputUserScreen extends GetView<InputUserController> {
 
   Widget _buildQuestionLabel(FormQuestion question, {String? itemTitleOverride, bool isGroupedItem = false}) {
     final String labelText = itemTitleOverride ?? question.questionText;
-    return Row(
+    // Ambil deskripsi dari objek question
+    final String? questionDescription = question.description;
+
+    return Column( // Bungkus dengan Column agar bisa menambahkan deskripsi di bawahnya
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: Get.textTheme.bodyLarge?.copyWith( // Menggunakan bodyLarge untuk konsistensi
-                  fontSize: isGroupedItem ? 14.5 : 15.5,
-                  fontWeight: FontWeight.w500,
-                  color: titleTextColor,
-                  height: 1.4
-              ),
-              children: [
-                TextSpan(text: labelText),
-                if (question.isRequired)
-                  TextSpan(
-                    text: ' *',
-                    style: TextStyle(color: mandatoryAsteriskColor, fontSize: isGroupedItem ? 15 : 16, fontWeight: FontWeight.bold),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: RichText(
+                text: TextSpan(
+                  style: Get.textTheme.bodyLarge?.copyWith(
+                      fontSize: isGroupedItem ? 14.5 : 15.5,
+                      fontWeight: FontWeight.w500,
+                      color: titleTextColor, // Pastikan titleTextColor terdefinisi
+                      height: 1.4
                   ),
-              ],
+                  children: [
+                    TextSpan(text: labelText),
+                    if (question.isRequired)
+                      TextSpan(
+                        text: ' *',
+                        style: TextStyle(color: mandatoryAsteriskColor, fontSize: isGroupedItem ? 15 : 16, fontWeight: FontWeight.bold),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            // Tampilkan kode hanya jika bukan item dalam grup (untuk menghindari duplikasi jika kode sudah ada di itemTitleOverride)
+            if (question.code != null && question.code!.isNotEmpty && !isGroupedItem) ...[
+              const SizedBox(width: 8),
+              Text("(${question.code})", style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontStyle: FontStyle.italic)),
+            ]
+          ],
+        ),
+        // --- UNTUK MENAMPILKAN DESKRIPSI ---
+        if (questionDescription != null && questionDescription.isNotEmpty) ...[
+          const SizedBox(height: 4), // Spasi antara judul pertanyaan dan deskripsi
+          Padding(
+            // Anda bisa atur padding kiri jika ingin deskripsi sedikit menjorok
+            // padding: const EdgeInsets.only(left: isGroupedItem ? 0 : 8.0),
+            padding: const EdgeInsets.only(top: 2.0),
+            child: Text(
+              questionDescription,
+              style: TextStyle(
+                fontSize: isGroupedItem ? 12.5 : 13.5, // Font lebih kecil untuk deskripsi
+                color: subtitleTextColor?.withOpacity(0.9), // Warna lebih lembut, pastikan subtitleTextColor terdefinisi
+                fontStyle: FontStyle.italic, // Gaya italic untuk membedakan
+                height: 1.3,
+              ),
             ),
           ),
-        ),
-        if (question.code != null && question.code!.isNotEmpty) ...[
-          const SizedBox(width: 8),
-          Text("(${question.code})", style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontStyle: FontStyle.italic)),
-        ]
+        ],
+        // --- AKHIR BLOK DESKRIPSI ---
       ],
     );
   }
-
-  // Di dalam kelas InputUserScreen (InputUserScreen.dart)
 
   Widget _buildQuestionInput(BuildContext context, FormQuestion question, {int? repeatIndex, required String keyPrefix}) {
     // Obx di sini memastikan bahwa setiap input field individu (seperti Dropdown atau Checkbox)

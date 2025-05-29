@@ -314,6 +314,7 @@ class FormQuestion {
   final String id;
   final String? code;
   final String questionText;
+  final String? description; // <-- TAMBAHKAN INI
   final QuestionType type;
   final List<String> options;
   final bool isRequired;
@@ -334,6 +335,7 @@ class FormQuestion {
     required this.id,
     this.code,
     required this.questionText,
+    this.description, // <-- TAMBAHKAN INI
     required this.type,
     this.options = const [],
     this.isRequired = false,
@@ -356,6 +358,7 @@ class FormQuestion {
       id: map['id'] as String? ?? '',
       code: map['code'] as String?,
       questionText: map['questionText'] as String? ?? 'Pertanyaan Tanpa Teks',
+      description: map['description'] as String?, // <-- TAMBAHKAN INI
       type: QuestionTypeExtension.fromString(map['type'] as String?),
       options: List<String>.from((map['options'] as List<dynamic>?)?.map((e)=> e.toString()) ?? []),
       isRequired: map['isRequired'] as bool? ?? false,
@@ -363,7 +366,7 @@ class FormQuestion {
       validation: ValidationRule.fromMap(map['validation'] as Map<String, dynamic>?),
       conditionalJumps: (map['conditionalJumps'] as List<dynamic>?)
           ?.map((j) => ConditionalJump.fromMap(j as Map<String, dynamic>?))
-          .where((j) => j.jumpToQuestionId.isNotEmpty) // Filter conditional jump yang valid
+          .where((j) => j.jumpToQuestionId.isNotEmpty)
           .toList() ?? [],
       repeatable: map['repeatable'] as bool? ?? false,
       repeatCount: map['repeatCount'] as int?,
@@ -383,6 +386,8 @@ class FormQuestion {
     final map = <String, dynamic>{
       'id': id,
       'questionText': questionText,
+      // TAMBAHKAN INI (kondisional agar tidak menyimpan null/empty string jika tidak perlu)
+      if (description != null && description!.isNotEmpty) 'description': description,
       'type': type.toShortString(),
       'options': options,
       'isRequired': isRequired,
@@ -407,6 +412,7 @@ class FormQuestion {
     String? id,
     String? code, bool setCodeNull = false,
     String? questionText,
+    String? description, bool setDescriptionNull = false, // <-- TAMBAHKAN INI
     QuestionType? type,
     List<String>? options,
     bool? isRequired,
@@ -427,6 +433,7 @@ class FormQuestion {
       id: id ?? this.id,
       code: setCodeNull ? null : (code ?? this.code),
       questionText: questionText ?? this.questionText,
+      description: setDescriptionNull ? null : (description ?? this.description), // <-- TAMBAHKAN INI
       type: type ?? this.type,
       options: options ?? List<String>.from(this.options),
       isRequired: isRequired ?? this.isRequired,

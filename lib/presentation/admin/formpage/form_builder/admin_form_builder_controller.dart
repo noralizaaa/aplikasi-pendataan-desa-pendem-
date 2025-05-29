@@ -21,6 +21,8 @@ class AdminFormBuilderController extends GetxController {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  final Map<String, ExpansionTileController> sectionExpansionControllers = {};
+
   String? _currentFormId; // ID form yang sedang diedit, null jika form baru
   DateTime? _originalCreatedAt; // Untuk mempertahankan createdAt saat edit
   String? _originalFormVersion; // Untuk menyimpan versi form saat edit
@@ -62,10 +64,15 @@ class AdminFormBuilderController extends GetxController {
     }
   }
 
+  void _clearAllSectionExpansionControllers() {
+    sectionExpansionControllers.clear();
+  }
+
   @override
   void onClose() {
     titleController.dispose();
     descriptionController.dispose();
+    _clearAllSectionExpansionControllers();
     super.onClose();
   }
 
@@ -74,6 +81,7 @@ class AdminFormBuilderController extends GetxController {
     formDescription.value = '';
     titleController.text = '';
     descriptionController.text = '';
+    _clearAllSectionExpansionControllers();
     sections.clear();
     addSection(); // Mulai dengan satu bagian default
     _originalCreatedAt = null;
@@ -89,6 +97,10 @@ class AdminFormBuilderController extends GetxController {
         final formItem = FormItem.fromFirestore(docSnapshot);
         formTitle.value = formItem.title;
         formDescription.value = formItem.description;
+        _clearAllSectionExpansionControllers();
+        for (var section in sections) {
+          sectionExpansionControllers[section.id] = ExpansionTileController();
+        }
         sections.assignAll(formItem.sections); // sections dari FormItem sudah List<FormSection>
         titleController.text = formItem.title;
         descriptionController.text = formItem.description;
@@ -114,13 +126,15 @@ class AdminFormBuilderController extends GetxController {
 
   // --- MANAJEMEN BAGIAN (SECTION) ---
   void addSection() {
-    sections.add(FormSection(
-      id: UId.getId(),
+    final newSection = FormSection(
+      id: UId.getId(), // Pastikan UId.getId() menghasilkan ID yang unik
       title: '',
       questions: [],
-      isRepeatable: false, // Default dari model FormSection Anda
-      // Properti repeatable lainnya akan null by default dari model
-    ));
+      isRepeatable: false,
+    );
+    sections.add(newSection);
+    // Buat dan simpan ExpansionTileController untuk section baru
+    sectionExpansionControllers[newSection.id] = ExpansionTileController();
   }
 
   void updateSectionTitle(String sectionId, String title) {
@@ -177,8 +191,12 @@ class AdminFormBuilderController extends GetxController {
   }
 
   void removeSection(String sectionId) {
+    sectionExpansionControllers.remove(sectionId);
+
     sections.removeWhere((s) => s.id == sectionId);
-    if (sections.isEmpty) addSection();
+    if (sections.isEmpty) {
+      addSection(); // Ini akan membuat section baru beserta controllernya
+    }
   }
 
   // --- MANAJEMEN PERTANYAAN (QUESTION) ---
@@ -225,6 +243,9 @@ class AdminFormBuilderController extends GetxController {
   void updateQuestionText(String sectionId, String questionId, String text) => _updateQuestionProperty(sectionId, questionId, (q) => q.copyWith(questionText: text));
   void updateQuestionRequired(String sectionId, String questionId, bool isRequired) => _updateQuestionProperty(sectionId, questionId, (q) => q.copyWith(isRequired: isRequired));
   void updateQuestionHasOtherOption(String sectionId, String questionId, bool hasOther) => _updateQuestionProperty(sectionId, questionId, (q) => q.copyWith(hasOtherOption: hasOther));
+  void updateQuestionDescription(String sectionId, String questionId, String description) {
+    _updateQuestionProperty(sectionId, questionId, (q) => q.copyWith(description: description, setDescriptionNull: description.isEmpty));
+  }
 
   void addOption(String sectionId, String questionId) => _updateQuestionProperty(sectionId, questionId, (q) => q.copyWith(options: List<String>.from(q.options)..add('Opsi ${q.options.length + 1}')));
 
