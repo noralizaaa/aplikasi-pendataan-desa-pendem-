@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🛠️ Changed
 -   **Admin Panel:** Significantly refactored data export functions (`exportDataAsJson`, `exportDataAsXlsx`, `exportDataAsCsv`) in `AdminController`:
-  -   Replaced automatic saving to the path from `getExternalStorageDirectory()` with the use of the `file_picker` plugin for user-chosen save locations.
+  -   Replaced  automatic saving to the path from `getExternalStorageDirectory()` with the use of the `file_picker` plugin for user-chosen save locations.
   -   The file saving flow now involves a system "Save As" dialog, allowing users to manually specify the filename and destination.
   -   File content (JSON string, CSV string, Excel bytes) is now converted to `List<int>` (bytes) and passed directly to `FilePicker.platform.saveFile(bytes: ...)` for more modern and Android Scoped Storage compatible file handling.
 -   **Admin Panel:** Updated user messages and feedback during the data export process to reflect the new custom save location flow.
