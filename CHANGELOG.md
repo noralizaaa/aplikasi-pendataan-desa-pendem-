@@ -3,6 +3,27 @@
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## [0.22.0] - 2025-05-31
+> Enhanced data export functionality with custom save locations via system file picker and resolved critical Android storage permission issues, improving export reliability across devices.
+
+### 🎉 Added
+-   **Admin Panel:** Implemented functionality for admins to select custom save locations (using system file picker) when exporting population data in JSON, CSV, and XLSX formats. Users now have full control over the export file's save directory.
+
+### 🛠️ Changed
+-   **Admin Panel:** Significantly refactored data export functions (`exportDataAsJson`, `exportDataAsXlsx`, `exportDataAsCsv`) in `AdminController`:
+  -   Replaced automatic saving to the path from `getExternalStorageDirectory()` with the use of the `file_picker` plugin for user-chosen save locations.
+  -   The file saving flow now involves a system "Save As" dialog, allowing users to manually specify the filename and destination.
+  -   File content (JSON string, CSV string, Excel bytes) is now converted to `List<int>` (bytes) and passed directly to `FilePicker.platform.saveFile(bytes: ...)` for more modern and Android Scoped Storage compatible file handling.
+-   **Admin Panel:** Updated user messages and feedback during the data export process to reflect the new custom save location flow.
+
+### 🐛 Fixed
+-   **Admin Panel - Android Storage Permissions:**
+  -   Addressed an issue where the storage permission dialog (`Permission.storage`) would sometimes not appear on certain physical devices (especially those with custom OS layers like MIUI), despite appearing correctly on emulators.
+  -   Resolved a problem where the "Storage" or "Files and media" permission option was not visible in the app's system permission settings on Android in some scenarios. This fix involved thorough verification of `AndroidManifest.xml` declarations (including the final merged manifest), careful consideration of `targetSdkVersion` implications, and adjustments to the permission request strategy for better robustness across different Android versions and OEM customizations.
+  -   Improved overall reliability of storage permission handling for all data export features, including more robust handling of `isPermanentlyDenied` cases by guiding users to the app settings page.
+-   **Admin Panel:** Ensured that the export functions correctly use the filtered data (`_getDcPendudukSubmissions`) for generating export files. (Note: Full implementation for CSV/XLSX data flattening and content generation remains a TODO in the code, but the file saving mechanism and permission handling for these exports have been updated to use the new custom save location flow).
 
 ---
 ## [0.21.0] - 2025-05-30

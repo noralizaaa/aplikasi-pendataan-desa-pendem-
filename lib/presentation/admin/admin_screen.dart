@@ -489,35 +489,9 @@ class _DashboardContentOnly extends StatelessWidget {
             const SizedBox(height: 24),
             _buildFormAccessSection(),
             const SizedBox(height: 24),
-            // Removed "Aktivitas Pengguna" section as requested.
-            // Text(
-            //   'Aktivitas Pengguna',
-            //   style: Get.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: titleColor),
-            // ),
-            // const SizedBox(height: 12),
-            // Container(
-            //   width: double.infinity,
-            //   padding: const EdgeInsets.all(16),
-            //   decoration: BoxDecoration(
-            //     color: cardBgColor,
-            //     borderRadius: BorderRadius.circular(12),
-            //     boxShadow: [ BoxShadow( color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 5, offset: const Offset(0, 2)) ],
-            //   ),
-            //   child: Obx(() => controller.totalActiveUsers.value == 0 && !controller.isDashboardLoading.value
-            //       ? _buildNoDataMessage('Tidak ada data aktivitas pengguna.')
-            //       : Row(
-            //     mainAxisAlignment: MainAxisAlignment.center,
-            //     children: [
-            //       Icon(Icons.supervised_user_circle_outlined, color: Colors.green.shade600, size: 28),
-            //       const SizedBox(width: 10),
-            //       Text(
-            //         'Total Pengguna Aktif: ${controller.totalActiveUsers.value}',
-            //         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: titleColor),
-            //       ),
-            //     ],
-            //   )
-            //   ),
-            // ),
+            // START: ADDED EXPORT DATA SECTION
+            _buildExportDataSection(),
+            // END: ADDED EXPORT DATA SECTION
             const SizedBox(height: 30),
           ],
         ),
@@ -801,6 +775,99 @@ class _DashboardContentOnly extends StatelessWidget {
       ),
     );
   }
+
+  // START: NEW EXPORT DATA SECTION WIDGET
+  Widget _buildExportDataSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Export Data Penduduk',
+          style: Get.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: titleColor),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: PopupMenuButton<String>(
+            color: Colors.white, // Background color of the popup menu
+            elevation: 8,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            onSelected: (String result) {
+              switch (result) {
+                case 'json':
+                  controller.exportDataAsJson();
+                  break;
+                case 'xlsx':
+                  controller.exportDataAsXlsx();
+                  break;
+                case 'csv':
+                  controller.exportDataAsCsv();
+                  break;
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              _buildPopupMenuItem(
+                value: 'json',
+                text: 'JSON',
+                icon: Icons.code, // Icon for JSON
+                color: AdminScreen.accentHeaderColor,
+              ),
+              _buildPopupMenuItem(
+                value: 'xlsx',
+                text: 'XLSX',
+                icon: Icons.table_chart, // Icon for XLSX
+                color: Colors.green.shade700,
+              ),
+              _buildPopupMenuItem(
+                value: 'csv',
+                text: 'CSV',
+                icon: Icons.description, // Icon for CSV
+                color: Colors.blue.shade700,
+              ),
+            ],
+            child: ElevatedButton.icon(
+              onPressed: null, // Set to null to allow PopupMenuButton to handle the tap
+              icon: const Icon(Icons.download_rounded, color: Colors.white, size: 22),
+              label: const Text(
+                'Export Data',
+                style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w500),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AdminScreen.accentHeaderColor, // Orange color
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 2,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper for PopupMenuItem styling
+  PopupMenuEntry<String> _buildPopupMenuItem({
+    required String value,
+    required String text,
+    required IconData icon,
+    required Color color,
+  }) {
+    return PopupMenuItem<String>(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Text(
+            text,
+            style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+  // END: NEW EXPORT DATA SECTION WIDGET
+
 
   Widget _buildDummyChartWithLabel(String message, {bool isEmpty = false}) {
     return Padding(

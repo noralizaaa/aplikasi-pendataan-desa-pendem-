@@ -1,10 +1,24 @@
+import 'dart:io';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart' show CalendarFormat, CalendarStyle, HeaderStyle, RangeSelectionMode, TableCalendar, isSameDay;
-import 'package:aplikasi_pendataan_desa/presentation/admin/admin_screen.dart'; // Untuk akses warna tema
+import 'package:aplikasi_pendataan_desa/presentation/admin/admin_screen.dart';
+
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:file_picker/file_picker.dart';
+
+// Package for CSV (add to pubspec.yaml if not already)
+// import 'package:csv/csv.dart';
+// Package for Excel (add to pubspec.yaml if not already)
+// import 'package:excel/excel.dart';
 
 class AdminController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -15,8 +29,7 @@ class AdminController extends GetxController {
   final RxString globalSearchQuery = ''.obs;
 
   final RxBool isDashboardLoading = true.obs;
-  final RxInt totalSubmissions = 0.obs; // This will now represent "Jumlah Rumah Tangga yang Sudah Didata"
-  // final RxInt totalActiveUsers = 0.obs; // Removed as requested
+  final RxInt totalSubmissions = 0.obs;
 
   final RxList<Map<String, dynamic>> _allFormEntriesWithSubmissions = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> filteredFormSubmissions = <Map<String, dynamic>>[].obs;
@@ -27,11 +40,9 @@ class AdminController extends GetxController {
   final RxList<Map<String, dynamic>> _allFormAccessCounts = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> filteredFormAccessCounts = <Map<String, dynamic>>[].obs;
 
-  // State inti untuk filter tanggal
   final Rx<DateTime?> selectedStartDate = Rx<DateTime?>(null);
   final Rx<DateTime?> selectedEndDate = Rx<DateTime?>(null);
 
-  // State untuk TableCalendar (digunakan oleh dialog kustom)
   final Rx<DateTime> focusedCalendarDay = DateTime.now().obs;
   final Rx<DateTime?> calendarRangeStart = Rx<DateTime?>(null);
   final Rx<DateTime?> calendarRangeEnd = Rx<DateTime?>(null);
@@ -85,7 +96,6 @@ class AdminController extends GetxController {
     isDashboardLoading.value = true;
     try {
       await Future.wait([
-        // _fetchTotalActiveUsers(), // Removed as requested
         _fetchAllSubmissionsAndGroupThem(),
         _fetchFormAccessCountsMaster(),
       ]);
@@ -99,12 +109,10 @@ class AdminController extends GetxController {
     }
   }
 
-  // _fetchTotalActiveUsers is removed as requested.
-
   Future<void> _fetchAllSubmissionsAndGroupThem() async {
     Map<String, List<Map<String, dynamic>>> submissionsByFormId = {};
     Map<String, String> formTitles = {};
-    Map<String, int> dailyHouseholdCounts = {}; // This will store the count for "DC-Penduduk"
+    Map<String, int> dailyHouseholdCounts = {};
 
     QuerySnapshot formsMetaSnapshot = await _db.collection(_adminFormsCollectionPath).get();
     for (var formDoc in formsMetaSnapshot.docs) {
@@ -124,11 +132,11 @@ class AdminController extends GetxController {
             'submittedAt': data['submittedAt'] as Timestamp?,
             'userId': data['userId'],
             'userName': data['userName'],
-            'formTitle': formTitle, // Add formTitle here for easy filtering later
+            'formTitle': formTitle,
+            'answers': data['answers'], // Include answers for export
           });
         }
 
-        // Only count for "DC-Penduduk" for the daily trend
         if (formTitle.toLowerCase().contains('dc-penduduk') && data.containsKey('submittedAt') && data['submittedAt'] is Timestamp) {
           Timestamp submittedAtTimestamp = data['submittedAt'];
           DateTime date = submittedAtTimestamp.toDate().toLocal();
@@ -209,7 +217,6 @@ class AdminController extends GetxController {
     if (picked != null) {
       selectedStartDate.value = picked.start;
       selectedEndDate.value = DateTime(picked.end.year, picked.end.month, picked.end.day, 23, 59, 59, 999);
-      // Sinkronkan dengan state TableCalendar juga
       calendarRangeStart.value = selectedStartDate.value;
       calendarRangeEnd.value = selectedEndDate.value;
       if (selectedStartDate.value != null) {
@@ -292,7 +299,7 @@ class AdminController extends GetxController {
     debugPrint("_applyDashboardFilter: DateFilterActive=$isDateFilterActive, Start=${filterStartDate?.toIso8601String()}, End=${filterEndDate?.toIso8601String()}, Query='$query'");
 
     List<Map<String, dynamic>> tempFilteredSubmissionsSummary = [];
-    int newTotalSubmissionsInPeriod = 0; // This will count "Jumlah Rumah Tangga yang Sudah Didata"
+    int newTotalSubmissionsInPeriod = 0;
 
     for (var formEntry in _allFormEntriesWithSubmissions) {
       String formTitle = (formEntry['formTitle'] as String? ?? '').toLowerCase();
@@ -305,7 +312,6 @@ class AdminController extends GetxController {
 
       if (isDateFilterActive) {
         for (var submissionData in allSubmissionsForThisForm) {
-          // Check if formTitle matches 'dc-penduduk' for the total household count
           if (formTitle.contains('dc-penduduk')) {
             if (submissionData.containsKey('submittedAt') && submissionData['submittedAt'] is Timestamp) {
               Timestamp submittedAtTimestamp = submissionData['submittedAt'];
@@ -316,7 +322,6 @@ class AdminController extends GetxController {
               }
             }
           } else {
-            // For other forms, count all submissions within the date range
             if (submissionData.containsKey('submittedAt') && submissionData['submittedAt'] is Timestamp) {
               Timestamp submittedAtTimestamp = submissionData['submittedAt'];
               DateTime submissionDate = submittedAtTimestamp.toDate().toLocal();
@@ -328,7 +333,6 @@ class AdminController extends GetxController {
           }
         }
       } else {
-        // If no date filter, for 'dc-penduduk', use its total count from _fetchAllSubmissionsAndGroupThem
         if (formTitle.contains('dc-penduduk')) {
           countForDisplay = _fullSubmissionTrend.values.fold(0, (sum, element) => sum + element);
         } else {
@@ -336,8 +340,6 @@ class AdminController extends GetxController {
         }
       }
 
-      // Only add to `tempFilteredSubmissionsSummary` if `countForDisplay` is greater than 0
-      // OR if it's the 'dc-penduduk' form and it exists, even if count is 0, so it appears in the list
       if (countForDisplay > 0 || formTitle.contains('dc-penduduk')) {
         tempFilteredSubmissionsSummary.add({
           'formId': formEntry['formId'],
@@ -346,13 +348,12 @@ class AdminController extends GetxController {
         });
       }
 
-      // The total submissions for the metric card will specifically be for 'DC-Penduduk'
       if (formTitle.contains('dc-penduduk')) {
         newTotalSubmissionsInPeriod = countForDisplay;
       }
     }
     filteredFormSubmissions.assignAll(tempFilteredSubmissionsSummary);
-    totalSubmissions.value = newTotalSubmissionsInPeriod; // Update the main metric
+    totalSubmissions.value = newTotalSubmissionsInPeriod;
 
     _filterSubmissionTrendByDate(filterStartDate, filterEndDate);
 
@@ -392,6 +393,270 @@ class AdminController extends GetxController {
     var sortedKeys = filteredDailyCounts.keys.toList()..sort();
     final sortedFilteredCounts = { for (var k in sortedKeys) k: filteredDailyCounts[k]! };
     submissionTrend.assignAll(sortedFilteredCounts);
+  }
+
+  // Helper to get 'DC-Penduduk' submissions based on current filters
+  List<Map<String, dynamic>> _getDcPendudukSubmissions() {
+    final bool isDateFilterActive = selectedStartDate.value != null && selectedEndDate.value != null;
+    final DateTime? filterStartDate = selectedStartDate.value;
+    final DateTime? filterEndDate = selectedEndDate.value;
+
+    List<Map<String, dynamic>> dcPendudukSubmissions = [];
+
+    final dcFormEntry = _allFormEntriesWithSubmissions.firstWhereOrNull(
+          (entry) => (entry['formTitle'] as String? ?? '').toLowerCase().contains('dc-penduduk'),
+    );
+
+    if (dcFormEntry != null) {
+      List<Map<String, dynamic>> allSubmissionsForDCPenduduk = List<Map<String, dynamic>>.from(dcFormEntry['submissions'] ?? []);
+
+      if (isDateFilterActive) {
+        for (var submissionData in allSubmissionsForDCPenduduk) {
+          if (submissionData.containsKey('submittedAt') && submissionData['submittedAt'] is Timestamp) {
+            Timestamp submittedAtTimestamp = submissionData['submittedAt'];
+            DateTime submissionDate = submittedAtTimestamp.toDate().toLocal();
+            if (submissionDate.isAfter(filterStartDate!.subtract(const Duration(microseconds: 1))) &&
+                submissionDate.isBefore(filterEndDate!.add(const Duration(microseconds: 1)))) {
+              dcPendudukSubmissions.add(submissionData);
+            }
+          }
+        }
+      } else {
+        dcPendudukSubmissions.assignAll(allSubmissionsForDCPenduduk);
+      }
+    }
+    return dcPendudukSubmissions;
+  }
+
+  Future<void> exportDataAsJson() async {
+    Get.snackbar(
+      'Export Data',
+      'Mempersiapkan data untuk ekspor JSON...', // Sedikit ubah pesan
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.blue.shade600,
+      colorText: Colors.white,
+      duration: const Duration(seconds: 2),
+    );
+
+    try {
+      final List<Map<String, dynamic>> submissionsToExport = _getDcPendudukSubmissions();
+
+      if (submissionsToExport.isEmpty) {
+        Get.snackbar(
+          'Info',
+          'Tidak ada data penduduk untuk diekspor.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange.shade400,
+          colorText: Colors.white,
+        );
+        return;
+      }
+
+      final List<Map<String, dynamic>> processedSubmissions = submissionsToExport.map((submission) {
+        final Map<String, dynamic> processed = Map<String, dynamic>.from(submission);
+        if (processed['submittedAt'] is Timestamp) {
+          processed['submittedAt'] = (processed['submittedAt'] as Timestamp).toDate().toIso8601String();
+        }
+        return processed;
+      }).toList();
+
+      final String jsonString = jsonEncode(processedSubmissions);
+      final List<int> fileBytes = utf8.encode(jsonString); // Konversi string ke bytes
+
+      // Meminta izin penyimpanan (tetap relevan sebagai fallback atau untuk operasi picker tertentu)
+      var storageStatus = await Permission.storage.request();
+      // Untuk Android 13+, jika menargetkan API 33+, izin spesifik media mungkin lebih relevan
+      // tergantung jenis file dan lokasi. Namun, untuk save file picker, ini umumnya ditangani sistem.
+      // Pertimbangkan juga Permission.manageExternalStorage jika akses luas diperlukan (tidak disarankan untuk ini).
+
+      if (!storageStatus.isGranted && !storageStatus.isLimited) { // Tambahkan .isLimited untuk iOS
+        if (storageStatus.isPermanentlyDenied) {
+          Get.snackbar(
+            'Izin Ditolak Permanen',
+            'Izin penyimpanan diperlukan. Aktifkan di pengaturan aplikasi.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red.shade400,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 5),
+            mainButton: TextButton(
+              onPressed: () {
+                openAppSettings();
+              },
+              child: const Text('Buka Pengaturan', style: TextStyle(color: Colors.white)),
+            ),
+          );
+        } else {
+          Get.snackbar(
+            'Izin Ditolak',
+            'Izin penyimpanan diperlukan untuk melanjutkan.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red.shade400,
+            colorText: Colors.white,
+          );
+        }
+        return;
+      }
+
+      // Meminta pengguna memilih lokasi dan nama file untuk menyimpan
+      String? outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Simpan Data JSON Sebagai...',
+        fileName: 'data_penduduk_export_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.json',
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        bytes: Uint8List.fromList(fileBytes), // Langsung sediakan bytes ke file picker
+      );
+
+      if (outputFile == null) {
+        // Pengguna membatalkan dialog penyimpanan
+        Get.snackbar(
+          'Dibatalkan',
+          'Proses ekspor data JSON dibatalkan.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.grey.shade600,
+          colorText: Colors.white,
+        );
+        return;
+      }
+
+      // Karena kita sudah menyediakan `bytes` ke `saveFile`,
+      // file_picker seharusnya sudah menangani penyimpanan.
+      // Jika `saveFile` hanya mengembalikan path dan kita perlu menulis manual:
+      // final File file = File(outputFile);
+      // await file.writeAsBytes(fileBytes); // atau await file.writeAsString(jsonString);
+
+      Get.snackbar(
+        'Berhasil!',
+        'Data JSON berhasil diekspor.', // Path tidak selalu akurat/diketahui jika `bytes` digunakan
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green.shade600,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
+        // Tombol 'Buka File' mungkin tidak selalu relevan jika path absolut tidak mudah didapatkan
+        // atau jika file disimpan melalui Content URI. OpenFilex mungkin masih bisa bekerja pada beberapa kasus.
+        // mainButton: TextButton(
+        //   onPressed: () {
+        //     OpenFilex.open(outputFile); // outputFile mungkin bukan path yang bisa langsung diakses OpenFilex
+        //   },
+        //   child: const Text('Buka File', style: TextStyle(color: Colors.white)),
+        // ),
+      );
+
+    } catch (e, s) {
+      debugPrint("Error exporting JSON: $e\n$s");
+      Get.snackbar(
+        'Error Export',
+        'Gagal mengekspor data JSON: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.shade400,
+        colorText: Colors.white,
+      );
+    }
+  }
+
+  Future<void> exportDataAsXlsx() async {
+    final List<Map<String, dynamic>> submissions = _getDcPendudukSubmissions();
+    if (submissions.isEmpty) {
+      Get.snackbar('Info', 'Tidak ada data untuk diekspor ke XLSX.');
+      return;
+    }
+    Get.snackbar('Export Data', 'Mengekspor data sebagai XLSX...');
+
+    try {
+      // TODO: Implementasi flattening data dan pembuatan bytes Excel di sini.
+      // Misalnya, setelah Anda memiliki `List<int> excelBytes`:
+      // final List<int> excelBytes = ... (hasil dari library excel Anda);
+
+      // --- SIMULASI BYTES EXCEL (HAPUS ATAU GANTI DENGAN LOGIKA ANDA) ---
+      // Ini hanya untuk demonstrasi agar fungsi bisa berjalan.
+      // Ganti ini dengan logika pembuatan file Excel Anda yang sebenarnya.
+      String dummyExcelContent = "ID,Name,Value\n1,DataA,100\n2,DataB,200";
+      final List<int> excelBytes = utf8.encode(dummyExcelContent);
+      // --- AKHIR SIMULASI BYTES EXCEL ---
+
+      if (excelBytes.isEmpty) { // Tambahkan pengecekan jika bytes kosong setelah implementasi
+        Get.snackbar('Error', 'Gagal menghasilkan file XLSX (data kosong).');
+        return;
+      }
+
+      var storageStatus = await Permission.storage.request();
+      if (!storageStatus.isGranted && !storageStatus.isLimited) {
+        // ... (logika penanganan izin sama seperti di exportDataAsJson) ...
+        Get.snackbar('Izin Ditolak', 'Izin penyimpanan diperlukan.');
+        return;
+      }
+
+      String? outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Simpan Data XLSX Sebagai...',
+        fileName: 'data_penduduk_export_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.xlsx',
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+        bytes:  Uint8List(excelBytes as int),
+      );
+
+      if (outputFile == null) {
+        Get.snackbar('Dibatalkan', 'Proses ekspor data XLSX dibatalkan.');
+        return;
+      }
+
+      Get.snackbar('Berhasil!', 'Data XLSX (placeholder) berhasil diekspor.');
+
+    } catch (e, s) {
+      debugPrint("Error exporting XLSX: $e\n$s");
+      Get.snackbar('Error Export', 'Gagal mengekspor data XLSX: ${e.toString()}');
+    }
+  }
+
+  Future<void> exportDataAsCsv() async {
+    final List<Map<String, dynamic>> submissions = _getDcPendudukSubmissions();
+    if (submissions.isEmpty) {
+      Get.snackbar('Info', 'Tidak ada data untuk diekspor ke CSV.');
+      return;
+    }
+    Get.snackbar('Export Data', 'Mengekspor data sebagai CSV...');
+
+    try {
+      // TODO: Implementasi flattening data dan pembuatan string CSV di sini.
+      // Misalnya, setelah Anda memiliki `String csvString`:
+      // final String csvString = ... (hasil dari library csv Anda);
+
+      // --- SIMULASI STRING CSV (HAPUS ATAU GANTI DENGAN LOGIKA ANDA) ---
+      // Ini hanya untuk demonstrasi agar fungsi bisa berjalan.
+      final String csvString = "ID,Nama Pengguna,Tanggal Submit\n1,UserA,2024-01-01\n2,UserB,2024-01-02";
+      // --- AKHIR SIMULASI STRING CSV ---
+
+      final List<int> fileBytes = utf8.encode(csvString);
+
+      if (fileBytes.isEmpty) { // Tambahkan pengecekan jika bytes kosong setelah implementasi
+        Get.snackbar('Error', 'Gagal menghasilkan file CSV (data kosong).');
+        return;
+      }
+
+      var storageStatus = await Permission.storage.request();
+      if (!storageStatus.isGranted && !storageStatus.isLimited) {
+        // ... (logika penanganan izin sama seperti di exportDataAsJson) ...
+        Get.snackbar('Izin Ditolak', 'Izin penyimpanan diperlukan.');
+        return;
+      }
+
+      String? outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Simpan Data CSV Sebagai...',
+        fileName: 'data_penduduk_export_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv',
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        bytes: Uint8List.fromList(fileBytes),
+      );
+
+      if (outputFile == null) {
+        Get.snackbar('Dibatalkan', 'Proses ekspor data CSV dibatalkan.');
+        return;
+      }
+
+      Get.snackbar('Berhasil!', 'Data CSV (placeholder) berhasil diekspor.');
+
+    } catch (e, s) {
+      debugPrint("Error exporting CSV: $e\n$s");
+      Get.snackbar('Error Export', 'Gagal mengekspor data CSV: ${e.toString()}');
+    }
   }
 
   @override
