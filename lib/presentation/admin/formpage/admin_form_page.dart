@@ -12,8 +12,6 @@ class AdminFormPage extends GetView<AdminFormController> {
 
   @override
   Widget build(BuildContext context) {
-    // Get.put(AdminFormController()); // DIHAPUS - Controller sekarang di-inject oleh AdminBinding
-
     return Scaffold(
       backgroundColor: AdminScreen.pageBackgroundColor,
       floatingActionButton: FloatingActionButton.extended(

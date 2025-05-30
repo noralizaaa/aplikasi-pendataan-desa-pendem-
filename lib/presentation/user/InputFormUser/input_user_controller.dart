@@ -542,23 +542,29 @@ class InputUserController extends GetxController {
       dynamic defaultValue = _getDefaultAnswerForQuestionType(question.type);
 
       if (userAnswers.containsKey(qId) && userAnswers[qId] != defaultValue) {
+        print("DEBUG CLEAR: Clearing regular Q: ${question.code ?? qId}. Old: ${userAnswers[qId]} -> New: $defaultValue");
+        userAnswers[qId] = defaultValue;
+        changed = true;
+      }
+
+      if (userAnswers.containsKey(qId) && userAnswers[qId] != defaultValue) {
         userAnswers[qId] = defaultValue;
         print("Cleared/Reset answer for regular Q: ${question.code ?? qId}");
         changed = true;
       }
       if (repeatableGroupAnswers.containsKey(qId)) {
-        final groupTag = question.belongsToGroupTag; // Anggota grup
+        final groupTag = question.belongsToGroupTag;
         if (groupTag != null) {
           final count = repeatableGroupCounts[groupTag] ?? 0;
           final answerMap = repeatableGroupAnswers[qId]!;
           for(int i = 0; i < count; i++){
             if(answerMap.containsKey(i) && answerMap[i] != defaultValue){
+              print("DEBUG CLEAR: Clearing repeatable Q: ${question.code ?? qId}[$i]. Old: ${answerMap[i]} -> New: $defaultValue");
               answerMap[i] = defaultValue;
               changed = true;
             }
           }
         }
-        print("Cleared/Reset answers for repeatable Q instances: ${question.code ?? qId}");
       }
       if (question.isRepeatableGroupController && question.controlledGroupTag != null) {
         final groupTag = question.controlledGroupTag!;
@@ -732,6 +738,13 @@ class InputUserController extends GetxController {
     if (visibilityChanged) {
       questionVisibility.refresh();
     }
+
+    print("---"); // Garis pemisah untuk keterbacaan
+    print("DEBUG VISIBILITY FINAL: Visible Questions after jump from ${findQuestionById(currentQuestionId)?.code ?? currentQuestionId}:");
+    questionVisibility.entries.where((e) => e.value).forEach((entry) {
+      print("  - ${findQuestionById(entry.key)?.code ?? entry.key} (ID: ${entry.key})");
+    });
+    print("---");
 
     print("_performJump from ${findQuestionById(currentQuestionId)?.code} to target: ${findQuestionById(effectiveNextVisibleQId ?? '')?.code ?? targetCompositeValue}. Cleared answers for: ${uniqueIdsToClear.map((id) => findQuestionById(id)?.code ?? id).toList()}");
 
@@ -1082,32 +1095,55 @@ class InputUserController extends GetxController {
     return false; // Defaultnya tidak kosong jika bukan tipe di atas dan tidak null
   }
 
+  // In input_user_controller.dart
   dynamic _prepareAnswerForFirestore(dynamic answer, QuestionType type) {
-    if (type == QuestionType.number || type == QuestionType.gridNumeric) {
+    if (type == QuestionType.number) {
       if (answer is String) return num.tryParse(answer.replaceAll(',', '.'));
-      if (answer is Map && type == QuestionType.gridNumeric) { // Konversi nilai dalam grid
-        Map<String, Map<String, Map<String, num?>>> typedGrid = {};
-        (answer).forEach((rowKey, colMap) {
-          if (colMap is Map) {
-            typedGrid[rowKey.toString()] = {};
-            (colMap).forEach((colKey, subColMap) {
-              if (subColMap is Map) {
-                typedGrid[rowKey.toString()]![colKey.toString()] = {};
-                (subColMap).forEach((subColKey, cellValue) {
-                  if (cellValue is String) {
-                    typedGrid[rowKey.toString()]![colKey.toString()]![subColKey.toString()] = num.tryParse(cellValue.replaceAll(',', '.'));
-                  } else if (cellValue is num?) {
-                    typedGrid[rowKey.toString()]![colKey.toString()]![subColKey.toString()] = cellValue;
-                  } else {
-                    typedGrid[rowKey.toString()]![colKey.toString()]![subColKey.toString()] = null;
-                  }
-                });
-              }
-            });
-          }
-        });
-        return typedGrid;
-      }
+    }
+    if (answer is Map && type == QuestionType.gridNumeric) {
+      Map<String, dynamic> firestoreGrid = {}; // Use dynamic for intermediate map
+      (answer as Map).forEach((rowKey, colMap) {
+        // IMPORTANT FIX HERE: Check if rowKey is an empty string
+        // If gridRowLabels is empty, rowKey will be "", which is not allowed by Firestore as a top-level key.
+        String effectiveRowKey = rowKey.toString().isEmpty ? "default_row" : rowKey.toString(); // Use a placeholder or skip if needed.
+        // "default_row" is a safe choice if only one row.
+
+        // Consider if `rowKey` is actually just `""` (empty string) because `gridRowLabels` in FormItem
+        // is empty for this question (Q303 in your case). Firestore does not allow empty string keys.
+        if (rowKey.toString().isEmpty) {
+          // If the row label is empty, and it's from `gridRowLabels: []`
+          // We need to decide how to store this.
+          // Option 1: If there's only one row (because gridRowLabels is empty),
+          //           we can flatten the structure or use a default key.
+          //           From your log, Q303 is `{: {Senin: ...}}`, suggesting an empty key.
+          //           Let's use a default key.
+          effectiveRowKey = "GridData"; // A generic key, if the original row label was empty.
+        } else {
+          effectiveRowKey = rowKey.toString();
+        }
+
+
+        if (colMap is Map) {
+          Map<String, dynamic> currentCols = {}; // Use dynamic for intermediate map
+          (colMap).forEach((colKey, subColMap) {
+            if (subColMap is Map) {
+              Map<String, num?> currentSubCols = {};
+              (subColMap).forEach((subColKey, cellValue) {
+                if (cellValue is String) {
+                  currentSubCols[subColKey.toString()] = num.tryParse(cellValue.replaceAll(',', '.'));
+                } else if (cellValue is num?) {
+                  currentSubCols[subColKey.toString()] = cellValue;
+                } else {
+                  currentSubCols[subColKey.toString()] = null;
+                }
+              });
+              currentCols[colKey.toString()] = currentSubCols;
+            }
+          });
+          firestoreGrid[effectiveRowKey] = currentCols;
+        }
+      });
+      return firestoreGrid;
     }
     if (type == QuestionType.date && answer is String) {
       try {
