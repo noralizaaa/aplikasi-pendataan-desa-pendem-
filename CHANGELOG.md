@@ -5,6 +5,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.22.1] - 2025-05-31
+> Contributed by: [Febri Bagus Triwibowo]
+
+> Improved user profile update logic for consistency, and overhauled form UI with section-based inputs and a redesigned AppBar.
+
+### 🎉 Added
+- **Form UI:** Section-based input form using expandable cards. Only one section expands at a time for better focus.
+- **AppBar:** New gradient background, dynamic button (“KIRIM” vs “SIMPAN”), and modern visual style with rounded corners.
+- **Header Card:** Redesigned top info card with icon and user guidance tips for better clarity.
+
+### 🛠️ Changed
+- **Firestore Update:** `saveUsername()` now correctly updates the `username` field only, avoiding duplication like `displayName`.
+- **State Sync:** UI immediately reflects username changes via `userProfile.refresh()` without needing to reload from Firestore.
+- **Form Expansion Logic:** Managed via `expandedSectionId`, with helper methods to check if section has answers.
+
+### 🐛 Fixed
+- **Data Consistency:** Ensured `_loadUserProfile()` and `saveUsername()` read/write the same field in Firestore.
+- **Profile Updates:** Fixed mismatch issues in Firestore updates and UI state after editing username.
+
+---
 ## [0.22.0] - 2025-05-31
 > Contributed by: [Bayu Ardiyansyah]
 

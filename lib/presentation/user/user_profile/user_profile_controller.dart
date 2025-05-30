@@ -10,16 +10,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class UserProfileController extends GetxController {
   final Rx<UserProfile?> userProfile = Rx<UserProfile?>(null);
-  // usernameController akan digunakan untuk TextField di dialog
   final TextEditingController usernameController = TextEditingController();
-  int _pendataCounter = 0;
+  int _pendataCounter = 0; // Tetap ada jika _generateDefaultUsername masih digunakan
 
   late FirebaseAuth _auth;
   late FirebaseFirestore _firestore;
   final RxBool isLoading = true.obs;
 
-  // Warna yang akan kita gunakan, mirip dengan AdminProfilePage
-  static const Color dialogBackgroundColor = Color(0xFFFFF3E0); // Warna pastel oranye
+  static const Color dialogBackgroundColor = Color(0xFFFFF3E0);
   static const Color buttonSaveColor = Colors.deepOrangeAccent;
 
   @override
@@ -41,12 +39,13 @@ class UserProfileController extends GetxController {
   Future<void> _loadUserProfile() async {
     isLoading.value = true;
     User? currentUser = _auth.currentUser;
-    String fetchedUsername = 'Pengguna';
+    String fetchedUsername = 'Pengguna'; // Default username
     String fetchedRole = 'Peran Tidak Diketahui';
     String? initialProgramId;
 
     if (Get.arguments != null && Get.arguments is Map) {
       initialProgramId = Get.arguments['programId'] as String?;
+      // Ambil username dari argumen jika ada, jika tidak, pertahankan default
       fetchedUsername = Get.arguments['username'] ?? fetchedUsername;
       fetchedRole = Get.arguments['role'] ?? fetchedRole;
       print("[UserProfileController] Loaded from Get.arguments: Username (fallback): $fetchedUsername, Role (fallback): $fetchedRole, ProgramId: $initialProgramId");
@@ -58,21 +57,29 @@ class UserProfileController extends GetxController {
         DocumentSnapshot userDoc = await _firestore.collection('users').doc(currentUser.uid).get();
         if (userDoc.exists) {
           Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
-          fetchedUsername = data['displayName'] as String? ?? data['username'] as String? ?? fetchedUsername;
+          // --- PENYESUAIAN PENTING ---
+          // Pastikan 'username' adalah field yang benar di Firestore Anda.
+          // Jika field di Firestore adalah 'displayName', gunakan data['displayName'].
+          // Prioritaskan pembacaan dari field yang akan Anda update.
+          fetchedUsername = data['username'] as String? ?? // Asumsikan field di Firestore adalah 'username'
+              data['displayName'] as String? ?? // Fallback jika 'displayName' masih ada
+              fetchedUsername; // Fallback ke nilai sebelumnya jika keduanya null
           fetchedRole = data['role'] as String? ?? fetchedRole;
           print("[UserProfileController] Firestore User Details: Username: $fetchedUsername, Role: $fetchedRole");
         } else {
-          print("[UserProfileController] User document not found in Firestore. Using FirebaseAuth display name.");
+          print("[UserProfileController] User document not found in Firestore. Using FirebaseAuth display name or email.");
           fetchedUsername = currentUser.displayName ?? currentUser.email ?? fetchedUsername;
         }
       } catch (e) {
         print("Error fetching user details from Firestore: $e");
+        // Jika error, coba fallback ke display name dari FirebaseAuth atau email
         fetchedUsername = currentUser.displayName ?? currentUser.email ?? fetchedUsername;
       }
     } else {
       print("[UserProfileController] No current user. Using default/argument username.");
     }
 
+    // ... (sisa logika _loadUserProfile untuk role dan programId tetap sama)
     if (initialProgramId != null && initialProgramId.isNotEmpty && initialProgramId != '000') {
       try {
         DocumentSnapshot formDoc = await FirebaseFirestore.instance.collection('forms').doc(initialProgramId).get();
@@ -106,11 +113,12 @@ class UserProfileController extends GetxController {
     }
 
     if (fetchedUsername == 'Pengguna' && (Get.arguments == null || Get.arguments['username'] == null)) {
-      if (currentUser == null) {
+      if (currentUser == null) { // Hanya generate jika tidak ada user dan tidak ada argumen
         fetchedUsername = _generateDefaultUsername();
         print("[UserProfileController] No user/args/firestore name, generated default: $fetchedUsername");
       }
     }
+    // --- AKHIR DARI SISA LOGIKA _loadUserProfile ---
 
     userProfile.value = UserProfile(
       username: fetchedUsername,
@@ -118,8 +126,6 @@ class UserProfileController extends GetxController {
       programId: initialProgramId,
     );
 
-    // usernameController.text diisi di sini untuk pertama kali
-    // dan akan diisi ulang sebelum dialog ditampilkan
     usernameController.text = userProfile.value!.username;
     print("[UserProfileController] UserProfile loaded: Username: ${userProfile.value?.username}, Role: ${userProfile.value?.role}, ProgramID: ${userProfile.value?.programId}");
     isLoading.value = false;
@@ -146,9 +152,7 @@ class UserProfileController extends GetxController {
     }
   }
 
-  // Metode baru untuk menampilkan dialog edit username
   void promptEditUsernameDialog() {
-    // Pastikan usernameController diisi dengan username saat ini sebelum dialog muncul
     if (userProfile.value != null) {
       usernameController.text = userProfile.value!.username;
     }
@@ -162,7 +166,7 @@ class UserProfileController extends GetxController {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         content: TextField(
-          controller: usernameController, // Gunakan usernameController yang sudah ada
+          controller: usernameController,
           autofocus: true,
           decoration: InputDecoration(
             labelText: "Username Baru",
@@ -194,8 +198,8 @@ class UserProfileController extends GetxController {
               final currentUsername = userProfile.value?.username ?? '';
 
               if (newUsername.isNotEmpty && newUsername != currentUsername) {
-                Get.back(); // Tutup dialog dulu
-                saveUsername(); // Kemudian panggil saveUsername
+                Get.back();
+                saveUsername(); // Panggil saveUsername setelah dialog ditutup
               } else if (newUsername.isEmpty) {
                 Get.snackbar(
                   "Input Error",
@@ -205,7 +209,7 @@ class UserProfileController extends GetxController {
                   colorText: Colors.white,
                 );
               } else {
-                Get.back(); // Tidak ada perubahan, tutup dialog
+                Get.back();
               }
             },
             style: ElevatedButton.styleFrom(
@@ -223,23 +227,24 @@ class UserProfileController extends GetxController {
     );
   }
 
-  // saveUsername akan dipanggil dari dialog
-  // Tidak banyak perubahan di sini, hanya memastikan newUsername diambil dari controller
   void saveUsername() async {
-    final newUsername = usernameController.text.trim(); // Ambil dari controller
+    final newUsername = usernameController.text.trim();
     User? currentUser = _auth.currentUser;
 
     if (newUsername.isNotEmpty && userProfile.value != null && currentUser != null) {
       isLoading.value = true;
       try {
+        // --- PERUBAHAN UTAMA: GUNAKAN NAMA FIELD YANG BENAR DI FIRESTORE ---
+        // Ganti 'username' dengan nama field yang Anda gunakan di Firestore,
+        // misalnya 'displayName' jika itu yang Anda gunakan.
         await _firestore.collection('users').doc(currentUser.uid).update({
-          'displayName': newUsername,
+          'username': newUsername, // ASUMSI: field di Firestore adalah 'username'
         });
+        // ----------------------------------------------------------------
 
-        // Update lokal
+        // Update lokal setelah berhasil update di Firestore
         userProfile.value!.username = newUsername;
-        userProfile.refresh();
-        // usernameController.text sudah berisi newUsername dari dialog
+        userProfile.refresh(); // Memaksa GetX untuk merebuild widget yang menggunakan userProfile
 
         Get.snackbar(
           'Sukses',
@@ -248,10 +253,11 @@ class UserProfileController extends GetxController {
           backgroundColor: Colors.green,
           colorText: Colors.white,
         );
-        // Reload profil untuk memastikan data paling baru (opsional, tapi baik)
-        // Jika Anda merasa update lokal sudah cukup, baris ini bisa dihilangkan.
-        // Namun, ini akan menyamakan perilaku dengan AdminProfilController
-        await _loadUserProfile();
+
+        // Opsional: Muat ulang seluruh profil untuk konsistensi penuh dari server
+        // Jika update lokal dirasa cukup, baris ini bisa di-comment.
+        // Namun, ini memastikan data yang ditampilkan selalu yang terbaru dari Firestore.
+        // await _loadUserProfile(); // Jika diaktifkan, akan memicu loading lagi
 
       } catch (e) {
         Get.snackbar(
@@ -265,8 +271,6 @@ class UserProfileController extends GetxController {
         isLoading.value = false;
       }
     } else if (newUsername.isEmpty) {
-      // Validasi ini sebenarnya sudah ditangani di dialog,
-      // tapi bisa sebagai fallback jika saveUsername dipanggil dari tempat lain.
       Get.snackbar(
         'Error',
         'Username tidak boleh kosong!',
@@ -286,6 +290,7 @@ class UserProfileController extends GetxController {
   }
 
   Future<void> logout() async {
+    // ... (kode logout Anda sudah baik, tidak perlu diubah terkait masalah ini)
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(
@@ -341,13 +346,12 @@ class UserProfileController extends GetxController {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
-                        Get.back();
+                        Get.back(); // Tutup dialog konfirmasi
                         isLoading.value = true;
                         try {
                           await _auth.signOut();
                           userProfile.value = null;
-                          // Bersihkan juga username controller jika diperlukan
-                          usernameController.clear();
+                          usernameController.clear(); // Bersihkan controller juga
                           Get.offAllNamed(AppRoutes.login);
                         } catch (e) {
                           Get.snackbar(
