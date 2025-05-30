@@ -5,6 +5,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.23.0] - 2025-05-31
+> Contributed by: [Febri Bagus Triwibowo]  
+
+> Penyempurnaan fitur Riwayat Pendataan dengan peningkatan logika model, controller, dan tampilan kartu untuk pengalaman pengguna yang lebih informatif dan akurat.
+
+### 🎉 Added
+- **Model Field:** Field `namaKepalaRumahTangga` (nullable `String`) ditambahkan ke dalam model `FormSubmission`.
+- **Field Extraction Logic:** Di `fromFirestore`, nilai `namaKepalaRumahTangga` secara otomatis diekstrak dari jawaban berdasarkan `questionCode` (contoh: `"106"`).
+- **Display Logic:** Tambahan pada `DisplayableSubmission` untuk menyimpan `namaKepalaKeluarga` dan `nikKepalaKeluarga` (versi NIK yang bersih/valid).
+- **Sorting Option:** Opsi urutan baru di daftar: "Nama KRT A-Z".
+- **InfoRow UI:** Komponen UI tambahan untuk menampilkan baris informasi "Nama KRT" dan "NIK KRT" pada kartu submission.
+
+### 🛠️ Changed
+- **NIK Filtering:** Logika `displayNikKRT` diubah agar mengosongkan NIK jika bernilai string `"1"`, sehingga tidak ditampilkan.
+- **Submission Filtering:** Kartu submission yang memiliki `namaKRT` dan `displayNikKRT` kosong kini tidak ditampilkan untuk menjaga fokus data.
+- **Judul Kartu:** `displayTitle` kini memprioritaskan nama dan NIK KRT sebelum fallback ke identifier umum atau judul form.
+- **Pencarian:** Pencarian (`searchQuery`) kini mempertimbangkan `namaKRT` dan `displayNikKRT`, meningkatkan hasil pencarian yang relevan.
+- **Data Refresh:** Method `editSubmission()` dan `goToAddSubmission()` kini memanggil `refreshData()` setelah navigasi untuk memastikan daftar selalu terkini.
+
+### 🐛 Fixed
+- **Model Sync:** Field `updatedAt` (nullable `Timestamp`) dipastikan tersedia dan disinkronkan dengan benar di `fromFirestore` dan `toFirestore`.
+- **Display Accuracy:** Penyesuaian tampilan agar data nama dan NIK tidak redundan atau ambigu.
+- **No Data Message:** Pesan "Data Tidak Ditemukan" kini membedakan kondisi antara tidak ada data sama sekali dan hasil pencarian kosong.
+
+---
 ## [0.22.1] - 2025-05-31
 > Contributed by: [Febri Bagus Triwibowo]
 
