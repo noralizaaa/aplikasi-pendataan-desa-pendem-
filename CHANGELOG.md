@@ -3,6 +3,30 @@
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+---
+## [0.21.0] - 2025-05-30
+> Created by : [lutfi Indra]
+
+> Improved user screen data fetching and refined form UI for better display efficiency and routing behavior.
+
+### 🎉 Added
+_(No new features added in this release.)_
+
+### 🛠️ Changed
+-   **`UserScreenController`:**
+  - Updated logic to fetch `username` instead of `displayName` for better clarity and consistency in user identification.
+-   **`UserScreen`:**
+  - Refactored to call the updated controller method to fetch and display `username`.
+-   **`ListSubmissionFormScreen`:**
+  - UI adjustment: Removed descriptive text elements to focus solely on the form content, improving visual clarity and reducing distraction.
+
+### 🐛 Fixed
+-   **`InputUserController`:**
+  - Fixed an issue where navigating back after submission could trigger a redundant `Get.back()` call to the same route twice.
+-   **`InputUserScreen`:**
+  - Resolved a problem where, after editing a submission, the screen would not navigate correctly back to the submission confirmation screen via `Get.back()`.
+
 ---
 ## [0.20.0] - 2025-05-31
 > Contributed by: [Bayu Ardiyansyah]

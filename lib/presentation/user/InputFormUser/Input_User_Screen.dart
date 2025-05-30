@@ -74,25 +74,105 @@ class InputUserScreen extends GetView<InputUserController> {
           Obx(() => (controller.isLoading.value && controller.loadedForm.value == null)
               ? const Padding(
               padding: EdgeInsets.all(16.0),
-              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+              child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2)))
               : IconButton(
             icon: const Icon(Icons.save),
             tooltip: 'Kirim Form',
-            onPressed: controller.isLoading.value ? null : () {
+            onPressed: controller.isLoading.value
+                ? null
+                : () {
               Get.defaultDialog(
                 title: "Konfirmasi Pengiriman",
-                titleStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                middleText: "Anda yakin ingin mengirim jawaban form ini?",
+                titleStyle: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w600),
+                middleText:
+                "Anda yakin ingin mengirim jawaban form ini?",
                 middleTextStyle: const TextStyle(fontSize: 15),
                 textConfirm: "Ya, Kirim",
                 textCancel: "Batal",
                 confirmTextColor: Colors.white,
-                buttonColor: accentHeaderColor,
+                buttonColor:
+                accentHeaderColor, // Pastikan accentHeaderColor terdefinisi
                 cancelTextColor: Colors.grey.shade700,
-                onConfirm: () {
-                  Get.toNamed(AppRoutes.LIST_SUBMISSION_FORM); // Menutup dialog
-                  print("AppBar Action: Tombol 'Ya, Kirim' ditekan. Akan memanggil controller.submitForm()"); // DEBUG
-                  controller.submitForm();
+                // File: Input_User_Screen.dart (bagian onConfirm)
+                // File: Input_User_Screen.dart (bagian onConfirm pada AppBar action)
+                onConfirm: () async {
+                  // 1. Ambil dan simpan formId SEBELUM melakukan operasi async atau menutup dialog
+                  //    jika ada risiko controller menjadi tidak valid.
+                  //    Pastikan 'controller' valid di titik ini.
+                  String? formIdForNavigation;
+                  try {
+                    // 'controller' di sini merujuk pada instance InputUserController
+                    // yang didapatkan oleh Input_User_Screen (misalnya jika screen adalah GetView<InputUserController>)
+                    formIdForNavigation = controller.loadedForm.value?.id;
+                    print("onConfirm: formIdForNavigation diambil SEBELUM dialog ditutup & submit = '$formIdForNavigation'");
+                  } catch (e) {
+                    // Tangani jika controller sudah tidak valid bahkan sebelum dialog/submit
+                    print("ERROR KRITIS saat mengambil formIdForNavigation di awal onConfirm: $e");
+                    Get.snackbar(
+                      "Error Internal",
+                      "Controller tidak ditemukan, tidak dapat melanjutkan.",
+                      snackPosition: SnackPosition.BOTTOM,
+                      backgroundColor: Colors.red.shade900,
+                      colorText: Colors.white,
+                    );
+                    if (Get.isDialogOpen ?? false) {
+                      Get.back(closeOverlays: true); // Tetap tutup dialog jika terbuka
+                    }
+                    return; // Hentikan eksekusi lebih lanjut
+                  }
+
+                  // 2. Tutup dialog konfirmasi
+                  if (Get.isDialogOpen ?? false) {
+                    Get.back(closeOverlays: true);
+                  }
+                  print("onConfirm: Dialog konfirmasi ditutup.");
+
+                  try {
+                    print("onConfirm: Akan memanggil controller.submitForm().");
+                    // 'controller' di sini akan memanggil metode pada instance yang sama
+                    // Namun, setelah await, instance 'controller' yang diakses dari scope luar
+                    // mungkin menjadi tidak valid bagi GetX jika di-dispose.
+                    await controller.submitForm();
+                    print("onConfirm: controller.submitForm() SELESAI.");
+
+                    // 3. Gunakan formIdForNavigation yang sudah disimpan sebelumnya
+                    print("onConfirm: Menggunakan formIdForNavigation SETELAH submit = '$formIdForNavigation'");
+
+                    if (formIdForNavigation != null && formIdForNavigation.isNotEmpty) {
+                      print("onConfirm: Akan navigasi ke LIST_SUBMISSION_FORM dengan formId: $formIdForNavigation");
+                      Get.offNamed(AppRoutes.LIST_SUBMISSION_FORM, arguments: formIdForNavigation);
+                    } else {
+                      print("onConfirm: Navigasi GAGAL, formIdForNavigation (diambil sebelum submit) null atau kosong.");
+                      Get.snackbar(
+                        "Navigasi Gagal",
+                        "ID Form tidak ditemukan untuk navigasi setelah submit.",
+                        snackPosition: SnackPosition.BOTTOM,
+                        backgroundColor: Colors.red.shade700,
+                        colorText: Colors.white,
+                      );
+                    }
+                  } catch (e, s) {
+                    print("ERROR di onConfirm Input_User_Screen (setelah submit atau saat submit): $e\nStackTrace: $s");
+                    // Snackbar error kemungkinan sudah ditampilkan oleh submitForm() jika error berasal dari sana.
+                    // Hanya tampilkan snackbar tambahan jika error bukan dari submitForm.
+                    if (!(e.toString().contains("InputUserController") || e.toString().contains("Gagal menyimpan data"))) {
+                      Get.snackbar(
+                        "Error Proses Form",
+                        "Terjadi kesalahan: ${e.toString()}",
+                        snackPosition: SnackPosition.BOTTOM,
+                        backgroundColor: Colors.red.shade900,
+                        colorText: Colors.white,
+                      );
+                    }
+                    // Jika errornya adalah "InputUserController not found" yang terjadi di dalam blok try ini
+                    // (misalnya jika controller.submitForm() sendiri mencoba mengakses dirinya setelah di-dispose),
+                    // maka pesan errornya akan ditangkap di sini.
+                  }
                 },
                 radius: 10,
               );

@@ -14,8 +14,8 @@ class UserController extends GetxController {
 
   // Detail Pengguna & Otorisasi
   final RxBool userHasAuthority = false.obs;
-  final RxString userName = 'Pengguna'.obs; // Akan diupdate dari Firestore displayName
-  final RxString userRole = ''.obs;
+  final RxString userName = 'Pengguna'.obs; // Akan diupdate dari Firestore (username/displayName)
+  final RxString userRole = ''.obs;         // Akan diupdate dari Firestore (role)
   final RxString userProgramId = ''.obs;
 
   // Pengurutan
@@ -42,9 +42,6 @@ class UserController extends GetxController {
         // Cari di field 'nama'. Tambahkan field lain jika perlu.
         // Pastikan 'nama' tidak null sebelum memanggil toLowerCase()
         return form.nama.toLowerCase().contains(lowerCaseQuery);
-        // Contoh jika ingin mencari di field lain juga (misal 'deskripsi'):
-        // return form.nama.toLowerCase().contains(lowerCaseQuery) ||
-        //        (form.deskripsi?.toLowerCase().contains(lowerCaseQuery) ?? false);
       }).toList();
     }
 
@@ -91,7 +88,7 @@ class UserController extends GetxController {
   Future<void> _initializeController() async {
     isLoading.value = true;
 
-    await _fetchUserDetails();
+    await _fetchUserDetails(); // Ambil detail pengguna dari Firestore terlebih dahulu
 
     final arguments = Get.arguments;
     print("----------------------------------------------------");
@@ -100,12 +97,18 @@ class UserController extends GetxController {
     if (arguments != null && arguments is Map) {
       print("DEBUG UserController _initializeController: Argumen ADALAH Map. Memproses...");
       userHasAuthority.value = arguments['hasAuthority'] as bool? ?? false;
+
+      // Update userName dari argumen HANYA jika masih bernilai default/kosong
+      // Ini menghargai kondisi "jika belum ada" (jika belum diambil dari Firestore)
       if (userName.value == 'Pengguna' || userName.value.isEmpty) {
         userName.value = arguments['userName']?.toString() ??
-            _auth.currentUser?.displayName ??
+            _auth.currentUser?.displayName ?? // Fallback jika argumen tidak ada
             _auth.currentUser?.email ??
             'Pengguna';
       }
+      // Catatan: userRole diatur utamanya oleh _fetchUserDetails.
+      // Jika argumen juga bisa mengatur role, logika serupa akan diperlukan.
+
       String? programIdArg = arguments['programId']?.toString();
       if (programIdArg == "null" || programIdArg == null) {
         userProgramId.value = '';
@@ -115,7 +118,8 @@ class UserController extends GetxController {
       }
     } else {
       print("DEBUG UserController _initializeController: Argumen NULL atau bukan Map.");
-      userHasAuthority.value = false;
+      userHasAuthority.value = false; // Default jika tidak ada argumen
+      // Jika userName masih default setelah pengambilan dari Firestore dan tidak ada argumen
       if (userName.value == 'Pengguna' || userName.value.isEmpty) {
         userName.value = _auth.currentUser?.displayName ?? _auth.currentUser?.email ?? 'Pengguna';
       }
@@ -128,22 +132,46 @@ class UserController extends GetxController {
     await fetchFormData(); // isLoading.value akan di-set false di akhir fetchFormData
   }
 
+  // METHOD YANG DIMODIFIKASI untuk mengambil username dan role
   Future<void> _fetchUserDetails() async {
     User? currentUser = _auth.currentUser;
     if (currentUser != null) {
       try {
-        print("DEBUG UserController _fetchUserDetails: Mencoba mengambil detail pengguna UID: ${currentUser.uid}");
-        DocumentSnapshot userDoc = await _firestore.collection('users').doc(currentUser.uid).get(); // ASUMSI: koleksi 'users'
+        print("DEBUG UserController _fetchUserDetails: Mencoba mengambil detail pengguna UID: ${currentUser.uid} dari koleksi 'users'.");
+        // ASUMSI: koleksi untuk detail pengguna adalah 'users' sesuai contoh Firestore Anda
+        DocumentSnapshot userDoc = await _firestore.collection('users').doc(currentUser.uid).get();
 
         if (userDoc.exists) {
           Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
-          userName.value = data['displayName'] as String? ?? userName.value;
+
+          // Ambil username:
+          // 1. Prioritaskan field 'username' dari Firestore.
+          // 2. Fallback ke field 'displayName' dari Firestore.
+          // 3. Fallback ke currentUser.displayName dari Firebase Auth.
+          // 4. Fallback ke currentUser.email dari Firebase Auth.
+          // 5. Fallback ke 'Pengguna' jika semua di atas null/kosong.
+          String? firestoreUsername = data['username'] as String?;
+          String? firestoreDisplayName = data['displayName'] as String?;
+
+          if (firestoreUsername != null && firestoreUsername.isNotEmpty) {
+            userName.value = firestoreUsername;
+          } else if (firestoreDisplayName != null && firestoreDisplayName.isNotEmpty) {
+            userName.value = firestoreDisplayName;
+          } else {
+            // Fallback ke properti Auth jika field Firestore tidak ada/kosong
+            userName.value = currentUser.displayName ?? currentUser.email ?? 'Pengguna';
+          }
+
+          // Ambil role:
+          // Prioritaskan field 'role' dari Firestore. Default ke string kosong jika tidak ada.
           userRole.value = data['role'] as String? ?? '';
-          print("DEBUG UserController _fetchUserDetails: Sukses. displayName: ${userName.value}, role: ${userRole.value}");
+
+          print("DEBUG UserController _fetchUserDetails: Sukses. userName diatur ke '${userName.value}', userRole diatur ke '${userRole.value}'.");
         } else {
-          print("DEBUG UserController _fetchUserDetails: Dokumen pengguna tidak ditemukan di Firestore untuk UID: ${currentUser.uid}. Menggunakan fallback.");
+          print("DEBUG UserController _fetchUserDetails: Dokumen pengguna tidak ditemukan di Firestore untuk UID: ${currentUser.uid}. Menggunakan fallback dari Auth.");
+          // Jika dokumen Firestore tidak ada, gunakan info dari Firebase Auth.
           userName.value = currentUser.displayName ?? currentUser.email ?? 'Pengguna';
-          userRole.value = '';
+          userRole.value = ''; // Tidak ada role jika dokumen tidak ada.
         }
       } catch (e, s) {
         Get.snackbar(
@@ -156,12 +184,13 @@ class UserController extends GetxController {
         );
         print('ERROR UserController _fetchUserDetails: $e');
         print('Stack trace: $s');
+        // Jika terjadi error, gunakan info dari Firebase Auth sebagai fallback.
         userName.value = currentUser.displayName ?? currentUser.email ?? 'Pengguna';
-        userRole.value = '';
+        userRole.value = ''; // Reset role jika error.
       }
     } else {
       print("DEBUG UserController _fetchUserDetails: Tidak ada pengguna yang login. Tidak dapat mengambil detail.");
-      userName.value = 'Pengguna';
+      userName.value = 'Pengguna'; // Default jika tidak ada user.
       userRole.value = '';
     }
   }
@@ -233,8 +262,8 @@ class UserController extends GetxController {
     // Reset semua state ke nilai awal
     userHasAuthority.value = false;
     userProgramId.value = '';
-    userName.value = 'Pengguna';
-    userRole.value = '';
+    userName.value = 'Pengguna'; // Reset ke default
+    userRole.value = '';       // Reset ke default
     formDataList.clear();
     currentSortOrder.value = 'Default';
     searchQuery.value = ''; // Reset query pencarian saat logout

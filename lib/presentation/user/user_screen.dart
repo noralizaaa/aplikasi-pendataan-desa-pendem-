@@ -61,24 +61,28 @@ class UserScreen extends GetView<UserController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
-                      child: Obx(() => Column(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('Hello,',
-                              style: TextStyle(
-                                fontSize: 25,
-                                fontWeight: FontWeight.w400,
-                                color: Colors.white.withOpacity(0.95),
-                              )),
                           Text(
+                            'Hello,',
+                            style: TextStyle(
+                              fontSize: 25,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white.withOpacity(0.95),
+                            ),
+                          ),
+                          Obx(() => Text( // Widget ini akan otomatis update saat controller.userName.value berubah
                             controller.userName.value.isNotEmpty
-                                ? controller.userName.value
-                                : 'Pengguna',
+                                ? controller.userName.value // Menampilkan username dari controller
+                                : 'Pengguna', // Fallback jika username kosong (seharusnya sudah ditangani controller)
                             style: const TextStyle(
                               fontSize: 25,
                               fontWeight: FontWeight.bold,
@@ -87,18 +91,19 @@ class UserScreen extends GetView<UserController> {
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                          ),
+                          )),
                         ],
-                      )),
+                      ),
                     ),
                     InkWell(
-                      onTap: () => Get.toNamed(AppRoutes.userProfile),
+                      onTap: () {
+                        Get.toNamed(AppRoutes.userProfile); // Pastikan route ini ada
+                      },
                       borderRadius: BorderRadius.circular(28),
                       child: CircleAvatar(
                         radius: 28,
-                        backgroundColor: Colors.white.withOpacity(0.8),
-                        child: Icon(Icons.person_outline_rounded,
-                            size: 40, color: Colors.deepOrangeAccent.withOpacity(0.9)),
+                        backgroundColor: Colors.white.withOpacity(0.5),
+                        child: Icon(Icons.person_outline_rounded, size: 30, color: Colors.deepOrangeAccent.withOpacity(0.9)),
                       ),
                     ),
                   ],

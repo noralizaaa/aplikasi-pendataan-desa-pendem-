@@ -268,22 +268,22 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
                 ],
               ),
             ),
-            const SizedBox(width: 10),
-            _actionButton(
-              label: 'Edit',
-              icon: Icons.edit_outlined,
-              color: editButtonColor,
-              textColor: Colors.white,
-              onPressed: () => controller.editSubmission(submission),
-            ),
-            const SizedBox(width: 8),
-            _actionButton(
-              label: 'Delete',
-              icon: Icons.delete_outline_rounded,
-              color: deleteButtonColor,
-              textColor: Colors.white,
-              onPressed: () => controller.deleteSubmission(submission, displayableSubmission.displayTitle),
-            ),
+            Row(
+              mainAxisSize: MainAxisSize.min, // Ensures the Row takes minimum space
+              children: [
+                IconButton(
+                  tooltip: 'Edit Pengajuan', // Tooltip for edit
+                  icon: Icon(Icons.edit_outlined, color: editButtonColor),
+                  onPressed: () => controller.editSubmission(submission),
+                ),
+                const SizedBox(width: 4), // Consistent spacing with all_account_page
+                IconButton(
+                  tooltip: 'Hapus Pengajuan', // Tooltip for delete
+                  icon: Icon(Icons.delete_outline_rounded, color: deleteButtonColor),
+                  onPressed: () => controller.deleteSubmission(submission, displayableSubmission.displayTitle),
+                ),
+              ],
+            )
           ],
         ),
       ),

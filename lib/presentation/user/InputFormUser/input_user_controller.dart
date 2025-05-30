@@ -927,19 +927,23 @@ class InputUserController extends GetxController {
     return true;
   }
 
+  // File: input_user_controller.dart (sebagian metode submitForm)
+
   Future<void> submitForm() async {
     print("SubmitForm: Memulai proses submit."); // DEBUG
     if (loadedForm.value == null || _auth.currentUser == null) {
       Get.snackbar('Error', 'Form atau pengguna tidak valid.', snackPosition: SnackPosition.BOTTOM);
       print("SubmitForm: Error - Form atau pengguna tidak valid."); // DEBUG
-      return;
+      return; // Sebaiknya throw error agar bisa ditangani pemanggil jika ini adalah kondisi gagal
+      // throw Exception('Form atau pengguna tidak valid.');
     }
 
     print("SubmitForm: Memvalidasi formKey..."); // DEBUG
     if (!formKey.currentState!.validate()) {
       Get.snackbar('Validasi Form Gagal', 'Harap periksa kembali isian Anda pada kolom yang ditandai error.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white, duration: const Duration(seconds: 4));
       print("SubmitForm: Validasi formKey GAGAL."); // DEBUG
-      return;
+      return; // Sebaiknya throw error
+      // throw Exception('Validasi Form Gagal.');
     }
     print("SubmitForm: Validasi formKey BERHASIL."); // DEBUG
 
@@ -972,10 +976,10 @@ class InputUserController extends GetxController {
     }
 
     if (!allCustomValidationPassed) {
-      // isLoading.value = false; // Tidak perlu di sini jika sudah ada di finally
       print("SubmitForm: Validasi kustom secara keseluruhan GAGAL. Proses dihentikan."); // DEBUG
-      // Snackbar untuk validasi kustom sudah ada di _performLocalValidation, jadi tidak perlu double.
-      return;
+      // Snackbar untuk validasi kustom sudah ada di _performLocalValidation.
+      return; // Sebaiknya throw error agar pemanggil tahu proses gagal.
+      // throw Exception('Validasi kustom gagal.');
     }
     print("SubmitForm: Validasi kustom BERHASIL."); // DEBUG
 
@@ -985,10 +989,9 @@ class InputUserController extends GetxController {
 
     loadedForm.value!.sections.forEach((section) {
       section.questions.forEach((question) {
-        if (questionVisibility[question.id] == true) { // Hanya submit jawaban yang visible
+        if (questionVisibility[question.id] == true) {
           if (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty) {
             dynamic answer = userAnswers[question.id];
-            // Kirim jawaban jika tidak kosong, ATAU jika pertanyaan tidak wajib diisi (boleh kosong)
             if (!_isAnswerEmpty(answer, question.type) || !question.isRequired) {
               answersToSubmit.add(QuestionAnswer(
                   questionId: question.id,
@@ -1016,33 +1019,31 @@ class InputUserController extends GetxController {
       });
     });
     print("SubmitForm: Data siap: ${answersToSubmit.length} jawaban akan dikirim."); // DEBUG
-    answersToSubmit.forEach((ans) => print("SubmitForm: Detail Jawaban - QCode: ${ans.questionCode}, Answer: ${ans.answer}")); // DEBUG
-
+    // answersToSubmit.forEach((ans) => print("SubmitForm: Detail Jawaban - QCode: ${ans.questionCode}, Answer: ${ans.answer}")); // DEBUG
 
     final submissionData = FormSubmission(
-      id: isEditMode.value ? submissionId.value : null, // null akan membuat Firestore generate ID baru
+      id: isEditMode.value ? submissionId.value : null,
       formId: loadedForm.value!.id,
       formTitle: loadedForm.value!.title,
       userId: _auth.currentUser!.uid,
       userName: _auth.currentUser!.displayName ?? _auth.currentUser!.email ?? 'Anonim',
       submittedAt: (isEditMode.value && loadedSubmission.value?.submittedAt != null) ? loadedSubmission.value!.submittedAt : Timestamp.now(),
       answers: answersToSubmit,
-      // location: ... // Jika ada logic untuk location
     );
 
     Map<String, dynamic> firestoreData = submissionData.toFirestore();
     if(isEditMode.value) {
-      firestoreData['updatedAt'] = Timestamp.now(); // Tambah field updatedAt jika edit
-      firestoreData.remove('submittedAt'); // Jangan update submittedAt jika sudah ada dan ini adalah edit.
-      // Atau, jika ingin field submittedAt tetap, jangan di-remove.
-      // Jika Anda menggunakan submittedAt dari loadedSubmission, maka ini aman.
+      firestoreData['updatedAt'] = Timestamp.now();
+      // Pertimbangkan apakah submittedAt harus di-update atau tidak saat edit.
+      // Jika field 'submittedAt' hanya untuk waktu pembuatan awal, maka jangan di-remove atau di-update.
+      // Jika loadedSubmission.value.submittedAt sudah benar, maka tidak perlu operasi khusus.
     }
-    print("SubmitForm: Data Firestore yang akan dikirim: $firestoreData"); // DEBUG (hati-hati jika ada data sensitif)
+    // print("SubmitForm: Data Firestore yang akan dikirim: $firestoreData"); // DEBUG (hati-hati jika ada data sensitif)
 
     try {
       print("SubmitForm: Mencoba mengirim/menyimpan ke Firestore. Mode Edit: ${isEditMode.value}"); // DEBUG
       if (isEditMode.value) {
-        await _db.collection('formSubmissions').doc(submissionId.value).set(firestoreData, SetOptions(merge: true)); // Gunakan set dengan merge untuk update
+        await _db.collection('formSubmissions').doc(submissionId.value).set(firestoreData, SetOptions(merge: true));
         print("SubmitForm: BERHASIL update (mode edit)."); // DEBUG
         Get.snackbar('Berhasil', 'Perubahan berhasil disimpan!', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
       } else {
@@ -1051,27 +1052,28 @@ class InputUserController extends GetxController {
         Get.snackbar('Berhasil', 'Form berhasil dikirim!', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
       }
 
-      // Logika setelah submit berhasil
-      if (Get.isSnackbarOpen ?? false) { // Tunggu snackbar selesai jika ada
-        await Future.delayed(const Duration(seconds: 2)); // Sesuaikan durasi snackbar
-      }
+      // ----- NAVIGASI INTERNAL DIHAPUS DARI SINI -----
+      // Blok kode yang sebelumnya memanggil Get.back() telah dihapus.
+      // Navigasi sekarang sepenuhnya dikontrol oleh callback onConfirm di Input_User_Screen.dart.
 
-      if (Get.previousRoute.isNotEmpty) {
-        print("SubmitForm: Kembali ke rute sebelumnya."); // DEBUG
-        Get.back(result: true); // Kembali dan kirim sinyal berhasil
-      } else {
-        print("SubmitForm: Tidak ada rute sebelumnya, reset form."); // DEBUG
-        // Jika tidak ada rute sebelumnya (misal, deep link), reset form
-        submissionId.value = ''; // Keluar dari mode edit
-        // _allQuestionIdsInOrder sudah ada, tidak perlu di-clear dan re-populate di sini kecuali struktur form berubah
-        // Cukup panggil _initializeStatesBasedOnMode untuk reset jawaban dan visibilitas
-        _initializeStatesBasedOnMode(); // Ini akan menginisialisasi jawaban dan visibilitas ke state awal
-        formKey.currentState?.reset(); // Reset state internal Form widget
-      }
+      // Jika Anda masih memerlukan logika reset form setelah submit berhasil
+      // (misalnya jika screen ini tidak selalu dinavigasi keluar),
+      // Anda bisa menempatkan logika reset di sini, TAPI TANPA Get.back().
+      // Contoh:
+      // if (isEditMode.value) { // Keluar dari mode edit jika ini adalah edit
+      //    submissionId.value = '';
+      //    isEditMode.value = false; // Pastikan ini juga di-reset
+      // }
+      // _initializeStatesBasedOnMode(); // Atau metode reset yang lebih sesuai
+      // formKey.currentState?.reset();
 
-    } catch (e, s) { // Tangkap stack trace juga
+
+    } catch (e, s) {
       print("SubmitForm: GAGAL mengirim/menyimpan. Error: $e\nStackTrace: $s"); // DEBUG
       Get.snackbar('Error Simpan/Kirim', 'Gagal menyimpan data: ${e.toString()}', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade400, colorText: Colors.white, duration: const Duration(seconds: 5));
+      // Penting: Lempar kembali error agar bisa ditangkap oleh callback onConfirm
+      // dan mencegah navigasi jika terjadi kegagalan.
+      throw e;
     } finally {
       print("SubmitForm: Blok finally dieksekusi. isLoading akan di-set ke false."); //DEBUG
       isLoading.value = false;
