@@ -60,6 +60,7 @@ dev_dependencies:
   open_filex: any
   file_picker: any
   flutter_launcher_icons: any
+  device_info_plus: any
 
 flutter_launcher_icons:
   android: "launcher_icon"

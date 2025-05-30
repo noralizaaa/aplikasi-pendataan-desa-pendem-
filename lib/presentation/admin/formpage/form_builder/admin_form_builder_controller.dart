@@ -2,7 +2,7 @@ import 'dart:async'; // Untuk Timer
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart'; // Untuk Colors, Get.snackbar, dll.
+import 'package:flutter/material.dart'; // Untuk Colors, Get.snackbar, WidgetsBinding, dll.
 import 'package:uid/uid.dart'; // Untuk ID unik lokal
 
 // PASTIKAN PATH INI BENAR dan admin_form_model.dart adalah versi LENGKAP TERBARU
@@ -31,7 +31,6 @@ class AdminFormBuilderController extends GetxController {
 
   bool get isEditMode => _currentFormId != null && _currentFormId!.isNotEmpty;
 
-  // Helper _toRoman dipindahkan ke sini agar bisa diakses oleh controller
   String _toRoman(int number) {
     if (number < 1 || number > 3999) return number.toString();
     const List<String> rn = ["M","CM","D","CD","C","XC","L","XL","X","IX","V","IV","I"];
@@ -83,10 +82,9 @@ class AdminFormBuilderController extends GetxController {
     descriptionController.text = '';
     _clearAllSectionExpansionControllers();
     sections.clear();
-    addSection(); // Mulai dengan satu bagian default
+    addSection();
     _originalCreatedAt = null;
-    _originalFormVersion = "1.0"; // Versi default untuk form baru
-    // update(); // Tidak diperlukan jika UI sudah reaktif terhadap Rx variables
+    _originalFormVersion = "1.0";
   }
 
   Future<void> _loadFormForEditing(String formId) async {
@@ -98,8 +96,6 @@ class AdminFormBuilderController extends GetxController {
         formTitle.value = formItem.title;
         formDescription.value = formItem.description;
         _clearAllSectionExpansionControllers();
-        // sections.assignAll(formItem.sections); // sections dari FormItem sudah List<FormSection>
-        // Initialize expansion controllers for loaded sections
         sections.assignAll(formItem.sections.map((section) {
           sectionExpansionControllers[section.id] = ExpansionTileController();
           return section;
@@ -135,12 +131,26 @@ class AdminFormBuilderController extends GetxController {
       isRepeatable: false,
     );
     final newExpansionController = ExpansionTileController();
+
     sections.add(newSection);
     sectionExpansionControllers[newSection.id] = newExpansionController;
 
-    // Jika section pertama pada form baru, buat dia expanded
     if (!isEditMode && sections.length == 1) {
-      newExpansionController.expand(); // Panggil expand di sini
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Check if the controller is still valid in our map.
+        if (sectionExpansionControllers[newSection.id] == newExpansionController) {
+          // Since .isAttached is not available in older Flutter versions,
+          // we rely on the post-frame callback timing.
+          // For added safety, wrap in try-catch to handle potential assertion errors.
+          try {
+            newExpansionController.expand();
+          } catch (e) {
+            // This catch block would handle the '_state != null' assertion if it still occurs.
+            print("AdminFormBuilderController: PostFrame - Error expanding ${newSection.id}: $e. "
+                "This might indicate the ExpansionTile was not fully ready or was disposed.");
+          }
+        }
+      });
     }
   }
 
@@ -154,7 +164,6 @@ class AdminFormBuilderController extends GetxController {
     if (index != -1) sections[index] = sections[index].copyWith(description: description, setDescriptionNull: description.isEmpty);
   }
 
-  // --- Metode untuk mengatur section sebagai repeatable ---
   void updateSectionRepeatability({
     required String sectionId,
     required bool isRepeatable,
@@ -176,12 +185,11 @@ class AdminFormBuilderController extends GetxController {
           repeatTriggerQuestionCode: triggerQuestionCode,
           setRepeatTriggerQuestionCodeNull: triggerQuestionCode == null,
           minRepeats: minRepeats ?? (triggerQuestionId != null ? 0 : 1),
-          setMinRepeatsNull: false, // Karena isRepeatable true, minRepeats akan punya nilai default
+          setMinRepeatsNull: false,
           maxRepeats: maxRepeats,
           setMaxRepeatsNull: maxRepeats == null,
         );
       } else {
-        // Jika tidak repeatable, reset semua properti terkait pengulangan
         updatedSection = currentSection.copyWith(
             isRepeatable: false,
             repeatTriggerQuestionId: null, setRepeatTriggerQuestionIdNull: true,
@@ -191,18 +199,17 @@ class AdminFormBuilderController extends GetxController {
         );
       }
       sections[index] = updatedSection;
-      print("DEBUG: Section $sectionId repeatability updated. IsRepeatable: ${updatedSection.isRepeatable}, TriggerId: ${updatedSection.repeatTriggerQuestionId}, Min: ${updatedSection.minRepeats}");
+      // print("DEBUG: Section $sectionId repeatability updated. IsRepeatable: ${updatedSection.isRepeatable}, TriggerId: ${updatedSection.repeatTriggerQuestionId}, Min: ${updatedSection.minRepeats}");
     } else {
-      print("DEBUG: Section $sectionId tidak ditemukan untuk update repeatability.");
+      // print("DEBUG: Section $sectionId tidak ditemukan untuk update repeatability.");
     }
   }
 
   void removeSection(String sectionId) {
     sectionExpansionControllers.remove(sectionId);
-
     sections.removeWhere((s) => s.id == sectionId);
     if (sections.isEmpty) {
-      addSection(); // Ini akan membuat section baru beserta controllernya
+      addSection();
     }
   }
 
@@ -216,8 +223,6 @@ class AdminFormBuilderController extends GetxController {
       String suggestedCode = '$sectionNumberForCode${nextQuestionNumberInSection.toString().padLeft(2, '0')}';
 
       ValidationRule defaultValidation = ValidationRule.empty();
-      // Validasi NIK akan diatur melalui UI dengan memilih QuestionType.text
-      // dan kemudian mengatur ValidationRule (misalnya predefinedRule 'nik' yang akan set regex, min/max length).
 
       final newQuestion = FormQuestion(
         id: UId.getId(),
@@ -225,7 +230,7 @@ class AdminFormBuilderController extends GetxController {
         questionText: '',
         type: type,
         options: (type == QuestionType.multipleChoice || type == QuestionType.checkboxes || type == QuestionType.dropdown) ? ['Opsi 1'] : [],
-        validation: defaultValidation, // Menggunakan default ValidationRule.empty() dari model FormQuestion
+        validation: defaultValidation,
       );
       final updatedQuestions = List<FormQuestion>.from(currentSection.questions)..add(newQuestion);
       sections[sectionIndex] = currentSection.copyWith(questions: updatedQuestions);
@@ -280,16 +285,11 @@ class AdminFormBuilderController extends GetxController {
     }
   }
 
-  // UI akan membuat objek ValidationRule baru DENGAN field perbandingan (jika model mendukung)
-  // dan mengirimkannya ke sini.
   void updateValidation(String sectionId, String questionId, ValidationRule? newValidationRuleFromUI) {
     _updateQuestionProperty(sectionId, questionId, (q) {
-      // newValidationRuleFromUI bisa null jika UI ingin menghapus semua aturan
       bool shouldSetToEmpty = newValidationRuleFromUI == null || newValidationRuleFromUI.isEffectivelyEmpty;
       return q.copyWith(
         validation: shouldSetToEmpty ? ValidationRule.empty() : newValidationRuleFromUI,
-        // setValidationNull tidak diperlukan jika validation di FormQuestion tidak nullable
-        // dan di-default ke ValidationRule.empty() di constructor FormQuestion
       );
     });
   }
@@ -298,18 +298,17 @@ class AdminFormBuilderController extends GetxController {
   void removeConditionalJump(String sectionId, String questionId, String targetIdToRemove) => _updateQuestionProperty(sectionId, questionId, (q) => q.copyWith(conditionalJumps: List<ConditionalJump>.from(q.conditionalJumps)..removeWhere((j) => j.jumpToQuestionId == targetIdToRemove || j.jumpToSectionId == targetIdToRemove)));
   void updateQuestionRepeatable(String sectionId, String questionId, bool repeatable, {int? count}) => _updateQuestionProperty(sectionId, questionId, (q) => q.copyWith(repeatable: repeatable, repeatCount: repeatable ? (count ?? q.repeatCount) : null, setRepeatCountNull: !repeatable));
 
-  // --- Methods for Repeatable Group Questions ---
   List<FormQuestion> getPotentialRepeatableGroupControllers(String currentSectionId, String currentQuestionId) {
-    final List<FormQuestion> controllers = [];
+    final List<FormQuestion> controllersList = [];
     for (var section in sections) {
       for (var question in section.questions) {
         if (question.id == currentQuestionId) continue;
         if (question.type == QuestionType.number && (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty)) {
-          controllers.add(question);
+          controllersList.add(question);
         }
       }
     }
-    return controllers;
+    return controllersList;
   }
 
   List<String> getAvailableControlledGroupTags(String currentSectionId, String currentQuestionId) {
@@ -358,7 +357,6 @@ class AdminFormBuilderController extends GetxController {
     });
   }
 
-  // --- Methods for GridNumeric Question Type ---
   void _updateGridLabels(String sectionId, String questionId, List<String> newLabels, String labelType) {
     _updateQuestionProperty(sectionId, questionId, (q) {
       switch (labelType) {
@@ -382,7 +380,6 @@ class AdminFormBuilderController extends GetxController {
     _updateGridLabels(sectionId, questionId, labels, 'subCols');
   }
 
-  // Helper untuk mendapatkan semua pertanyaan yang bisa dijadikan referensi
   List<Map<String, String>> getAllQuestionsForLinking({String? currentQuestionIdToExclude, bool numericOnly = false}) {
     final List<Map<String, String>> linkableQuestions = [];
     for (var secIdx = 0; secIdx < sections.length; secIdx++) {
@@ -409,8 +406,6 @@ class AdminFormBuilderController extends GetxController {
   }
 
   List<FormQuestion> getPotentialParentQuestions(String? currentSectionIdToExclude, String currentQuestionIdToExclude) {
-    // Implementasi Anda yang sudah ada dari prompt sebelumnya (dengan debug print)
-    // pastikan ini menggunakan 'sections' dari controller
     final List<FormQuestion> potentialParents = [];
     for (var section in sections) {
       for (var question in section.questions) {
@@ -426,7 +421,7 @@ class AdminFormBuilderController extends GetxController {
     return potentialParents;
   }
 
-  FormQuestion? findQuestionById(String? questionId) { // Dibuat nullable questionId
+  FormQuestion? findQuestionById(String? questionId) {
     if (questionId == null || questionId.isEmpty) return null;
     for (var section in sections) {
       for (var q_item in section.questions) {
@@ -441,66 +436,49 @@ class AdminFormBuilderController extends GetxController {
         return q.copyWith(dependentOptions: null, setDependentOptionsNull: true);
       }
       final currentConfig = q.dependentOptions;
-      // Buat config baru jika parent ID berbeda atau config belum ada
       final newConfig = (currentConfig?.parentQuestionId == newParentQuestionId && currentConfig != null
           ? currentConfig
           : DependentOptionsConfig(parentQuestionId: newParentQuestionId, optionMapping: {}))
-          .copyWith(parentQuestionId: newParentQuestionId); // Pastikan parentQuestionId terupdate
+          .copyWith(parentQuestionId: newParentQuestionId);
       return q.copyWith(dependentOptions: newConfig, setDependentOptionsNull: false);
     });
   }
-  // Di dalam AdminFormBuilderController.dart
-  void updateMappingForParentOption(String sectionId, String questionId, String parentOptionValue, List<String> childOptions) {
-    print("DEBUG_UpdateMapping: Called for Q_ID: $questionId, ParentOption: '$parentOptionValue', ChildOptions: $childOptions");
-    _updateQuestionProperty(sectionId, questionId, (q) { // q adalah FormQuestion saat ini
-      print("DEBUG_UpdateMapping: Current dependentOptions for Q_ID ${q.id} BEFORE update: ${q.dependentOptions?.toMap()}");
 
-      // Pastikan dependentOptions ada. Jika tidak, buat yang baru.
-      // Ini penting jika pertanyaan belum pernah memiliki parent atau mapping.
+  void updateMappingForParentOption(String sectionId, String questionId, String parentOptionValue, List<String> childOptions) {
+    // print("DEBUG_UpdateMapping: Called for Q_ID: $questionId, ParentOption: '$parentOptionValue', ChildOptions: $childOptions");
+    _updateQuestionProperty(sectionId, questionId, (q) {
+      // print("DEBUG_UpdateMapping: Current dependentOptions for Q_ID ${q.id} BEFORE update: ${q.dependentOptions?.toMap()}");
       DependentOptionsConfig currentDepOpts = q.dependentOptions ?? DependentOptionsConfig(parentQuestionId: q.dependentOptions?.parentQuestionId ?? '', optionMapping: {});
-      // Jika parentQuestionId-nya kosong (misalnya baru diset null), jangan update mapping
       if (currentDepOpts.parentQuestionId.isEmpty) {
-        print("DEBUG_UpdateMapping: ParentQuestionId is empty, skipping mapping update.");
-        // Jika Anda ingin membuat DependentOptionsConfig baru jika null, lakukan di setParentQuestionForDependency
-        return q; // Kembalikan pertanyaan asli jika tidak ada parent ID yang valid
+        // print("DEBUG_UpdateMapping: ParentQuestionId is empty, skipping mapping update.");
+        return q;
       }
 
       final newMapping = Map<String, List<String>>.from(currentDepOpts.optionMapping);
-      newMapping[parentOptionValue] = childOptions; // Update atau tambahkan mapping baru
-      print("DEBUG_UpdateMapping: New mapping to be set: $newMapping");
+      newMapping[parentOptionValue] = childOptions;
+      // print("DEBUG_UpdateMapping: New mapping to be set: $newMapping");
 
-      // Buat instance DependentOptionsConfig baru dengan mapping yang baru
       final updatedDependentOptions = currentDepOpts.copyWith(optionMapping: newMapping);
-      print("DEBUG_UpdateMapping: Updated dependentOptions OBJECT: ${updatedDependentOptions.toMap()}");
+      // print("DEBUG_UpdateMapping: Updated dependentOptions OBJECT: ${updatedDependentOptions.toMap()}");
 
-      // Buat instance FormQuestion baru dengan dependentOptions yang baru
-      final updatedQuestion = q.copyWith(dependentOptions: updatedDependentOptions, setDependentOptionsNull: false); // Pastikan tidak di-set null
-      print("DEBUG_UpdateMapping: Returning updated question. New dependentOptions in question: ${updatedQuestion.dependentOptions?.toMap()}");
-
+      final updatedQuestion = q.copyWith(dependentOptions: updatedDependentOptions, setDependentOptionsNull: false);
+      // print("DEBUG_UpdateMapping: Returning updated question. New dependentOptions in question: ${updatedQuestion.dependentOptions?.toMap()}");
       return updatedQuestion;
     });
-    // sections.refresh(); // Coba tambahkan ini untuk memaksa update jika Obx tidak merespons
   }
   void removeMappingForParentOption(String sectionId, String questionId, String parentOptionValue) { /* ... Implementasi Anda ... */ }
 
-  // ***** START: NEW METHOD FOR UNCONDITIONAL JUMP *****
   void updateUnconditionalJump(String sectionId, String questionId, String? newTargetCompositeValue) {
     _updateQuestionProperty(sectionId, questionId, (q) {
-      // If newTargetCompositeValue is effectively empty (null or empty string), treat as null
       final targetToSet = (newTargetCompositeValue != null && newTargetCompositeValue.trim().isEmpty)
           ? null
           : newTargetCompositeValue;
-
-      // This assumes your FormQuestion.copyWith method can handle
-      // 'unconditionalJumpTarget' and 'setUnconditionalJumpTargetNull'
       return q.copyWith(
         unconditionalJumpTarget: targetToSet,
         setUnconditionalJumpTargetNull: targetToSet == null,
       );
     });
   }
-  // ***** END: NEW METHOD FOR UNCONDITIONAL JUMP *****
-
 
   Future<void> saveForm() async {
     Get.dialog(
@@ -533,11 +511,10 @@ class AdminFormBuilderController extends GetxController {
     );
   }
 
-
   Future<void> _executeSaveForm() async {
     if (formTitle.value.trim().isEmpty || _auth.currentUser == null) {
       Get.snackbar('Error', 'Judul form tidak boleh kosong dan Anda harus login.', snackPosition: SnackPosition.BOTTOM);
-      isBusy.value = false;
+      isBusy.value = false; // Ensure isBusy is set to false on early return
       return;
     }
 
@@ -551,20 +528,9 @@ class AdminFormBuilderController extends GetxController {
       if(isEditMode && _originalFormVersion != null){
         double currentV = double.tryParse(_originalFormVersion!) ?? 1.0;
         currentV += 0.1;
-        // Handle precision issues with floating point arithmetic for versioning
-        String tempVersion = currentV.toStringAsFixed(2); // e.g. "1.90" + 0.1 = "2.00"
-        if (tempVersion.endsWith('0') && tempVersion.length > 3) { // e.g. "2.00" not "2.0"
-          tempVersion = double.parse(tempVersion).toStringAsFixed(1); // "2.0"
-        }
-        newVersion = tempVersion;
-
-        // Specific check for .9 + .1 becoming .0 of next integer
-        // E.g., 1.9 -> 2.0.  If currentV was 1.9, currentV + 0.1 = 2.0.
-        // toStringAsFixed(1) handles this correctly.
-        // Example: (1.9 + 0.1).toStringAsFixed(1) = "2.0"
-        // Example: (1.0 + 0.1).toStringAsFixed(1) = "1.1"
+        // Format to one decimal place, e.g., 1.9 + 0.1 = 2.0, 1.0 + 0.1 = 1.1
+        newVersion = ((currentV * 10).round() / 10).toStringAsFixed(1);
       }
-
 
       final formToSave = FormItem(
         id: formIdToSave,
@@ -594,18 +560,25 @@ class AdminFormBuilderController extends GetxController {
       Get.snackbar('Error Simpan Form', 'Gagal menyimpan: ${e.toString()}', snackPosition: SnackPosition.BOTTOM);
       if(!isClosed) isBusy.value = false;
     }
+    // Removed finally block for isBusy.value = false as _navigateBackIfPossible handles it,
+    // and the catch block handles it for errors.
+    // If _navigateBackIfPossible is not called due to an error before the Timer, isBusy needs to be reset.
+    // The current structure with isBusy=false in the catch and _navigateBackIfPossible should cover it.
   }
 
   void _navigateBackIfPossible() {
-    if (Get.isSnackbarOpen) Get.closeAllSnackbars();
-    if (Get.isOverlaysOpen) Get.back(closeOverlays: true);
+    // Check if the controller is disposed before accessing Get properties or setting Rx value
+    if (isClosed) return;
 
-    if (Get.currentRoute == AppRoutes.adminFormBuilder) {
+    if (Get.isSnackbarOpen) Get.closeAllSnackbars();
+    if (Get.isOverlaysOpen) Get.back(closeOverlays: true); // Close any dialogs/bottomsheets
+
+    // Only navigate back if the current route is the form builder page
+    // This prevents accidental navigation if the user navigated away while saving.
+    if (Get.currentRoute == AppRoutes.adminFormBuilder) { // Assuming AppRoutes.adminFormBuilder matches your route name
       Get.back();
     }
 
-    if (!isClosed) {
-      isBusy.value = false;
-    }
+    isBusy.value = false;
   }
 }
