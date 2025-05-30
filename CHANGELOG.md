@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## [0.22.0] - 2025-05-31
+> Contributed by: [Bayu Ardiyansyah]
+> 
 > Enhanced data export functionality with custom save locations via system file picker and resolved critical Android storage permission issues, improving export reliability across devices.
 
 ### 🎉 Added
