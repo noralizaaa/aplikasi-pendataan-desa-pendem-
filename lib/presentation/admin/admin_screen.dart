@@ -1,5 +1,3 @@
-// lib/presentation/admin/admin_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -200,7 +198,7 @@ class _DashboardContentOnly extends StatelessWidget {
             _buildMetricCards(),
             const SizedBox(height: 24),
             Text(
-              'Tren Submission Harian',
+              'Progress Rumah Tangga yang Sudah Didata Harian', // Renamed
               style: Get.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600, color: titleColor),
             ),
@@ -235,15 +233,15 @@ class _DashboardContentOnly extends StatelessWidget {
                           color: AdminScreen.accentHeaderColor, strokeWidth: 2.5));
                 } else if (noOverallData) {
                   return _buildDummyChartWithLabel(
-                      "Belum ada data tren submission secara keseluruhan.", isEmpty: true);
+                      "Belum ada data progres rumah tangga yang sudah didata secara keseluruhan.", isEmpty: true); // Updated message
                 } else if (noFilteredData) {
                   return _buildDummyChartWithLabel(
-                      "Tidak ada data tren untuk rentang tanggal yang dipilih.",
-                      isEmpty: true);
+                      "Tidak ada data progres rumah tangga yang sudah didata untuk rentang tanggal yang dipilih.",
+                      isEmpty: true); // Updated message
                 } else if (controller.submissionTrend.isEmpty &&
                     !controller.isDashboardLoading.value) {
                   return _buildDummyChartWithLabel(
-                      "Tidak ada data untuk ditampilkan pada chart.", isEmpty: true);
+                      "Tidak ada poin data untuk diplot pada chart.", isEmpty: true);
                 }
 
                 List<FlSpot> spots = [];
@@ -491,34 +489,35 @@ class _DashboardContentOnly extends StatelessWidget {
             const SizedBox(height: 24),
             _buildFormAccessSection(),
             const SizedBox(height: 24),
-            Text(
-              'Aktivitas Pengguna',
-              style: Get.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: titleColor),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: cardBgColor,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [ BoxShadow( color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 5, offset: const Offset(0, 2)) ],
-              ),
-              child: Obx(() => controller.totalActiveUsers.value == 0 && !controller.isDashboardLoading.value
-                  ? _buildNoDataMessage('Tidak ada data aktivitas pengguna.')
-                  : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.supervised_user_circle_outlined, color: Colors.green.shade600, size: 28),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Total Pengguna Aktif: ${controller.totalActiveUsers.value}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: titleColor),
-                  ),
-                ],
-              )
-              ),
-            ),
+            // Removed "Aktivitas Pengguna" section as requested.
+            // Text(
+            //   'Aktivitas Pengguna',
+            //   style: Get.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: titleColor),
+            // ),
+            // const SizedBox(height: 12),
+            // Container(
+            //   width: double.infinity,
+            //   padding: const EdgeInsets.all(16),
+            //   decoration: BoxDecoration(
+            //     color: cardBgColor,
+            //     borderRadius: BorderRadius.circular(12),
+            //     boxShadow: [ BoxShadow( color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 5, offset: const Offset(0, 2)) ],
+            //   ),
+            //   child: Obx(() => controller.totalActiveUsers.value == 0 && !controller.isDashboardLoading.value
+            //       ? _buildNoDataMessage('Tidak ada data aktivitas pengguna.')
+            //       : Row(
+            //     mainAxisAlignment: MainAxisAlignment.center,
+            //     children: [
+            //       Icon(Icons.supervised_user_circle_outlined, color: Colors.green.shade600, size: 28),
+            //       const SizedBox(width: 10),
+            //       Text(
+            //         'Total Pengguna Aktif: ${controller.totalActiveUsers.value}',
+            //         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: titleColor),
+            //       ),
+            //     ],
+            //   )
+            //   ),
+            // ),
             const SizedBox(height: 30),
           ],
         ),
@@ -637,21 +636,22 @@ class _DashboardContentOnly extends StatelessWidget {
         children: [
           Expanded(
             child: _buildMetricCard(
-              title: 'Total Isian',
+              title: 'Jumlah Rumah Tangga yang Sudah Didata', // Renamed
               value: controller.totalSubmissions.value.toString(),
-              icon: Icons.post_add_rounded,
+              icon: Icons.home_work_rounded, // Changed icon for household data
               iconColor: Colors.blue.shade600,
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _buildMetricCard(
-              title: 'Pengguna Aktif',
-              value: controller.totalActiveUsers.value.toString(),
-              icon: Icons.group_rounded,
-              iconColor: Colors.teal.shade600,
-            ),
-          ),
+          // Removed 'Pengguna Aktif' card as requested
+          // const SizedBox(width: 16),
+          // Expanded(
+          //   child: _buildMetricCard(
+          //     title: 'Pengguna Aktif',
+          //     value: controller.totalActiveUsers.value.toString(),
+          //     icon: Icons.group_rounded,
+          //     iconColor: Colors.teal.shade600,
+          //   ),
+          // ),
         ],
       ),
     );

@@ -4,6 +4,31 @@ This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [0.20.0] - 2025-05-31
+> Contributed by: [Bayu Ardiyansyah]
+
+> Major updates to Admin Dashboard for enhanced monitoring of household data. This version re-focuses dashboard metrics on household data collection progress and refines chart displays.
+
+### 🛠️ Changed
+- **Admin Dashboard Metrics Refocus:**
+  - **"Total Isian" Renamed:** Changed to "**Jumlah Rumah Tangga yang Sudah Didata**". This metric now specifically counts submissions from forms titled `DC-Penduduk`.
+  - **"Tren Submission Harian" Renamed:** Changed to "**Progress Rumah Tangga yang Sudah Didata Harian**". The line chart now displays the daily count of submissions specifically for forms titled `DC-Penduduk`.
+- **Dashboard UI Streamlining:**
+  - **"Pengguna Aktif" Metric Removed:** The "Pengguna Aktif" (Total Active Users) metric card and its associated display section on the dashboard have been removed to simplify the view.
+  - **Chart Messages Updated:** Dummy chart labels and no-data messages are updated to reflect the new terminology (e.g., "Belum ada data progres rumah tangga yang sudah didata secara keseluruhan").
+- **Backend Data Fetching (`AdminController`):**
+  - **Household-Specific Counting:** Modified `_fetchAllSubmissionsAndGroupThem()` to specifically count submissions from `DC-Penduduk` forms for the daily trend chart (`_fullSubmissionTrend`).
+  - **`_applyDashboardFilter()` Adjustment:** Updated logic to ensure `totalSubmissions` (now "Jumlah Rumah Tangga yang Sudah Didata") accurately reflects counts only from `DC-Penduduk` forms, both with and without date filters applied.
+  - **Removed User Count Fetching:** The `_fetchTotalActiveUsers()` method was removed from `AdminController`.
+
+### 🐛 Fixed
+- **Unconditional Jump Target Not Saving (`FormQuestion`):**
+  - Resolved an issue where the `unconditionalJumpTarget` field was not being saved to Firestore. The `toMap()` method in the `FormQuestion` model has been updated to include this field when generating data for Firestore.
+- **Chart Empty State Logic:** Improved conditions for displaying dummy chart messages to better reflect scenarios where filtered data might be empty but overall data exists, or vice-versa.
+- **Grid Numeric Answer Format (`input_user_controller.dart`):**
+  - Fixed an issue where grid numeric questions with empty row labels (`gridRowLabels: []`) would cause an `Invalid data. Document fields must not be empty` error during submission. The `_prepareAnswerForFirestore` method now uses a default key (`"GridData"`) for grid numeric answers when the original row label is empty, ensuring valid Firestore document field names.
+
+---
 ## [0.19.1] - 2025-05-30
 > Contributed by: [Bayu Ardiyansyah]
 

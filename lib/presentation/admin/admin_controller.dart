@@ -6,9 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart' show CalendarFormat, CalendarStyle, HeaderStyle, RangeSelectionMode, TableCalendar, isSameDay;
 import 'package:aplikasi_pendataan_desa/presentation/admin/admin_screen.dart'; // Untuk akses warna tema
 
-// Widget dialog kustom akan didefinisikan di admin_screen.dart atau file terpisah
-// Untuk sekarang, controller hanya perlu tahu cara memicunya.
-
 class AdminController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -18,8 +15,8 @@ class AdminController extends GetxController {
   final RxString globalSearchQuery = ''.obs;
 
   final RxBool isDashboardLoading = true.obs;
-  final RxInt totalSubmissions = 0.obs;
-  final RxInt totalActiveUsers = 0.obs;
+  final RxInt totalSubmissions = 0.obs; // This will now represent "Jumlah Rumah Tangga yang Sudah Didata"
+  // final RxInt totalActiveUsers = 0.obs; // Removed as requested
 
   final RxList<Map<String, dynamic>> _allFormEntriesWithSubmissions = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> filteredFormSubmissions = <Map<String, dynamic>>[].obs;
@@ -36,8 +33,8 @@ class AdminController extends GetxController {
 
   // State untuk TableCalendar (digunakan oleh dialog kustom)
   final Rx<DateTime> focusedCalendarDay = DateTime.now().obs;
-  final Rx<DateTime?> calendarRangeStart = Rx<DateTime?>(null); // Ini akan jadi _rangeStart di dialog
-  final Rx<DateTime?> calendarRangeEnd = Rx<DateTime?>(null);   // Ini akan jadi _rangeEnd di dialog
+  final Rx<DateTime?> calendarRangeStart = Rx<DateTime?>(null);
+  final Rx<DateTime?> calendarRangeEnd = Rx<DateTime?>(null);
   final Rx<RangeSelectionMode> calendarRangeSelectionMode = RangeSelectionMode.toggledOn.obs;
 
   static const String _usersCollectionPath = 'users';
@@ -59,6 +56,14 @@ class AdminController extends GetxController {
     selectedPageIndex.value = index;
   }
 
+  void updateGlobalSearchQuery(String query) {
+    globalSearchQuery.value = query;
+  }
+
+  void clearGlobalSearchQuery() {
+    globalSearchQuery.value = '';
+  }
+
   Future<void> _fetchAdminName() async {
     User? user = _auth.currentUser;
     if (user != null) {
@@ -76,19 +81,11 @@ class AdminController extends GetxController {
     }
   }
 
-  void updateGlobalSearchQuery(String query) {
-    globalSearchQuery.value = query;
-  }
-
-  void clearGlobalSearchQuery() {
-    globalSearchQuery.value = '';
-  }
-
   Future<void> fetchDashboardData() async {
     isDashboardLoading.value = true;
     try {
       await Future.wait([
-        _fetchTotalActiveUsers(),
+        // _fetchTotalActiveUsers(), // Removed as requested
         _fetchAllSubmissionsAndGroupThem(),
         _fetchFormAccessCountsMaster(),
       ]);
@@ -102,20 +99,12 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> _fetchTotalActiveUsers() async {
-    try {
-      QuerySnapshot usersSnapshot = await _db.collection(_usersCollectionPath).get();
-      totalActiveUsers.value = usersSnapshot.docs.length;
-    } catch(e) {
-      debugPrint("Error fetching total active users: $e");
-      totalActiveUsers.value = 0;
-    }
-  }
+  // _fetchTotalActiveUsers is removed as requested.
 
   Future<void> _fetchAllSubmissionsAndGroupThem() async {
     Map<String, List<Map<String, dynamic>>> submissionsByFormId = {};
     Map<String, String> formTitles = {};
-    Map<String, int> dailyCounts = {};
+    Map<String, int> dailyHouseholdCounts = {}; // This will store the count for "DC-Penduduk"
 
     QuerySnapshot formsMetaSnapshot = await _db.collection(_adminFormsCollectionPath).get();
     for (var formDoc in formsMetaSnapshot.docs) {
@@ -127,19 +116,24 @@ class AdminController extends GetxController {
       var data = submissionDoc.data() as Map<String, dynamic>?;
       if (data != null) {
         String formId = data['formId'] as String? ?? '';
+        String formTitle = data['formTitle'] as String? ?? '';
+
         if (formId.isNotEmpty) {
           submissionsByFormId.putIfAbsent(formId, () => []).add({
             'id': submissionDoc.id,
             'submittedAt': data['submittedAt'] as Timestamp?,
             'userId': data['userId'],
             'userName': data['userName'],
+            'formTitle': formTitle, // Add formTitle here for easy filtering later
           });
         }
-        if (data.containsKey('submittedAt') && data['submittedAt'] is Timestamp) {
+
+        // Only count for "DC-Penduduk" for the daily trend
+        if (formTitle.toLowerCase().contains('dc-penduduk') && data.containsKey('submittedAt') && data['submittedAt'] is Timestamp) {
           Timestamp submittedAtTimestamp = data['submittedAt'];
           DateTime date = submittedAtTimestamp.toDate().toLocal();
           String dateKey = DateFormat('yyyy-MM-dd').format(date);
-          dailyCounts.update(dateKey, (value) => value + 1, ifAbsent: () => 1);
+          dailyHouseholdCounts.update(dateKey, (value) => value + 1, ifAbsent: () => 1);
         }
       }
     }
@@ -155,8 +149,8 @@ class AdminController extends GetxController {
     });
     _allFormEntriesWithSubmissions.assignAll(tempFormEntries);
 
-    var sortedKeys = dailyCounts.keys.toList()..sort();
-    final sortedDailyCounts = { for (var k in sortedKeys) k: dailyCounts[k]! };
+    var sortedKeys = dailyHouseholdCounts.keys.toList()..sort();
+    final sortedDailyCounts = { for (var k in sortedKeys) k: dailyHouseholdCounts[k]! };
     _fullSubmissionTrend.assignAll(sortedDailyCounts);
   }
 
@@ -181,7 +175,6 @@ class AdminController extends GetxController {
     }
   }
 
-  // Metode ini menggunakan showDateRangePicker bawaan Flutter (biasanya full screen di mobile)
   Future<void> pickDateRangeWithDefaultDialog(BuildContext context) async {
     DateTimeRange? picked = await showDateRangePicker(
       context: context,
@@ -225,48 +218,36 @@ class AdminController extends GetxController {
     }
   }
 
-  // --- BARU: Metode untuk menampilkan dialog TableCalendar kustom ---
   Future<void> openCustomDateRangePicker(BuildContext context) async {
-    // Kirim state kalender saat ini ke dialog
     final result = await Get.dialog<Map<String, DateTime?>>(
       _CustomDateRangePickerDialog(
         initialFocusedDay: focusedCalendarDay.value,
         initialRangeStart: calendarRangeStart.value,
         initialRangeEnd: calendarRangeEnd.value,
-        // Anda bisa teruskan warna tema jika dialog membutuhkannya
-        // accentColor: AdminScreen.accentHeaderColor,
-        // primaryColor: AdminScreen.primaryHeaderColor,
       ),
-      barrierDismissible: true, // Pengguna bisa menutup dengan klik di luar dialog
+      barrierDismissible: true,
     );
 
-    if (result != null) { // Jika pengguna menekan "Pilih"
+    if (result != null) {
       selectedStartDate.value = result['start'];
-      // Pastikan endDate adalah akhir hari
       if (result['end'] != null) {
         DateTime end = result['end']!;
         selectedEndDate.value = DateTime(end.year, end.month, end.day, 23, 59, 59, 999);
       } else {
-        // Jika hanya satu tanggal dipilih (mode rentang belum selesai atau mode tanggal tunggal)
-        // Anggap rentang satu hari jika hanya start yang ada
         selectedEndDate.value = result['start'] != null
             ? DateTime(result['start']!.year, result['start']!.month, result['start']!.day, 23, 59, 59, 999)
             : null;
       }
 
-      // Update state TableCalendar di controller untuk konsistensi
       calendarRangeStart.value = result['start'];
-      calendarRangeEnd.value = result['end']; // end bisa null
+      calendarRangeEnd.value = result['end'];
       if (result['focused'] != null) {
         focusedCalendarDay.value = result['focused']!;
       } else if (result['start'] != null) {
         focusedCalendarDay.value = result['start']!;
       }
     }
-    // _applyDashboardFilter() akan terpicu oleh 'ever' pada selectedStartDate/EndDate
   }
-  // --- AKHIR: Metode untuk dialog TableCalendar kustom ---
-
 
   void resetDateFilter() {
     selectedStartDate.value = null;
@@ -276,7 +257,6 @@ class AdminController extends GetxController {
     focusedCalendarDay.value = DateTime.now();
   }
 
-  // Metode callback untuk TableCalendar jika disematkan langsung (tidak dipakai jika hanya via dialog)
   void onCalendarRangeSelected(DateTime? start, DateTime? end, DateTime newFocusedDay) {
     calendarRangeStart.value = start;
     calendarRangeEnd.value = end;
@@ -286,7 +266,7 @@ class AdminController extends GetxController {
     if (end != null) {
       selectedEndDate.value = DateTime(end.year, end.month, end.day, 23, 59, 59, 999);
     } else {
-      selectedEndDate.value = null; // Atau samakan dengan start untuk rentang 1 hari
+      selectedEndDate.value = null;
     }
   }
 
@@ -303,9 +283,7 @@ class AdminController extends GetxController {
     focusedCalendarDay.value = newFocusedDay;
   }
 
-
   void _applyDashboardFilter() {
-    // ... (Implementasi _applyDashboardFilter Anda yang sudah dibenahi sebelumnya) ...
     final bool isDateFilterActive = selectedStartDate.value != null && selectedEndDate.value != null;
     final DateTime? filterStartDate = selectedStartDate.value;
     final DateTime? filterEndDate = selectedEndDate.value;
@@ -314,7 +292,7 @@ class AdminController extends GetxController {
     debugPrint("_applyDashboardFilter: DateFilterActive=$isDateFilterActive, Start=${filterStartDate?.toIso8601String()}, End=${filterEndDate?.toIso8601String()}, Query='$query'");
 
     List<Map<String, dynamic>> tempFilteredSubmissionsSummary = [];
-    int newTotalSubmissionsInPeriod = 0;
+    int newTotalSubmissionsInPeriod = 0; // This will count "Jumlah Rumah Tangga yang Sudah Didata"
 
     for (var formEntry in _allFormEntriesWithSubmissions) {
       String formTitle = (formEntry['formTitle'] as String? ?? '').toLowerCase();
@@ -327,28 +305,54 @@ class AdminController extends GetxController {
 
       if (isDateFilterActive) {
         for (var submissionData in allSubmissionsForThisForm) {
-          if (submissionData.containsKey('submittedAt') && submissionData['submittedAt'] is Timestamp) {
-            Timestamp submittedAtTimestamp = submissionData['submittedAt'];
-            DateTime submissionDate = submittedAtTimestamp.toDate().toLocal();
-            if (submissionDate.isAfter(filterStartDate!.subtract(const Duration(microseconds: 1))) &&
-                submissionDate.isBefore(filterEndDate!.add(const Duration(microseconds: 1)))) {
-              countForDisplay++;
+          // Check if formTitle matches 'dc-penduduk' for the total household count
+          if (formTitle.contains('dc-penduduk')) {
+            if (submissionData.containsKey('submittedAt') && submissionData['submittedAt'] is Timestamp) {
+              Timestamp submittedAtTimestamp = submissionData['submittedAt'];
+              DateTime submissionDate = submittedAtTimestamp.toDate().toLocal();
+              if (submissionDate.isAfter(filterStartDate!.subtract(const Duration(microseconds: 1))) &&
+                  submissionDate.isBefore(filterEndDate!.add(const Duration(microseconds: 1)))) {
+                countForDisplay++;
+              }
+            }
+          } else {
+            // For other forms, count all submissions within the date range
+            if (submissionData.containsKey('submittedAt') && submissionData['submittedAt'] is Timestamp) {
+              Timestamp submittedAtTimestamp = submissionData['submittedAt'];
+              DateTime submissionDate = submittedAtTimestamp.toDate().toLocal();
+              if (submissionDate.isAfter(filterStartDate!.subtract(const Duration(microseconds: 1))) &&
+                  submissionDate.isBefore(filterEndDate!.add(const Duration(microseconds: 1)))) {
+                countForDisplay++;
+              }
             }
           }
         }
       } else {
-        countForDisplay = formEntry['count'] as int? ?? 0;
+        // If no date filter, for 'dc-penduduk', use its total count from _fetchAllSubmissionsAndGroupThem
+        if (formTitle.contains('dc-penduduk')) {
+          countForDisplay = _fullSubmissionTrend.values.fold(0, (sum, element) => sum + element);
+        } else {
+          countForDisplay = formEntry['count'] as int? ?? 0;
+        }
       }
 
-      tempFilteredSubmissionsSummary.add({
-        'formId': formEntry['formId'],
-        'formTitle': formEntry['formTitle'],
-        'count': countForDisplay,
-      });
-      newTotalSubmissionsInPeriod += countForDisplay;
+      // Only add to `tempFilteredSubmissionsSummary` if `countForDisplay` is greater than 0
+      // OR if it's the 'dc-penduduk' form and it exists, even if count is 0, so it appears in the list
+      if (countForDisplay > 0 || formTitle.contains('dc-penduduk')) {
+        tempFilteredSubmissionsSummary.add({
+          'formId': formEntry['formId'],
+          'formTitle': formEntry['formTitle'],
+          'count': countForDisplay,
+        });
+      }
+
+      // The total submissions for the metric card will specifically be for 'DC-Penduduk'
+      if (formTitle.contains('dc-penduduk')) {
+        newTotalSubmissionsInPeriod = countForDisplay;
+      }
     }
     filteredFormSubmissions.assignAll(tempFilteredSubmissionsSummary);
-    totalSubmissions.value = newTotalSubmissionsInPeriod;
+    totalSubmissions.value = newTotalSubmissionsInPeriod; // Update the main metric
 
     _filterSubmissionTrendByDate(filterStartDate, filterEndDate);
 
@@ -404,13 +408,12 @@ class _CustomDateRangePickerDialog extends StatefulWidget {
   final Color primaryColor;
 
   const _CustomDateRangePickerDialog({
-    // Key? key, // Key bisa ditambahkan jika perlu
     required this.initialFocusedDay,
     this.initialRangeStart,
     this.initialRangeEnd,
-    this.accentColor = AdminScreen.accentHeaderColor, // Default dari AdminScreen
-    this.primaryColor = AdminScreen.primaryHeaderColor, // Default dari AdminScreen
-  }); // : super(key: key);
+    this.accentColor = AdminScreen.accentHeaderColor,
+    this.primaryColor = AdminScreen.primaryHeaderColor,
+  });
 
   @override
   State<_CustomDateRangePickerDialog> createState() => _CustomDateRangePickerDialogState();
@@ -434,17 +437,17 @@ class _CustomDateRangePickerDialogState extends State<_CustomDateRangePickerDial
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text("Pilih Rentang Tanggal", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-      contentPadding: const EdgeInsets.only(top: 12.0, bottom: 0), // Sesuaikan padding
+      contentPadding: const EdgeInsets.only(top: 12.0, bottom: 0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       content: SizedBox(
-        width: Get.width < 400 ? Get.width * 0.9 : 380, // Sesuaikan lebar dialog
-        child: Column( // Column untuk TableCalendar dan sedikit padding jika perlu
+        width: Get.width < 400 ? Get.width * 0.9 : 380,
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TableCalendar(
               locale: 'id_ID',
               firstDay: DateTime.utc(2020, 1, 1),
-              lastDay: DateTime.now().add(const Duration(days: 365)), // Contoh batas akhir
+              lastDay: DateTime.now().add(const Duration(days: 365)),
               focusedDay: _focusedDay,
               rangeStartDay: _rangeStart,
               rangeEndDay: _rangeEnd,
@@ -471,11 +474,9 @@ class _CustomDateRangePickerDialogState extends State<_CustomDateRangePickerDial
                   _focusedDay = focused;
                   _rangeStart = start;
                   _rangeEnd = end;
-                  // Jika mode toggledOn dan pengguna klik hari yang sama untuk start dan end,
-                  // atau jika hanya start yang dipilih.
                   if (start != null && end == null) {
-                    // Biarkan pengguna memilih tanggal akhir, atau anggap ini rentang 1 hari
-                    // Jika Anda ingin langsung anggap 1 hari: _rangeEnd = start;
+                    // This handles the case where only one day is selected in a range mode,
+                    // effectively making it a single-day selection for initial tap.
                   }
                 });
               },
@@ -485,8 +486,9 @@ class _CustomDateRangePickerDialogState extends State<_CustomDateRangePickerDial
                 });
               },
               selectedDayPredicate: (day) {
-                // Ini berguna jika rangeSelectionMode adalah .toggledOff
-                // Untuk .toggledOn, rangeStartDay dan rangeEndDay lebih dominan.
+                // This logic is mostly for `selectedDayPredicate` which is not used when `rangeSelectionMode` is `toggledOn`.
+                // However, if you were to change `rangeSelectionMode` to `toggledOff` for single day selection,
+                // this would be important. For range selection, `rangeStartDay` and `rangeEndDay` determine the highlighted range.
                 return isSameDay(_rangeStart, day) || isSameDay(_rangeEnd, day);
               },
             ),
@@ -499,7 +501,7 @@ class _CustomDateRangePickerDialogState extends State<_CustomDateRangePickerDial
         TextButton(
           child: const Text('Batal', style: TextStyle(color: Colors.grey)),
           onPressed: () {
-            Get.back(result: null); // Kembalikan null jika dibatalkan
+            Get.back(result: null);
           },
         ),
         ElevatedButton(
@@ -507,13 +509,12 @@ class _CustomDateRangePickerDialogState extends State<_CustomDateRangePickerDial
           child: const Text('Pilih', style: TextStyle(color: Colors.white)),
           onPressed: () {
             if (_rangeStart != null) {
-              Get.back(result: { // Kembalikan Map dengan tanggal yang dipilih
+              Get.back(result: {
                 'start': _rangeStart,
-                'end': _rangeEnd, // Bisa null jika hanya start yang dipilih
+                'end': _rangeEnd,
                 'focused': _focusedDay,
               });
             } else {
-              // Opsional: Tampilkan pesan jika tidak ada tanggal dipilih
               Get.snackbar("Info", "Silakan pilih setidaknya satu tanggal awal.", snackPosition: SnackPosition.BOTTOM);
             }
           },
