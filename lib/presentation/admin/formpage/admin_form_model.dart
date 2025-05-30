@@ -381,6 +381,7 @@ class FormQuestion {
       gridRowLabels: List<String>.from((map['gridRowLabels'] as List<dynamic>?)?.map((e)=> e.toString()) ?? []),
       gridColumnLabels: List<String>.from((map['gridColumnLabels'] as List<dynamic>?)?.map((e)=> e.toString()) ?? []),
       gridSubColumnLabels: List<String>.from((map['gridSubColumnLabels'] as List<dynamic>?)?.map((e)=> e.toString()) ?? []),
+      unconditionalJumpTarget: map['unconditionalJumpTarget'] as String?,
     );
   }
 
@@ -401,6 +402,7 @@ class FormQuestion {
       'gridRowLabels': gridRowLabels,
       'gridColumnLabels': gridColumnLabels,
       'gridSubColumnLabels': gridSubColumnLabels,
+      if (unconditionalJumpTarget != null && unconditionalJumpTarget!.isNotEmpty) 'unconditionalJumpTarget': unconditionalJumpTarget,
     };
     if (code != null && code!.isNotEmpty) map['code'] = code;
     if (repeatCount != null) map['repeatCount'] = repeatCount;
