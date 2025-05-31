@@ -28,6 +28,10 @@ import '../../presentation/splash/splash_controller.dart';
 // --- NEW IMPORT: AllAccountController ---
 import '../../presentation/admin/Admin_Profile/all_account_controller.dart';
 
+// --- NEW IMPORT: SubmissionsFormController ---
+import '../../presentation/admin/submissions_form/submissions_form_controller.dart';
+
+
 // Import untuk Page
 import '../../presentation/admin/Admin_Profile/admin_account_page.dart';
 import '../../presentation/admin/Admin_Profile/form_account_management_page.dart';
@@ -35,6 +39,9 @@ import '../../presentation/admin/formpage/form_builder/admin_form_builder_page.d
 import '../../presentation/admin/profil/admin_profil_page.dart';
 // --- NEW IMPORT: AllAccountPage ---
 import '../../presentation/admin/Admin_Profile/all_account_page.dart';
+
+// --- NEW IMPORT: SubmissionsFormScreen ---
+import '../../presentation/admin/submissions_form/submissions_form_screen.dart';
 
 
 // Definisikan LoginBinding
@@ -149,6 +156,13 @@ class ListSubmissionFormBinding extends Bindings {
   }
 }
 
+// --- NEW BINDING: SubmissionsFormBinding ---
+class SubmissionsFormBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<SubmissionsFormController>(() => SubmissionsFormController());
+  }
+}
 // --- END NEW BINDING ---
 
 // Enum untuk lingkungan (opsional, tapi baik untuk konfigurasi)
@@ -201,6 +215,11 @@ class AppRoutes {
   static const String allAccountManagement = '/all_account_management'; // --- NEW ROUTE ---
   static const INPUT_FORM_USER = '/input-form-user';
   static const LIST_SUBMISSION_FORM = '/list-submission-form';
+
+  // --- NEW ROUTE NAME ---
+  static const String SUBMISSIONS_FORM = '/submissions-form';
+
+
   static String initialRoute = splash;
 
   static List<GetPage> routes = [
@@ -265,11 +284,17 @@ class AppRoutes {
       page: () => const InputUserScreen(),
       binding: InputUserBinding(),
     ),
-    GetPage( // <-- TAMBAHKAN BLOK INI
-    name: AppRoutes.LIST_SUBMISSION_FORM,
-    page: () => const ListSubmissionFormScreen(),
-    binding: ListSubmissionFormBinding(),
-    )
+    GetPage(
+      name: AppRoutes.LIST_SUBMISSION_FORM,
+      page: () => const ListSubmissionFormScreen(),
+      binding: ListSubmissionFormBinding(),
+    ),
+    // --- NEW GETPAGE ENTRY: SubmissionsFormScreen ---
+    GetPage(
+      name: AppRoutes.SUBMISSIONS_FORM,
+      page: () => const SubmissionsFormScreen(),
+      binding: SubmissionsFormBinding(),
+    ),
     // --- END NEW GETPAGE ENTRY ---
   ];
 }

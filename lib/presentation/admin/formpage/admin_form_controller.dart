@@ -110,43 +110,91 @@ class AdminFormController extends GetxController {
 
   Future<void> deleteForm(String formId, String formTitle) async {
     if (_auth.currentUser == null) {
-      Get.snackbar('Autentikasi Error', 'Anda harus login untuk menghapus form.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade400, colorText: Colors.white);
+      Get.snackbar(
+        'Autentikasi Error',
+        'Anda harus login untuk menghapus form.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.shade400,
+        colorText: Colors.white,
+      );
       return;
     }
 
     Get.dialog(
-      AlertDialog(
-        title: const Text('Konfirmasi Hapus'),
-        content: Text('Apakah Anda yakin ingin menghapus form "$formTitle"?\nTindakan ini tidak dapat diurungkan.'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.warning_amber_rounded, size: 48, color: Colors.red.shade400),
+              const SizedBox(height: 16),
+              const Text(
+                'Konfirmasi Penghapusan',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Apakah Anda yakin ingin menghapus form "$formTitle"?\nTindakan ini tidak dapat dibatalkan.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => Get.back(),
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    label: const Text('Batal', style: TextStyle(color: Colors.grey)),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade400,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () async {
+                      Get.back();
+                      bool previousIsLoading = isLoading.value;
+                      isLoading.value = true;
+                      try {
+                        await _db.collection(_formsCollectionPath).doc(formId).delete();
+                        Get.snackbar(
+                          'Berhasil',
+                          'Form "$formTitle" berhasil dihapus!',
+                          snackPosition: SnackPosition.BOTTOM,
+                          backgroundColor: Colors.green.shade600,
+                          colorText: Colors.white,
+                        );
+                      } catch (e) {
+                        Get.snackbar(
+                          'Error Hapus Form',
+                          'Gagal: ${e.toString()}',
+                          snackPosition: SnackPosition.BOTTOM,
+                          backgroundColor: Colors.red.shade400,
+                          colorText: Colors.white,
+                        );
+                        print('Error deleting form: $e');
+                      } finally {
+                        if (!isClosed) isLoading.value = previousIsLoading;
+                      }
+                    },
+                    icon: const Icon(Icons.delete_forever, color: Colors.white),
+                    label: const Text('Hapus', style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+            ],
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade400),
-            onPressed: () async {
-              Get.back();
-              bool previousIsLoading = isLoading.value;
-              isLoading.value = true;
-              try {
-                await _db.collection(_formsCollectionPath).doc(formId).delete();
-                Get.snackbar('Berhasil', 'Form "$formTitle" berhasil dihapus!', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
-              } catch (e) {
-                Get.snackbar('Error Hapus Form', 'Gagal: ${e.toString()}', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade400, colorText: Colors.white);
-                print('Error deleting form: $e');
-              } finally {
-                if(!isClosed) isLoading.value = previousIsLoading;
-              }
-            },
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+        ),
       ),
       barrierDismissible: false,
     );
   }
+
 
 
   @override

@@ -1,7 +1,7 @@
 import 'package:aplikasi_pendataan_desa/infrastructure/navigation/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Diperlukan untuk FirebaseAuth.instance.currentUser
 import 'user_controller.dart';
 import 'user_model.dart';
 
@@ -16,10 +16,15 @@ class UserScreen extends GetView<UserController> {
 
   @override
   Widget build(BuildContext context) {
+    // Panggil controller.onReady() jika Anda ingin melakukan sesuatu saat screen siap,
+    // atau pastikan _initializeController sudah menangani semua yang diperlukan.
+    // Contoh: WidgetsBinding.instance.addPostFrameCallback((_) => controller.onReady());
+
     return Scaffold(
       backgroundColor: pageBackgroundColor,
       body: RefreshIndicator(
         onRefresh: () async {
+          // fetchFormData sekarang juga akan me-refresh detail pengguna
           await controller.fetchFormData();
         },
         color: accentHeaderColor,
@@ -39,8 +44,8 @@ class UserScreen extends GetView<UserController> {
       expandedHeight: 200.0,
       floating: false,
       pinned: true,
-      backgroundColor: Colors.transparent,
-      elevation: 10,
+      backgroundColor: Colors.transparent, // Membuat SliverAppBar transparan agar Container di FlexibleSpaceBar terlihat
+      elevation: 0, // Menghilangkan shadow default jika header punya background sendiri
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
@@ -59,9 +64,8 @@ class UserScreen extends GetView<UserController> {
             padding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.end, // Memposisikan konten ke bawah
               children: [
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -82,7 +86,7 @@ class UserScreen extends GetView<UserController> {
                           Obx(() => Text( // Widget ini akan otomatis update saat controller.userName.value berubah
                             controller.userName.value.isNotEmpty
                                 ? controller.userName.value // Menampilkan username dari controller
-                                : 'Pengguna', // Fallback jika username kosong (seharusnya sudah ditangani controller)
+                                : 'Pengguna', // Fallback jika username kosong
                             style: const TextStyle(
                               fontSize: 25,
                               fontWeight: FontWeight.bold,
@@ -97,7 +101,7 @@ class UserScreen extends GetView<UserController> {
                     ),
                     InkWell(
                       onTap: () {
-                        Get.toNamed(AppRoutes.userProfile); // Pastikan route ini ada
+                        Get.toNamed(AppRoutes.userProfile);
                       },
                       borderRadius: BorderRadius.circular(28),
                       child: CircleAvatar(
@@ -124,11 +128,12 @@ class UserScreen extends GetView<UserController> {
                   child: TextField(
                     onChanged: controller.updateSearchQuery,
                     decoration: const InputDecoration(
-                      labelText: 'Cari berdasarkan form...',
+                      hintText: 'Cari berdasarkan form...', // Mengganti labelText menjadi hintText
                       prefixIcon: Icon(Icons.search),
                       border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14), // Padding agar teks tidak terlalu mepet
                     ),
-                    showCursor: false,
+                    // showCursor: false, // Biasanya cursor tetap ditampilkan saat user mengetik
                   ),
                 ),
               ],
@@ -192,13 +197,18 @@ class UserScreen extends GetView<UserController> {
         ),
         const SizedBox(height: 20),
         Obx(() {
-          if (controller.isLoading.value) {
+          if (controller.isLoading.value && controller.sortedFormDataList.isEmpty) { // Tampilkan loading hanya jika list kosong
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(30.0),
                 child: CircularProgressIndicator(color: accentHeaderColor),
               ),
             );
+          }
+
+          // Cek apakah pengguna sudah login sebelum menampilkan data atau pesan "Belum Ada Form"
+          if (FirebaseAuth.instance.currentUser == null) {
+            return _buildNoAuthorityMessage(); // Atau pesan spesifik "Silakan Login"
           }
 
           if (controller.sortedFormDataList.isNotEmpty) {
@@ -212,13 +222,10 @@ class UserScreen extends GetView<UserController> {
             );
           }
 
-          if (FirebaseAuth.instance.currentUser == null) {
-            return _buildNoAuthorityMessage();
-          }
-
+          // Jika sudah login tapi tidak ada data dan tidak sedang loading
           return _buildNoDataMessage();
         }),
-        const SizedBox(height: 30),
+        const SizedBox(height: 30), // Padding di akhir list
       ]),
     );
   }
@@ -289,6 +296,7 @@ class UserScreen extends GetView<UserController> {
                           Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey.shade700),
                           const SizedBox(width: 6),
                           Text(
+                            // Format tanggal dan waktu dengan lebih aman
                             'Dibuat: ${MaterialLocalizations.of(context).formatMediumDate(form.createdAt!.toDate())} ${TimeOfDay.fromDateTime(form.createdAt!.toDate()).format(context)}',
                             style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500),
                           ),
@@ -320,6 +328,7 @@ class UserScreen extends GetView<UserController> {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 50.0),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center, // Pusatkan konten
           children: [
             Icon(Icons.search_off_rounded, size: 70, color: Colors.grey.shade400),
             const SizedBox(height: 20),
@@ -335,7 +344,7 @@ class UserScreen extends GetView<UserController> {
             ),
             const SizedBox(height: 30),
             ElevatedButton.icon(
-              onPressed: () => controller.fetchFormData(),
+              onPressed: () => controller.fetchFormData(), // Aksi refresh
               icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
               label: const Text('Muat Ulang',
                   style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
@@ -353,10 +362,12 @@ class UserScreen extends GetView<UserController> {
   }
 
   Widget _buildNoAuthorityMessage() {
+    // Widget ini bisa digunakan jika user belum login atau tidak punya hak akses sama sekali
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 50.0),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center, // Pusatkan konten
           children: [
             Icon(Icons.lock_person_outlined, size: 70, color: Colors.red.shade300),
             const SizedBox(height: 20),
@@ -366,23 +377,40 @@ class UserScreen extends GetView<UserController> {
             ),
             const SizedBox(height: 10),
             Text(
-              'Anda perlu login atau tidak memiliki izin untuk mengakses modul ini.',
+              FirebaseAuth.instance.currentUser == null
+                  ? 'Anda perlu login untuk mengakses modul ini.'
+                  : 'Anda tidak memiliki izin untuk mengakses modul ini atau belum ada form yang diotorisasikan.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14.5, color: Colors.grey.shade600, height: 1.4),
             ),
             const SizedBox(height: 30),
-            ElevatedButton.icon(
-              onPressed: () => controller.logout(),
-              icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
-              label: const Text('Log Out',
-                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade400,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
-                elevation: 2,
+            // Tawarkan login jika belum login, atau refresh jika sudah login tapi mungkin belum ada data.
+            if (FirebaseAuth.instance.currentUser == null)
+              ElevatedButton.icon(
+                onPressed: () => Get.offAllNamed(AppRoutes.login), // Arahkan ke login
+                icon: const Icon(Icons.login_rounded, color: Colors.white, size: 20),
+                label: const Text('Login Sekarang',
+                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentHeaderColor, // Warna yang konsisten dengan tema
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                  elevation: 2,
+                ),
+              )
+            else // Jika sudah login, tawarkan logout atau refresh (tergantung konteks)
+              ElevatedButton.icon(
+                onPressed: () => controller.logout(), // Atau controller.fetchFormData() jika ingin coba refresh
+                icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+                label: const Text('Log Out',
+                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade400,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                  elevation: 2,
+                ),
               ),
-            ),
           ],
         ),
       ),

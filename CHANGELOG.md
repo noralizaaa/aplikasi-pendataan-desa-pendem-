@@ -5,6 +5,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.24.0] - 2025-05-31
+> Contributed by [Lutfi Indra Nur Praditya]
+
+> Pengembangan Fitur Admin, Peningkatan UI/UX dan Integrasi Tampilan Data Lengkap Pengguna untuk Admin
+
+### 🎉 Added
+- **Fitur Baru Admin: Halaman Manajemen Submisi**
+  - Penambahan direktori `submissions_form` untuk mengelola data submisi dari sisi admin.
+  - Dibuat `submissions_form_controller.dart` untuk mengambil semua data submisi pengguna, tidak terbatas pada ID tertentu.
+  - Dibuat tampilan `submissions_form_screen.dart` yang menyajikan seluruh data submisi yang telah diisi oleh pengguna.
+  - Penambahan route baru untuk `submissions_form_screen` dan controllernya pada `routes.dart`.
+
+### 🛠️ Changed
+- **Peningkatan Tampilan UI:**
+  - Dialog konfirmasi penghapusan di `admin_form_controller.dart` diperhalus agar tidak terlihat terlalu sederhana.
+  - Pada `admin_screen.dart`:
+    - Judul dashboard dipersingkat agar lebih ringkas dan jelas.
+    - Perubahan warna pada komponen form serta penambahan animasi klik untuk meningkatkan interaktivitas.
+
+- **Peningkatan UX Submisi Pengguna:**
+  - Pada `user_screen.dart`, tampilan daftar submisi per formulir diubah menjadi slider yang interaktif dan modern, mengikuti tema visual aplikasi.
+
+### 🐛 Fixed
+- **Sinkronisasi Profil Pengguna:**
+  - Sinkronisasi antara `user_screen` dan `user_controller` agar data pengguna selalu diperbarui ketika nama diubah melalui halaman profil.
+
+---
+
 ## [0.23.0] - 2025-05-31
 > Contributed by: [Febri Bagus Triwibowo]  
 

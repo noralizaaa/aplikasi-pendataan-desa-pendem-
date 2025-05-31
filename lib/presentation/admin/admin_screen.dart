@@ -2,20 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:table_calendar/table_calendar.dart';
+import 'package:table_calendar/table_calendar.dart'; // Pastikan ini digunakan jika ada logika kalender terkait
 
+// Gantilah dengan path yang benar ke file controller dan routes Anda
 import 'package:aplikasi_pendataan_desa/presentation/admin/admin_controller.dart';
 import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_page.dart';
 import 'package:aplikasi_pendataan_desa/presentation/admin/Admin_Profile/admin_account_page.dart';
-import '../../../infrastructure/navigation/routes.dart';
+import '../../../infrastructure/navigation/routes.dart'; // Pastikan path ini benar
 
 class AdminScreen extends GetView<AdminController> {
   const AdminScreen({super.key});
 
   static const Color pageBackgroundColor = Color(0xFFF2FAFF);
-  static const Color primaryHeaderColor = Color(0xFFFFCC80);
-  static const Color accentHeaderColor = Color(0xFFFF9800);
-  static const Color iconColor = Color(0xFFF57C00);
+  static const Color primaryHeaderColor = Color(0xFFFFCC80); // Oranye muda
+  static const Color accentHeaderColor = Color(0xFFFF9800);  // Oranye tua
+  static const Color iconColor = Color(0xFFF57C00);          // Oranye sangat tua
   static const Color cardBackgroundColor = Colors.white;
   static const Color bottomNavIconColor = Color(0xFFF57C00);
   static const Color titlePageColor = Colors.black87;
@@ -180,31 +181,34 @@ class _DashboardContentOnly extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      if (controller.isDashboardLoading.value &&
-          controller.filteredFormSubmissions.isEmpty &&
-          controller.submissionTrend.isEmpty) {
-        return const Center(
-            child: CircularProgressIndicator(color: AdminScreen.accentHeaderColor));
-      }
-
       return RefreshIndicator(
         onRefresh: () => controller.fetchDashboardData(),
         color: AdminScreen.accentHeaderColor,
         child: ListView(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.only(bottom: 16.0, top: 16.0),
           children: [
-            _buildDateFilterSection(context),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildDateFilterSection(context),
+            ),
             const SizedBox(height: 20),
-            _buildMetricCards(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildMetricCards(),
+            ),
             const SizedBox(height: 24),
-            Text(
-              'Progress Rumah Tangga yang Sudah Didata Harian', // Renamed
-              style: Get.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600, color: titleColor),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                'Progress Pendataan Harian Form ',
+                style: Get.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600, color: titleColor),
+              ),
             ),
             const SizedBox(height: 12),
             Container(
               height: 220,
+              margin: const EdgeInsets.symmetric(horizontal: 16.0),
               padding: const EdgeInsets.fromLTRB(0, 16, 16, 12),
               decoration: BoxDecoration(
                 color: cardBgColor,
@@ -233,11 +237,11 @@ class _DashboardContentOnly extends StatelessWidget {
                           color: AdminScreen.accentHeaderColor, strokeWidth: 2.5));
                 } else if (noOverallData) {
                   return _buildDummyChartWithLabel(
-                      "Belum ada data progres rumah tangga yang sudah didata secara keseluruhan.", isEmpty: true); // Updated message
+                      "Belum ada data progres rumah tangga yang sudah didata secara keseluruhan.", isEmpty: true);
                 } else if (noFilteredData) {
                   return _buildDummyChartWithLabel(
                       "Tidak ada data progres rumah tangga yang sudah didata untuk rentang tanggal yang dipilih.",
-                      isEmpty: true); // Updated message
+                      isEmpty: true);
                 } else if (controller.submissionTrend.isEmpty &&
                     !controller.isDashboardLoading.value) {
                   return _buildDummyChartWithLabel(
@@ -298,29 +302,26 @@ class _DashboardContentOnly extends StatelessWidget {
                               ? (spots.length / (spots.length > 20 ? 6 : 4)).ceilToDouble()
                               : 1,
                           getTitlesWidget: (double value, TitleMeta meta) {
-                            // Ensure index is valid
                             final int index = value.toInt();
                             if (index < 0 || index >= dateLabels.length) {
                               return const SizedBox.shrink();
                             }
-
-                            // Parse and format date
                             try {
                               final DateTime date = DateFormat('yyyy-MM-dd').parse(dateLabels[index]);
                               final String formattedDate = DateFormat('dd\nMMM', 'id_ID').format(date);
                               return SideTitleWidget(
-                                meta: meta, // Required parameter
+                                meta: meta,
                                 space: 6.0,
                                 child: Text(
                                   formattedDate,
                                   style: TextStyle(
-                                    color: subtitleColor ?? Colors.grey.shade600, // Fallback color, non-const
+                                    color: subtitleColor ?? Colors.grey.shade600,
                                     fontWeight: FontWeight.w500,
                                     fontSize: 9,
                                   ),
                                 ),
                                 fitInside: SideTitleFitInsideData(
-                                  enabled: spots.length > 10, // Enable only for dense data
+                                  enabled: spots.length > 10,
                                   distanceFromEdge: 6.0,
                                   parentAxisSize: meta.parentAxisSize, axisPosition: meta.axisPosition,
                                 ),
@@ -338,12 +339,9 @@ class _DashboardContentOnly extends StatelessWidget {
                           reservedSize: 38,
                           interval: (maxY / 4).roundToDouble() > 0 ? (maxY / 4).roundToDouble() : 1,
                           getTitlesWidget: (double value, TitleMeta meta) {
-                            // Only show integer, non-negative values
                             if (value != value.toInt() || value < 0) {
                               return const SizedBox.shrink();
                             }
-
-                            // Use formattedValue for consistency
                             String text;
                             if (value == meta.min || value == meta.max) {
                               text = meta.formattedValue;
@@ -354,20 +352,19 @@ class _DashboardContentOnly extends StatelessWidget {
                             } else {
                               return const SizedBox.shrink();
                             }
-
                             return SideTitleWidget(
-                              meta: meta, // Required parameter
+                              meta: meta,
                               space: 4.0,
                               child: Text(
                                 text,
                                 style: TextStyle(
-                                  color: subtitleColor ?? Colors.grey.shade600, // Fallback color, non-const
+                                  color: subtitleColor ?? Colors.grey.shade600,
                                   fontSize: 10,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                               fitInside: SideTitleFitInsideData(
-                                enabled: maxY > 10, // Enable only for large Y-axis ranges
+                                enabled: maxY > 10,
                                 distanceFromEdge: 4.0,
                                 parentAxisSize: meta.parentAxisSize, axisPosition: meta.axisPosition,
                               ),
@@ -468,35 +465,202 @@ class _DashboardContentOnly extends StatelessWidget {
               }),
             ),
             const SizedBox(height: 24),
-            Text(
-              'Submissions per Form',
-              style: Get.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: titleColor),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Text(
+                'Submissions per Form',
+                style: Get.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: titleColor),
+              ),
             ),
             const SizedBox(height: 12),
-            Obx(() => controller.filteredFormSubmissions.isEmpty && !controller.isDashboardLoading.value
-                ? _buildNoDataMessage(
-                controller.globalSearchQuery.value.isNotEmpty
-                    ? 'Tidak ada form cocok dengan "${controller.globalSearchQuery.value}".'
-                    : controller.selectedStartDate.value != null
-                    ? 'Tidak ada submission form untuk rentang tanggal yang dipilih.'
-                    : 'Belum ada submission form.'
-            )
-                : Column(
-              children: controller.filteredFormSubmissions.map((entry) {
-                return _buildFormSubmissionItem(entry);
-              }).toList(),
-            )),
+            Obx(() {
+              if (controller.isDashboardLoading.value && controller.filteredFormSubmissions.isEmpty) {
+                return SizedBox(
+                  height: 180, // Sesuaikan tinggi slider jika perlu
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: AdminScreen.accentHeaderColor,
+                      strokeWidth: 2.0,
+                    ),
+                  ),
+                );
+              }
+              if (controller.filteredFormSubmissions.isEmpty && !controller.isDashboardLoading.value) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: _buildNoDataMessage(
+                      controller.globalSearchQuery.value.isNotEmpty
+                          ? 'Tidak ada form cocok dengan "${controller.globalSearchQuery.value}".'
+                          : controller.selectedStartDate.value != null
+                          ? 'Tidak ada submission form untuk rentang tanggal yang dipilih.'
+                          : 'Belum ada submission form.'
+                  ),
+                );
+              }
+              return SizedBox(
+                height: 180, // Sesuaikan tinggi slider agar konten kartu pas (mungkin perlu >170)
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    itemCount: controller.filteredFormSubmissions.length,
+                    itemBuilder: (context, index) {
+                      final entry = controller.filteredFormSubmissions[index];
+                      final String formId = entry['formId'] ?? entry['formTitle']?.replaceAll(' ', '_').toLowerCase() ?? 'unknown_form_id_${index}';
+                      bool isLastItem = index == controller.filteredFormSubmissions.length - 1;
+                      return Padding(
+                        padding: EdgeInsets.only(right: isLastItem ? 0 : 12.0),
+                        child: _buildFormSubmissionSliderItem(entry, formId, context),
+                      );
+                    },
+                  ),
+                ),
+              );
+            }),
             const SizedBox(height: 24),
-            _buildFormAccessSection(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildFormAccessSection(),
+            ),
             const SizedBox(height: 24),
-            // START: ADDED EXPORT DATA SECTION
-            _buildExportDataSection(),
-            // END: ADDED EXPORT DATA SECTION
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildExportDataSection(),
+            ),
             const SizedBox(height: 30),
           ],
         ),
       );
     });
+  }
+
+  // Widget untuk item kartu dalam slider "Submissions per Form" - VERSI LEBIH DITINGKATKAN
+  Widget _buildFormSubmissionSliderItem(Map<String, dynamic> entry, String formId, BuildContext context) {
+    final String formTitle = entry['formTitle'] ?? 'Untitled Form';
+    final int count = entry['count'] ?? 0;
+
+    double cardWidth = MediaQuery.of(context).size.width * 0.75; // Lebar kartu sedikit lebih besar
+    if (cardWidth < 300) cardWidth = 300; // Lebar minimum
+    if (MediaQuery.of(context).size.width > 600) cardWidth = 340; // Lebar untuk layar lebih besar
+
+    return SizedBox(
+      width: cardWidth,
+      child: Card(
+        elevation: 4.5, // Tingkatkan bayangan untuk kedalaman
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20), // Sudut lebih bulat dan modern
+        ),
+        color: cardBgColor, // Warna latar belakang kartu (putih)
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            Get.toNamed(
+              AppRoutes.SUBMISSIONS_FORM,
+              arguments: {
+                'formId': formId,
+                'formTitle': formTitle,
+              },
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16), // Padding sedikit disesuaikan
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween, // Penting untuk distribusi ruang
+              children: [
+                // Bagian Atas: Ikon Besar dan Judul Form yang Lebih Menonjol
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12.0), // Padding lebih besar di sekitar ikon
+                      decoration: BoxDecoration(
+                          gradient: LinearGradient( // Tambahkan gradient untuk daya tarik visual
+                            colors: [
+                              AdminScreen.primaryHeaderColor.withOpacity(0.8),
+                              AdminScreen.accentHeaderColor.withOpacity(0.7),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16), // Kontainer ikon lebih bulat
+                          boxShadow: [
+                            BoxShadow(
+                                color: AdminScreen.accentHeaderColor.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: Offset(2,2)
+                            )
+                          ]
+                      ),
+                      child: Icon(
+                        Icons.assignment_ind_outlined, // Ikon untuk pendataan/assignment
+                        color: Colors.white, // Ikon putih di atas latar berwarna
+                        size: 32, // Ikon lebih besar
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Text(
+                          formTitle,
+                          style: TextStyle(
+                            fontSize: 19, // Judul LEBIH BESAR
+                            fontWeight: FontWeight.bold, // Sangat tebal
+                            color: titleColor.withOpacity(1.0), // Warna judul lebih solid
+                            height: 1.3, // Spasi antar baris jika judul panjang
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Bagian Bawah: Jumlah Isian dengan tampilan "Chip" yang lebih jelas
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 12), // Margin atas untuk chip
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                        color: AdminScreen.accentHeaderColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(
+                          color: AdminScreen.accentHeaderColor.withOpacity(0.3),
+                          width: 1.0,
+                        )
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.format_list_bulleted_rounded, // Ikon yang lebih cocok untuk "jumlah"
+                          size: 18,
+                          color: AdminScreen.accentHeaderColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${count} Isian',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AdminScreen.accentHeaderColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildDateFilterSection(BuildContext context) {
@@ -512,7 +676,7 @@ class _DashboardContentOnly extends StatelessWidget {
           children: [
             Expanded(
               child: InkWell(
-                onTap: () => controller.openCustomDateRangePicker(context), // Memanggil dialog kustom
+                onTap: () => controller.openCustomDateRangePicker(context),
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -532,7 +696,8 @@ class _DashboardContentOnly extends StatelessWidget {
 
                     String displayText = 'Pilih Rentang Tanggal';
                     if (controller.selectedStartDate.value != null && controller.selectedEndDate.value != null) {
-                      bool isSingleDay = isSameDay(controller.selectedStartDate.value, controller.selectedEndDate.value);
+                      bool isSingleDay = controller.selectedStartDate.value != null && controller.selectedEndDate.value != null &&
+                          isSameDay(controller.selectedStartDate.value!, controller.selectedEndDate.value!);
                       if (isSingleDay) {
                         displayText = startDateText;
                       } else {
@@ -560,8 +725,8 @@ class _DashboardContentOnly extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Icon( // Ikon kalender tetap di sini untuk indikasi visual
-                          Icons.calendar_today_outlined, // Menggunakan ikon yang lebih standar
+                        const Icon(
+                          Icons.calendar_today_outlined,
                           color: AdminScreen.accentHeaderColor,
                           size: 20,
                         ),
@@ -572,8 +737,8 @@ class _DashboardContentOnly extends StatelessWidget {
               ),
             ),
             Obx(() => (controller.selectedStartDate.value != null || controller.selectedEndDate.value != null)
-                ? Padding( // Widget Padding LUAR untuk tombol reset
-              padding: const EdgeInsets.only(left: 10.0), // PASTIKAN ADA PROPERTI PADDING INI
+                ? Padding(
+              padding: const EdgeInsets.only(left: 10.0),
               child: Material(
                 color: Colors.red.shade50,
                 borderRadius: BorderRadius.circular(10),
@@ -581,7 +746,7 @@ class _DashboardContentOnly extends StatelessWidget {
                   onTap: controller.resetDateFilter,
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    padding: const EdgeInsets.all(10.0), // Padding DALAM untuk konten tombol
+                    padding: const EdgeInsets.all(10.0),
                     decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Colors.red.shade200, width: 1)
@@ -610,22 +775,12 @@ class _DashboardContentOnly extends StatelessWidget {
         children: [
           Expanded(
             child: _buildMetricCard(
-              title: 'Jumlah Rumah Tangga yang Sudah Didata', // Renamed
+              title: 'Jumlah Rumah Tangga yang Sudah Didata',
               value: controller.totalSubmissions.value.toString(),
-              icon: Icons.home_work_rounded, // Changed icon for household data
+              icon: Icons.home_work_rounded,
               iconColor: Colors.blue.shade600,
             ),
           ),
-          // Removed 'Pengguna Aktif' card as requested
-          // const SizedBox(width: 16),
-          // Expanded(
-          //   child: _buildMetricCard(
-          //     title: 'Pengguna Aktif',
-          //     value: controller.totalActiveUsers.value.toString(),
-          //     icon: Icons.group_rounded,
-          //     iconColor: Colors.teal.shade600,
-          //   ),
-          // ),
         ],
       ),
     );
@@ -675,43 +830,6 @@ class _DashboardContentOnly extends StatelessWidget {
     );
   }
 
-  Widget _buildFormSubmissionItem(Map<String, dynamic> entry) {
-    return Card(
-      elevation: 1.5,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      color: cardBgColor,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-        child: Row(
-          children: [
-            Icon(Icons.article_outlined, color: AdminScreen.accentHeaderColor.withOpacity(0.8), size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entry['formTitle'] ?? 'Untitled Form',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: titleColor.withOpacity(0.9)),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Jumlah Isian: ${entry['count']}',
-                    style: TextStyle(fontSize: 13, color: subtitleColor.withOpacity(0.9)),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.bar_chart_rounded, color: Colors.grey.shade400, size: 20)
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildFormAccessSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -722,6 +840,12 @@ class _DashboardContentOnly extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Obx(() {
+          if (controller.isDashboardLoading.value && controller.filteredFormAccessCounts.isEmpty) {
+            return const Center(child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 20.0),
+              child: CircularProgressIndicator(color: AdminScreen.accentHeaderColor, strokeWidth: 2.0,),
+            ));
+          }
           if (controller.filteredFormAccessCounts.isEmpty && !controller.isDashboardLoading.value) {
             return _buildNoDataMessage(
                 controller.globalSearchQuery.value.isNotEmpty
@@ -776,76 +900,106 @@ class _DashboardContentOnly extends StatelessWidget {
     );
   }
 
-  // START: NEW EXPORT DATA SECTION WIDGET
   Widget _buildExportDataSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Export Data Penduduk',
-          style: Get.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: titleColor),
+          style: Get.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: titleColor,
+          ),
         ),
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
-          child: PopupMenuButton<String>(
-            color: Colors.white, // Background color of the popup menu
-            elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            onSelected: (String result) {
-              switch (result) {
-                case 'json':
-                  controller.exportDataAsJson();
-                  break;
-                case 'xlsx':
-                  controller.exportDataAsXlsx();
-                  break;
-                case 'csv':
-                  controller.exportDataAsCsv();
-                  break;
-              }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              _buildPopupMenuItem(
-                value: 'json',
-                text: 'JSON',
-                icon: Icons.code, // Icon for JSON
+          child: Builder(
+            builder: (context) {
+              return Material(
                 color: AdminScreen.accentHeaderColor,
-              ),
-              _buildPopupMenuItem(
-                value: 'xlsx',
-                text: 'XLSX',
-                icon: Icons.table_chart, // Icon for XLSX
-                color: Colors.green.shade700,
-              ),
-              _buildPopupMenuItem(
-                value: 'csv',
-                text: 'CSV',
-                icon: Icons.description, // Icon for CSV
-                color: Colors.blue.shade700,
-              ),
-            ],
-            child: ElevatedButton.icon(
-              onPressed: null, // Set to null to allow PopupMenuButton to handle the tap
-              icon: const Icon(Icons.download_rounded, color: Colors.white, size: 22),
-              label: const Text(
-                'Export Data',
-                style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w500),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AdminScreen.accentHeaderColor, // Orange color
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 2,
-              ),
-            ),
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () async {
+                    final RenderBox button = context.findRenderObject() as RenderBox;
+                    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+
+                    final RelativeRect position = RelativeRect.fromRect(
+                      Rect.fromPoints(
+                        button.localToGlobal(Offset.zero, ancestor: overlay),
+                        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+                      ),
+                      Offset.zero & overlay.size,
+                    );
+
+                    final selected = await showMenu<String>(
+                      context: context,
+                      position: position,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      items: [
+                        _buildPopupMenuItem(
+                          value: 'json',
+                          text: 'JSON',
+                          icon: Icons.code,
+                          color: AdminScreen.accentHeaderColor,
+                        ),
+                        _buildPopupMenuItem(
+                          value: 'xlsx',
+                          text: 'XLSX',
+                          icon: Icons.table_chart,
+                          color: Colors.green.shade700,
+                        ),
+                        _buildPopupMenuItem(
+                          value: 'csv',
+                          text: 'CSV',
+                          icon: Icons.description,
+                          color: Colors.blue.shade700,
+                        ),
+                      ],
+                    );
+
+                    switch (selected) {
+                      case 'json':
+                        controller.exportDataAsJson();
+                        break;
+                      case 'xlsx':
+                        controller.exportDataAsXlsx();
+                        break;
+                      case 'csv':
+                        controller.exportDataAsCsv();
+                        break;
+                    }
+                  },
+                  splashColor: Colors.white24,
+                  highlightColor: Colors.orange.shade700.withOpacity(0.2),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.download_rounded, color: Colors.white, size: 22),
+                        SizedBox(width: 8),
+                        Text(
+                          'Export Data',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
     );
   }
 
-  // Helper for PopupMenuItem styling
   PopupMenuEntry<String> _buildPopupMenuItem({
     required String value,
     required String text,
@@ -858,16 +1012,11 @@ class _DashboardContentOnly extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(width: 10),
-          Text(
-            text,
-            style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w500),
-          ),
+          Text(text),
         ],
       ),
     );
   }
-  // END: NEW EXPORT DATA SECTION WIDGET
-
 
   Widget _buildDummyChartWithLabel(String message, {bool isEmpty = false}) {
     return Padding(
@@ -876,7 +1025,7 @@ class _DashboardContentOnly extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-              isEmpty ? Icons.info_outline_rounded : Icons.insert_chart_outlined_rounded, // Ikon diganti
+              isEmpty ? Icons.info_outline_rounded : Icons.insert_chart_outlined_rounded,
               size: isEmpty ? 40 : 44,
               color: Colors.grey.shade400
           ),
@@ -893,7 +1042,7 @@ class _DashboardContentOnly extends StatelessWidget {
 
   Widget _buildNoDataMessage(String message) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 20.0),
+      padding: const EdgeInsets.symmetric(vertical: 30.0, horizontal: 20.0),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -914,10 +1063,7 @@ class _DashboardContentOnly extends StatelessWidget {
 
 class _DummyChartPainter extends CustomPainter {
   @override
-  void paint(Canvas canvas, Size size) {
-    // Kosongkan karena pesan teks sudah cukup
-  }
-
+  void paint(Canvas canvas, Size size) {}
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
