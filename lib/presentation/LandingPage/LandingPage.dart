@@ -116,7 +116,7 @@ class LandingPageScreen extends GetView<LandingPageController> {
             ),
           ),
 
-          // Bagian bawah: deskripsi dan tombol START
+          // Bagian bawah: deskripsi dan tombol STARTT
           Expanded(
             child: Container(
               width: double.infinity,

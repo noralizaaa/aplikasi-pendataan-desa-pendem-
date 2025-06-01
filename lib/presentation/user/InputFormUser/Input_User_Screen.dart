@@ -1206,7 +1206,7 @@ class InputUserScreen extends GetView<InputUserController> {
 
             if (question.gridRowLabels.isEmpty) {
               if (rawInitialDataMap.entries.isNotEmpty) {
-                // =================== AWAL PERBAIKAN targetEntry ===================
+                // ==================== AWAL PERBAIKAN targetEntry ===================
                 MapEntry<dynamic, dynamic> targetEntry = rawInitialDataMap.entries.first; // Inisialisasi default
 
                 bool foundSpecificEmptyKeyEntry = false;

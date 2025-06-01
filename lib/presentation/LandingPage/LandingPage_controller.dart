@@ -5,7 +5,7 @@ class LandingPageController extends GetxController {
   final isLogoVisible = false.obs;
   final isIllustrationVisible = false.obs;
 
-  // KONSTRUKTOR YANG BENAR: Nama harus sama dengan kelas
+  // KONSTRUKTOR YANG BENAR: Nama harus sama dengan kelass
   LandingPageController() {
     print('LandingPageController: Constructor called');
   }
