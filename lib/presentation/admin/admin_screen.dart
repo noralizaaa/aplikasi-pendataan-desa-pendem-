@@ -526,7 +526,6 @@ class _DashboardContentOnly extends StatelessWidget {
             const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: _buildExportDataSection(),
             ),
             const SizedBox(height: 30),
           ],
@@ -897,106 +896,6 @@ class _DashboardContentOnly extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildExportDataSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Export Data Penduduk',
-          style: Get.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: titleColor,
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: Builder(
-            builder: (context) {
-              return Material(
-                color: AdminScreen.accentHeaderColor,
-                borderRadius: BorderRadius.circular(10),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: () async {
-                    final RenderBox button = context.findRenderObject() as RenderBox;
-                    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-
-                    final RelativeRect position = RelativeRect.fromRect(
-                      Rect.fromPoints(
-                        button.localToGlobal(Offset.zero, ancestor: overlay),
-                        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
-                      ),
-                      Offset.zero & overlay.size,
-                    );
-
-                    final selected = await showMenu<String>(
-                      context: context,
-                      position: position,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      items: [
-                        _buildPopupMenuItem(
-                          value: 'json',
-                          text: 'JSON',
-                          icon: Icons.code,
-                          color: AdminScreen.accentHeaderColor,
-                        ),
-                        _buildPopupMenuItem(
-                          value: 'xlsx',
-                          text: 'XLSX',
-                          icon: Icons.table_chart,
-                          color: Colors.green.shade700,
-                        ),
-                        _buildPopupMenuItem(
-                          value: 'csv',
-                          text: 'CSV',
-                          icon: Icons.description,
-                          color: Colors.blue.shade700,
-                        ),
-                      ],
-                    );
-
-                    switch (selected) {
-                      case 'json':
-                        controller.exportDataAsJson();
-                        break;
-                      case 'xlsx':
-                        controller.exportDataAsXlsx();
-                        break;
-                      case 'csv':
-                        controller.exportDataAsCsv();
-                        break;
-                    }
-                  },
-                  splashColor: Colors.white24,
-                  highlightColor: Colors.orange.shade700.withOpacity(0.2),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.download_rounded, color: Colors.white, size: 22),
-                        SizedBox(width: 8),
-                        Text(
-                          'Export Data',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 

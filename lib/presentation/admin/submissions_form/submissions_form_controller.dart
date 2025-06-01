@@ -1,14 +1,27 @@
 // lib/presentation/admin/submissions_form/submissions_form_controller.dart
-import 'package:flutter/material.dart'; // Diperlukan untuk debounce
+import 'dart:convert'; // Untuk jsonEncode, utf8
+import 'dart:io';     // Untuk Platform
+import 'dart:typed_data'; // Untuk Uint8List
+
+import 'package:flutter/foundation.dart'; // <<< DIPERBAIKI: Impor untuk kDebugMode
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-// FirebaseAuth tidak diperlukan lagi untuk mengambil semua submission
-// import 'package:firebase_auth/firebase_auth.dart';
-import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart'; // Untuk FormItem
-import 'package:aplikasi_pendataan_desa/presentation/user/InputFormUser/input_user_model.dart'; // Untuk FormSubmission
-import 'package:aplikasi_pendataan_desa/infrastructure/navigation/routes.dart'; // Untuk AppRoutes
+import 'package:intl/intl.dart'; // Untuk format nama file dan tanggal
+import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart';
+import 'package:aplikasi_pendataan_desa/presentation/user/InputFormUser/input_user_model.dart';
+import 'package:aplikasi_pendataan_desa/infrastructure/navigation/routes.dart';
 
-// Helper class untuk item yang akan ditampilkan di list
+// --- Tambahkan Impor untuk Package Ekspor ---
+import 'package:csv/csv.dart';
+import 'package:excel/excel.dart' as ex; // Alias untuk menghindari konflik nama
+import 'package:file_picker/file_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+// --- Akhir Tambahan Impor ---
+
+
+// Helper class untuk item yang akan ditampilkan di list (tetap sama)
 class DisplayableSubmission {
   final FormSubmission originalSubmission;
   final String displayTitle;
@@ -30,8 +43,8 @@ class DisplayableSubmission {
 class SubmissionsFormController extends GetxController {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  final RxString formId = ''.obs; // ID form yang dipilih dari dashboard admin
-  final RxString initialFormTitle = ''.obs; // Judul form awal dari argumen
+  final RxString formId = ''.obs;
+  final RxString initialFormTitle = ''.obs;
   final Rx<FormItem?> formStructure = Rx<FormItem?>(null);
   final RxList<FormSubmission> _originalSubmissions = <FormSubmission>[].obs;
   final RxList<DisplayableSubmission> displayedSubmissions = <DisplayableSubmission>[].obs;
@@ -44,16 +57,15 @@ class SubmissionsFormController extends GetxController {
   final RxString currentSortOrder = 'Terbaru'.obs;
   final List<String> sortOptions = ['Terbaru', 'Terlama', 'Nama KRT A-Z', 'Nama KRT Z-A'];
 
-  // Kode prioritas untuk mencari nama dan NIK, sesuaikan dengan form Anda
   final List<String> _namaKrtPriorityCodes = ['106', 'NAMA_KEPALA_KELUARGA', 'NAMA_KRT'];
   final List<String> _nikKrtPriorityCodes = ['NIK_KRT', 'NIK_KEPALA_KELUARGA', '107'];
   final List<String> _generalNamePriorityCodes = ['NAMA_LENGKAP', 'NAMA_RESPONDEN', 'NAMA'];
   final List<String> _generalIdPriorityCodes = ['NIK', 'NO_KK', 'NOMOR_KK'];
 
   bool get isLoading => isLoadingStructure.value || isLoadingSubmissions.value;
-
   String get appBarTitle => formStructure.value?.title ?? initialFormTitle.value;
 
+  final RxBool isExporting = false.obs;
 
   @override
   void onInit() {
@@ -62,7 +74,7 @@ class SubmissionsFormController extends GetxController {
 
     if (Get.arguments != null && Get.arguments is Map<String, dynamic>) {
       formId.value = Get.arguments['formId'] ?? '';
-      initialFormTitle.value = Get.arguments['formTitle'] ?? 'Daftar Submissions'; // Fallback title
+      initialFormTitle.value = Get.arguments['formTitle'] ?? 'Daftar Submissions';
 
       if (formId.value.isNotEmpty) {
         _fetchFormStructure();
@@ -90,16 +102,18 @@ class SubmissionsFormController extends GetxController {
       if (docSnapshot.exists) {
         formStructure.value = FormItem.fromFirestore(docSnapshot);
       } else {
-        errorMessage.value = "Detail form tidak ditemukan.";
-        formStructure.value = null; // Pastikan null jika tidak ditemukan
+        errorMessage.value = "Struktur form tidak ditemukan.";
+        formStructure.value = null;
       }
     } catch (e) {
-      print("Error fetching form structure (Admin): $e");
-      errorMessage.value = "Gagal memuat detail form: ${e.toString()}";
-      formStructure.value = null; // Pastikan null jika error
+      if (kDebugMode) {
+        print("Error fetching form structure (Admin): $e");
+      }
+      errorMessage.value = "Gagal memuat struktur form: ${e.toString()}";
+      formStructure.value = null;
     } finally {
       isLoadingStructure.value = false;
-      update(); // Untuk update AppBar title jika initialFormTitle digunakan
+      update();
     }
   }
 
@@ -113,7 +127,7 @@ class SubmissionsFormController extends GetxController {
     try {
       Query query = _db
           .collection('formSubmissions')
-          .where('formId', isEqualTo: formId.value); // Hanya filter berdasarkan formId
+          .where('formId', isEqualTo: formId.value);
 
       if (currentSortOrder.value == 'Terbaru') {
         query = query.orderBy('submittedAt', descending: true);
@@ -127,10 +141,12 @@ class SubmissionsFormController extends GetxController {
           .toList());
       _processSubmissionsForDisplay();
     } catch (e) {
-      print("Error fetching submissions (Admin): $e");
+      if (kDebugMode) {
+        print("Error fetching submissions (Admin): $e");
+      }
       errorMessage.value = "Gagal memuat daftar isian: ${e.toString()}";
       _originalSubmissions.clear();
-      _processSubmissionsForDisplay(); // Update UI dengan list kosong
+      _processSubmissionsForDisplay();
     } finally {
       isLoadingSubmissions.value = false;
     }
@@ -151,27 +167,33 @@ class SubmissionsFormController extends GetxController {
   void _processSubmissionsForDisplay() {
     List<DisplayableSubmission> processedList = [];
     for (var sub in _originalSubmissions) {
-      String namaKRT = sub.namaKepalaRumahTangga ?? _extractAnswerByPriority(sub.answers, _namaKrtPriorityCodes);
-      String nikKRT = _extractAnswerByPriority(sub.answers, _nikKrtPriorityCodes); // Anda mungkin perlu field NIK_KRT di FormSubmission
+      String namaKRT = sub.namaKepalaRumahTangga?.isNotEmpty == true
+          ? sub.namaKepalaRumahTangga!
+          : _extractAnswerByPriority(sub.answers, _namaKrtPriorityCodes);
+
+      String nikKRT = _extractAnswerByPriority(sub.answers, _nikKrtPriorityCodes);
+      String displayNikKRT = (nikKRT.isNotEmpty && nikKRT != "1") ? nikKRT : "";
 
       String currentDisplayTitle = "";
       if (namaKRT.isNotEmpty) {
         currentDisplayTitle = namaKRT;
-        if (nikKRT.isNotEmpty) currentDisplayTitle += " - NIK: $nikKRT";
-      } else if (nikKRT.isNotEmpty) {
-        currentDisplayTitle = "NIK: $nikKRT";
-      }
-      else {
+        if (displayNikKRT.isNotEmpty) {
+          currentDisplayTitle += " - $displayNikKRT";
+        }
+      } else if (displayNikKRT.isNotEmpty) {
+        currentDisplayTitle = "NIK: $displayNikKRT";
+      } else {
         String generalName = _extractAnswerByPriority(sub.answers, _generalNamePriorityCodes);
         String generalId = _extractAnswerByPriority(sub.answers, _generalIdPriorityCodes);
+        String displayGeneralId = (generalId.isNotEmpty && generalId != "1") ? generalId : "";
+
         if (generalName.isNotEmpty) {
           currentDisplayTitle = generalName;
-          if (generalId.isNotEmpty) currentDisplayTitle += " ($generalId)";
-        } else if (generalId.isNotEmpty) {
-          currentDisplayTitle = "ID: $generalId";
+          if (displayGeneralId.isNotEmpty) currentDisplayTitle += " ($displayGeneralId)";
+        } else if (displayGeneralId.isNotEmpty) {
+          currentDisplayTitle = "ID: $displayGeneralId";
         } else {
-          // Fallback ke ID submission jika tidak ada info lain
-          currentDisplayTitle = "Submission ID: ${sub.id ?? 'N/A'}";
+          currentDisplayTitle = "Data ${sub.formTitle}";
         }
       }
 
@@ -179,8 +201,9 @@ class SubmissionsFormController extends GetxController {
         bool matchesSearch =
             currentDisplayTitle.toLowerCase().contains(searchQuery.value.toLowerCase()) ||
                 (namaKRT.isNotEmpty && namaKRT.toLowerCase().contains(searchQuery.value.toLowerCase())) ||
-                (nikKRT.isNotEmpty && nikKRT.toLowerCase().contains(searchQuery.value.toLowerCase())) ||
-                (sub.userId?.toLowerCase().contains(searchQuery.value.toLowerCase()) ?? false) ;// Tambah pencarian by User ID
+                (displayNikKRT.isNotEmpty && displayNikKRT.toLowerCase().contains(searchQuery.value.toLowerCase())) ||
+                (sub.userName.toLowerCase().contains(searchQuery.value.toLowerCase())) ||
+                (sub.userId?.toLowerCase().contains(searchQuery.value.toLowerCase()) ?? false);
         if (!matchesSearch) {
           continue;
         }
@@ -190,9 +213,9 @@ class SubmissionsFormController extends GetxController {
         originalSubmission: sub,
         displayTitle: currentDisplayTitle,
         sortableNamePart: namaKRT.toLowerCase(),
-        sortableIdPart: nikKRT.toLowerCase(),
+        sortableIdPart: displayNikKRT.toLowerCase(),
         namaKepalaKeluarga: namaKRT,
-        nikKepalaKeluarga: nikKRT,
+        nikKepalaKeluarga: displayNikKRT,
       ));
     }
 
@@ -200,10 +223,20 @@ class SubmissionsFormController extends GetxController {
       processedList.sort((a, b) => a.sortableNamePart.compareTo(b.sortableNamePart));
     } else if (currentSortOrder.value == 'Nama KRT Z-A') {
       processedList.sort((a, b) => b.sortableNamePart.compareTo(a.sortableNamePart));
-    } else if (currentSortOrder.value == 'Terlama' && !_originalSubmissions.any((s) => s.submittedAt == null)) {
-      processedList.sort((a,b) => a.originalSubmission.submittedAt.compareTo(b.originalSubmission.submittedAt));
-    } else if (currentSortOrder.value == 'Terbaru' && !_originalSubmissions.any((s) => s.submittedAt == null)){
-      processedList.sort((a,b) => b.originalSubmission.submittedAt.compareTo(a.originalSubmission.submittedAt));
+    } else if (currentSortOrder.value == 'Terlama' && _originalSubmissions.any((s) => s.submittedAt != null)) {
+      processedList.sort((a,b) {
+        if (a.originalSubmission.submittedAt == null && b.originalSubmission.submittedAt == null) return 0;
+        if (a.originalSubmission.submittedAt == null) return 1; // nulls last
+        if (b.originalSubmission.submittedAt == null) return -1; // nulls last
+        return a.originalSubmission.submittedAt.compareTo(b.originalSubmission.submittedAt);
+      });
+    } else if (currentSortOrder.value == 'Terbaru' && _originalSubmissions.any((s) => s.submittedAt != null)){
+      processedList.sort((a,b) {
+        if (a.originalSubmission.submittedAt == null && b.originalSubmission.submittedAt == null) return 0;
+        if (a.originalSubmission.submittedAt == null) return 1; // nulls last
+        if (b.originalSubmission.submittedAt == null) return -1; // nulls last
+        return b.originalSubmission.submittedAt.compareTo(a.originalSubmission.submittedAt);
+      });
     }
     displayedSubmissions.assignAll(processedList);
   }
@@ -216,9 +249,9 @@ class SubmissionsFormController extends GetxController {
     if (newOrder != null && newOrder != currentSortOrder.value) {
       currentSortOrder.value = newOrder;
       if (newOrder == 'Terbaru' || newOrder == 'Terlama') {
-        _fetchSubmissions();
+        _fetchSubmissions(); // Re-fetch to apply server-side sorting for time-based orders
       } else {
-        _processSubmissionsForDisplay();
+        _processSubmissionsForDisplay(); // Client-side sort for name-based orders
       }
     }
   }
@@ -229,14 +262,12 @@ class SubmissionsFormController extends GetxController {
           snackPosition: SnackPosition.BOTTOM);
       return;
     }
-    // Untuk admin, mungkin rutenya berbeda atau ada parameter tambahan
-    // Jika rutenya sama dengan user:
     Get.toNamed(
-      AppRoutes.INPUT_FORM_USER, // Asumsi admin juga bisa mengedit via form yang sama
+      AppRoutes.INPUT_FORM_USER,
       arguments: {
         'formId': formId.value,
         'submissionId': submission.id,
-        'isAdminEdit': true, // Tambahkan flag jika perlu perlakuan khusus di InputUserScreen/Controller
+        'isAdminEdit': true,
       },
     )?.then((result) {
       if (result == true || result == null) {
@@ -249,7 +280,7 @@ class SubmissionsFormController extends GetxController {
     Get.defaultDialog(
         title: "Konfirmasi Hapus",
         titleStyle: const TextStyle(fontWeight: FontWeight.w600),
-        middleText: "Anda yakin ingin menghapus data isian '$displayIdentifier' (User: ${submission.userId ?? 'N/A'})?",
+        middleText: "Anda yakin ingin menghapus data isian '$displayIdentifier' (User: ${submission.userName})?",
         textConfirm: "Ya, Hapus",
         textCancel: "Batal",
         confirmTextColor: Colors.white,
@@ -263,12 +294,12 @@ class SubmissionsFormController extends GetxController {
           );
           try {
             await _db.collection('formSubmissions').doc(submission.id).delete();
-            Get.back();
+            Get.back(); // close progress dialog
             Get.snackbar('Berhasil', "Data isian '$displayIdentifier' berhasil dihapus.",
                 snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
-            _fetchSubmissions();
+            _fetchSubmissions(); // Refresh list
           } catch (e) {
-            Get.back();
+            Get.back(); // close progress dialog
             Get.snackbar('Error', "Gagal menghapus data: ${e.toString()}",
                 snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade700, colorText: Colors.white);
           }
@@ -281,12 +312,420 @@ class SubmissionsFormController extends GetxController {
     if (formId.value.isNotEmpty) {
       isLoadingStructure.value = true;
       isLoadingSubmissions.value = true;
-      searchQuery.value = '';
-
-      await _fetchFormStructure();
-      await _fetchSubmissions();
+      // searchQuery.value = ''; // Consider if search query should be reset on refresh
+      await _fetchFormStructure(); // Fetch structure first
+      await _fetchSubmissions(); // Then fetch submissions
     } else {
       _setLoadingError("ID Form tidak valid untuk refresh.");
+    }
+  }
+
+  // --- METHOD HELPER UNTUK EKSPOR ---
+  Future<bool> _checkAndRequestFilePermissions() async {
+    PermissionStatus status;
+    bool isPermanentlyDenied = false; // Deklarasikan di luar scope if
+
+    if (Platform.isAndroid) {
+      final androidInfo = await DeviceInfoPlugin().androidInfo; // Variabel ini sekarang lokal di scope if
+      if (androidInfo.version.sdkInt >= 30) { // Android 11 (API 30) dan lebih tinggi
+        status = await Permission.manageExternalStorage.status;
+        if (!status.isGranted) {
+          status = await Permission.manageExternalStorage.request();
+        }
+      } else { // Android 10 (API 29) dan lebih rendah
+        status = await Permission.storage.status;
+        if (!status.isGranted) {
+          status = await Permission.storage.request();
+        }
+      }
+      // Tentukan isPermanentlyDenied di dalam scope Platform.isAndroid setelah status didapatkan
+      isPermanentlyDenied = status.isPermanentlyDenied ||
+          (androidInfo.version.sdkInt >=30 && status.isDenied && !(await Permission.manageExternalStorage.status.isGranted));
+
+    } else { // Untuk iOS atau platform lain, anggap izin ada atau akan ditangani OS
+      return true;
+    }
+
+    if (status.isGranted) {
+      return true;
+    } else {
+      String message = 'Izin penyimpanan diperlukan untuk ekspor data.';
+      if (isPermanentlyDenied) { // Gunakan variabel isPermanentlyDenied yang sudah di-assign
+        message = 'Izin penyimpanan ditolak permanen. Aktifkan di pengaturan aplikasi.';
+      }
+      Get.snackbar(
+        'Izin Ditolak',
+        message,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.shade400,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
+        mainButton: isPermanentlyDenied ? TextButton(
+          onPressed: () => openAppSettings(),
+          child: const Text('Buka Pengaturan', style: TextStyle(color: Colors.white)),
+        ) : null,
+      );
+      return false;
+    }
+  }
+
+  dynamic _convertValueForExport(dynamic item) {
+    if (item is Timestamp) {
+      return DateFormat('yyyy-MM-dd HH:mm:ss').format(item.toDate().toLocal());
+    } else if (item is DateTime) {
+      return DateFormat('yyyy-MM-dd HH:mm:ss').format(item.toLocal());
+    } else if (item is GeoPoint) {
+      return "Lat: ${item.latitude}, Lon: ${item.longitude}";
+    } else if (item is List) {
+      return item.join('; ');
+    } else if (item is Map) {
+      try {
+        return jsonEncode(item);
+      } catch (_) {
+        return item.toString();
+      }
+    }
+    return item?.toString() ?? '';
+  }
+
+  List<Map<String, dynamic>> _prepareDataForNestedJsonExport() {
+    if (_originalSubmissions.isEmpty) return [];
+
+    return _originalSubmissions.map((submission) {
+      Map<String, dynamic> questionAnswersMap = {};
+      for (var answer in submission.answers) {
+        String key = answer.questionCode.isNotEmpty ? answer.questionCode : answer.questionId;
+        questionAnswersMap[key] = _convertValueForExport(answer.answer);
+      }
+
+      return {
+        'submission_id': submission.id,
+        'form_id': submission.formId,
+        'form_title': submission.formTitle,
+        'user_id_pengisi': submission.userId,
+        'nama_pengisi': submission.userName,
+        'submitted_at': _convertValueForExport(submission.submittedAt),
+        'updated_at': submission.updatedAt != null ? _convertValueForExport(submission.updatedAt) : null,
+        'location': submission.location != null ? _convertValueForExport(submission.location) : null,
+        'responses': questionAnswersMap,
+      };
+    }).toList();
+  }
+
+  ({List<Map<String, dynamic>> data, List<String> headers}) _prepareDataForExport() {
+    final defaultHeadersOnError = [
+      'Submission_ID', 'Form_ID', 'Form_Judul', 'User_ID_Pengisi', 'Nama_Pengisi',
+      'Waktu_Pengisian', 'Waktu_Update', 'Lokasi'
+    ];
+    if (_originalSubmissions.isEmpty) {
+      return (data: [], headers: defaultHeadersOnError);
+    }
+
+    Map<String, String> questionCodeToHeaderTextMap = {};
+    Set<String> allUniqueQuestionCodes = <String>{};
+
+    if (formStructure.value != null) {
+      for (var section in formStructure.value!.sections) {
+        for (var question in section.questions) {
+          String code = question.code?.isNotEmpty == true ? question.code! : question.id;
+          if (code.isNotEmpty) {
+            allUniqueQuestionCodes.add(code);
+            questionCodeToHeaderTextMap[code] = question.questionText.isNotEmpty ? question.questionText : code;
+          }
+        }
+      }
+    }
+
+    for (var submission in _originalSubmissions) {
+      for (var answer in submission.answers) {
+        String code = answer.questionCode.isNotEmpty ? answer.questionCode : answer.questionId;
+        if (code.isNotEmpty) {
+          allUniqueQuestionCodes.add(code);
+          if (!questionCodeToHeaderTextMap.containsKey(code) ||
+              (questionCodeToHeaderTextMap[code] == code && answer.questionText.isNotEmpty)) {
+            questionCodeToHeaderTextMap[code] = answer.questionText.isNotEmpty ? answer.questionText : code;
+          }
+        }
+      }
+    }
+    List<String> sortedUniqueQuestionCodes = allUniqueQuestionCodes.toList()..sort();
+
+    List<String> finalHeaders = [
+      'Submission_ID', 'Form_ID', 'Form_Judul', 'User_ID_Pengisi', 'Nama_Pengisi', 'Waktu_Pengisian',
+    ];
+
+    bool hasUpdatedAtColumn = _originalSubmissions.any((s) => s.updatedAt != null);
+    bool hasLocationColumn = _originalSubmissions.any((s) => s.location != null);
+
+    if (hasUpdatedAtColumn) finalHeaders.add('Waktu_Update');
+    if (hasLocationColumn) finalHeaders.add('Lokasi');
+
+    for (String questionCode in sortedUniqueQuestionCodes) {
+      finalHeaders.add(questionCodeToHeaderTextMap[questionCode] ?? questionCode);
+    }
+
+    List<Map<String, dynamic>> processedData = _originalSubmissions.map((submission) {
+      Map<String, dynamic> rowData = {};
+      rowData['Submission_ID'] = submission.id ?? 'N/A';
+      rowData['Form_ID'] = submission.formId;
+      rowData['Form_Judul'] = submission.formTitle;
+      rowData['User_ID_Pengisi'] = submission.userId ?? '';
+      rowData['Nama_Pengisi'] = submission.userName ?? '';
+      rowData['Waktu_Pengisian'] = _convertValueForExport(submission.submittedAt);
+
+      if (hasUpdatedAtColumn) {
+        rowData['Waktu_Update'] = submission.updatedAt != null ? _convertValueForExport(submission.updatedAt) : '';
+      }
+      if (hasLocationColumn) {
+        rowData['Lokasi'] = submission.location != null ? _convertValueForExport(submission.location) : '';
+      }
+
+      Map<String, dynamic> answerMap = {};
+      for (var answer in submission.answers) {
+        String key = answer.questionCode.isNotEmpty ? answer.questionCode : answer.questionId;
+        if (key.isNotEmpty) {
+          answerMap[key] = _convertValueForExport(answer.answer);
+        }
+      }
+
+      for (String questionCode in sortedUniqueQuestionCodes) {
+        String headerText = questionCodeToHeaderTextMap[questionCode] ?? questionCode;
+        rowData[headerText] = answerMap[questionCode] ?? '';
+      }
+      return rowData;
+    }).toList();
+
+    return (data: processedData, headers: finalHeaders);
+  }
+
+  Future<void> exportSubmissionsAsJson() async {
+    if (isExporting.value) return;
+    isExporting.value = true;
+    Get.snackbar('Export JSON', 'Mempersiapkan data...', showProgressIndicator: true, duration: const Duration(seconds: 120), dismissDirection: DismissDirection.horizontal, backgroundColor: Colors.blue.shade600, colorText: Colors.white);
+
+    bool hasPermission = await _checkAndRequestFilePermissions();
+    if (!hasPermission) {
+      isExporting.value = false; Get.closeCurrentSnackbar(); return;
+    }
+
+    final List<Map<String, dynamic>> dataToExport = _prepareDataForNestedJsonExport();
+
+    if (dataToExport.isEmpty) {
+      isExporting.value = false; Get.closeCurrentSnackbar();
+      Get.snackbar('Info', 'Tidak ada data untuk diekspor.', snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+
+    try {
+      String jsonString = const JsonEncoder.withIndent('  ').convert(dataToExport);
+      final List<int> fileBytes = utf8.encode(jsonString);
+      Get.closeCurrentSnackbar();
+
+      String defaultFileName = 'export_json_${formStructure.value?.title.replaceAll(' ', '_').replaceAll(RegExp(r'[^\w\s-]'), '') ?? formId.value}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.json';
+
+      String? outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Simpan Data JSON Sebagai...',
+        fileName: defaultFileName,
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        bytes: Uint8List.fromList(fileBytes),
+      );
+
+      if (outputFile != null) {
+        Get.snackbar('Berhasil', 'Data JSON berhasil diekspor.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
+      } else {
+        Get.snackbar('Dibatalkan', 'Ekspor JSON dibatalkan.', snackPosition: SnackPosition.BOTTOM);
+      }
+    } catch (e, s) {
+      Get.closeCurrentSnackbar();
+      Get.snackbar('Error', 'Gagal mengekspor JSON: ${e.toString()}', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade700, colorText: Colors.white);
+      if (kDebugMode) {
+        print('JSON Export Error: $e\n$s');
+      }
+    } finally {
+      isExporting.value = false;
+    }
+  }
+
+  Future<void> exportSubmissionsAsCsv() async {
+    if (isExporting.value) return;
+    isExporting.value = true;
+    Get.snackbar('Export CSV', 'Mempersiapkan data...', showProgressIndicator: true, duration: const Duration(seconds: 120), dismissDirection: DismissDirection.horizontal, backgroundColor: Colors.blue.shade600, colorText: Colors.white);
+
+    bool hasPermission = await _checkAndRequestFilePermissions();
+    if (!hasPermission) {
+      isExporting.value = false; Get.closeCurrentSnackbar(); return;
+    }
+
+    final result = _prepareDataForExport();
+    final List<Map<String, dynamic>> flatData = result.data;
+    final List<String> headers = result.headers;
+
+    if (flatData.isEmpty) {
+      isExporting.value = false; Get.closeCurrentSnackbar();
+      Get.snackbar('Info', 'Tidak ada data untuk diekspor.', snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+    if (headers.isEmpty && flatData.isNotEmpty) {
+      isExporting.value = false; Get.closeCurrentSnackbar();
+      Get.snackbar('Error', 'Tidak dapat menentukan header untuk CSV.', snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+
+    try {
+      List<List<dynamic>> csvData = [headers];
+      for (var rowMap in flatData) {
+        List<dynamic> row = headers.map((header) => rowMap[header] ?? '').toList();
+        csvData.add(row);
+      }
+
+      String csvString = const ListToCsvConverter().convert(csvData);
+      final List<int> fileBytes = utf8.encode(csvString);
+      Get.closeCurrentSnackbar();
+
+      String defaultFileName = 'export_csv_${formStructure.value?.title.replaceAll(' ', '_').replaceAll(RegExp(r'[^\w\s-]'), '') ?? formId.value}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv';
+
+      String? outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Simpan Data CSV Sebagai...',
+        fileName: defaultFileName,
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+        bytes: Uint8List.fromList(fileBytes),
+      );
+
+      if (outputFile != null) {
+        Get.snackbar('Berhasil', 'Data CSV berhasil diekspor.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
+      } else {
+        Get.snackbar('Dibatalkan', 'Ekspor CSV dibatalkan.', snackPosition: SnackPosition.BOTTOM);
+      }
+    } catch (e, s) {
+      Get.closeCurrentSnackbar();
+      Get.snackbar('Error', 'Gagal mengekspor CSV: ${e.toString()}', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade700, colorText: Colors.white);
+      if (kDebugMode) {
+        print('CSV Export Error: $e\n$s');
+      }
+    } finally {
+      isExporting.value = false;
+    }
+  }
+
+  Future<void> exportSubmissionsAsXlsx() async {
+    if (isExporting.value) return;
+    isExporting.value = true;
+    Get.snackbar('Export XLSX', 'Mempersiapkan data...', showProgressIndicator: true, duration: const Duration(seconds: 120), dismissDirection: DismissDirection.horizontal, backgroundColor: Colors.blue.shade600, colorText: Colors.white);
+
+    bool hasPermission = await _checkAndRequestFilePermissions();
+    if (!hasPermission) {
+      isExporting.value = false; Get.closeCurrentSnackbar(); return;
+    }
+
+    final result = _prepareDataForExport();
+    final List<Map<String, dynamic>> flatData = result.data;
+    final List<String> headers = result.headers;
+
+    if (flatData.isEmpty) {
+      isExporting.value = false; Get.closeCurrentSnackbar();
+      Get.snackbar('Info', 'Tidak ada data untuk diekspor.', snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+    if (headers.isEmpty && flatData.isNotEmpty) {
+      isExporting.value = false; Get.closeCurrentSnackbar();
+      Get.snackbar('Error', 'Tidak dapat menentukan header untuk XLSX.', snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+
+    try {
+      var excel = ex.Excel.createExcel();
+      String sheetNameInput = formStructure.value?.title ?? 'Data Export';
+      String sanitizedSheetName = sheetNameInput.replaceAll(RegExp(r'[\\/*?:[\]]'), ''); // Karakter invalid Excel
+      sanitizedSheetName = sanitizedSheetName.replaceAll(RegExp(r"'"), ''); // Hapus juga single quote
+      if (sanitizedSheetName.length > 31) {
+        sanitizedSheetName = sanitizedSheetName.substring(0, 31);
+      }
+      if (sanitizedSheetName.isEmpty) {
+        sanitizedSheetName = 'DataExport';
+      }
+      ex.Sheet sheetObject = excel[sanitizedSheetName];
+
+
+      for (int i = 0; i < headers.length; i++) {
+        var cell = sheetObject.cell(ex.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+        cell.value = ex.TextCellValue(headers[i]);
+        // <<< DIPERBAIKI: Gunakan nilai hex string langsung untuk warna latar belakang
+      }
+
+      for (int rowIndex = 0; rowIndex < flatData.length; rowIndex++) {
+        Map<String, dynamic> rowMap = flatData[rowIndex];
+        for (int colIndex = 0; colIndex < headers.length; colIndex++) {
+          var cell = sheetObject.cell(ex.CellIndex.indexByColumnRow(columnIndex: colIndex, rowIndex: rowIndex + 1));
+          dynamic value = rowMap[headers[colIndex]];
+
+          if (value is num) {
+            cell.value = ex.DoubleCellValue(value.toDouble());
+          } else if (value is bool) {
+            cell.value = ex.BoolCellValue(value);
+          } else if (value is DateTime) {
+            cell.value = ex.DateTimeCellValue.fromDateTime(value.toUtc());
+          } else if (value is String) {
+            double? numValue = double.tryParse(value);
+            DateTime? dateValue;
+            bool looksLikeNumericId = RegExp(r'^\d{10,}$').hasMatch(value);
+            bool looksLikeDateOrTimeSeparator = value.contains(':') || value.contains('/') || value.contains('-');
+
+            if (numValue != null && !looksLikeNumericId && !looksLikeDateOrTimeSeparator) {
+              cell.value = ex.DoubleCellValue(numValue);
+            } else {
+              try {
+                if (value.length == 19 && value[10] == ' ' && value[4] == '-' && value[7] == '-') {
+                  dateValue = DateFormat('yyyy-MM-dd HH:mm:ss', 'id_ID').parseStrict(value, true).toUtc();
+                }
+              } catch (_) { /* ignore parse error */ }
+
+              if (dateValue != null) {
+                cell.value = ex.DateTimeCellValue.fromDateTime(dateValue);
+              } else {
+                cell.value = ex.TextCellValue(value);
+              }
+            }
+          } else {
+            cell.value = ex.TextCellValue(value?.toString() ?? '');
+          }
+        }
+      }
+
+      // <<< DIPERBAIKI: Hapus parameter includeMaxRowsAndCols jika tidak ada
+      List<int>? fileBytes = excel.save();
+      Get.closeCurrentSnackbar();
+
+      if (fileBytes == null || fileBytes.isEmpty) {
+        isExporting.value = false;
+        Get.snackbar('Error', 'Gagal menghasilkan file XLSX.', snackPosition: SnackPosition.BOTTOM);
+        return;
+      }
+
+      String defaultFileName = 'export_xlsx_${formStructure.value?.title.replaceAll(' ', '_').replaceAll(RegExp(r'[^\w\s-]'), '') ?? formId.value}_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.xlsx';
+
+      String? outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Simpan Data XLSX Sebagai...',
+        fileName: defaultFileName,
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+        bytes: Uint8List.fromList(fileBytes),
+      );
+
+      if (outputFile != null) {
+        Get.snackbar('Berhasil', 'Data XLSX berhasil diekspor.', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
+      } else {
+        Get.snackbar('Dibatalkan', 'Ekspor XLSX dibatalkan.', snackPosition: SnackPosition.BOTTOM);
+      }
+    } catch (e, s) {
+      Get.closeCurrentSnackbar();
+      Get.snackbar('Error', 'Gagal mengekspor XLSX: ${e.toString()}', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade700, colorText: Colors.white);
+      if (kDebugMode) { // Pastikan kDebugMode dari flutter/foundation.dart
+        print('XLSX Export Error: $e\n$s');
+      }
+    } finally {
+      isExporting.value = false;
     }
   }
 }

@@ -5,6 +5,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.25.0] - 2025-06-01
+> Contributed by [Febri Bagus Triwibowo]
+
+> Migration of Population Export Feature into Form-Based Export, Improved Export Structure and User Feedback
+
+### 🎉 Added
+- **New Form-Specific Export Functions in `SubmissionsFormController`:**
+  - Introduced `exportSubmissionsAsJson()`, `exportSubmissionsAsCsv()`, and `exportSubmissionsAsXlsx()` methods to allow exporting submissions only for the currently selected form.
+  - Added helper method `_exportToFile()` to unify the export logic and handle permission checks, file writing, and error feedback.
+  - Introduced `isExporting` reactive boolean state to prevent duplicate export actions while an export is ongoing.
+
+- **Flexible Header Builder for Exported Data:**
+  - Export headers are now primarily built using `formStructure.value.questions[].questionText`, ensuring a stable and predictable column order.
+  - Fallback mechanism added to derive headers from actual submissions if form structure is not available.
+
+- **Enhanced `_convertValueForExport()` Function:**
+  - Supports multiple data types (`Timestamp`, `DateTime`, `GeoPoint`, `List`, `Map`) to ensure better formatted and human-readable export output.
+  - Accepts `forJson` parameter for context-aware formatting (e.g., date strings vs. raw timestamps).
+
+### 🛠️ Changed
+- **Migration of Population Export Feature:**
+  - Removed the population-level export option from `admin_screen.dart`.
+  - Export functionality has now been delegated to each form under `submissions_form`, enforcing a more modular data management structure.
+
+- **Export Output Improvements:**
+  - Excel (XLSX) export now uses proper cell types (`TextCellValue`, `DateTimeCellValue`, etc.) based on Dart types.
+  - Improved header cell styling using the updated `excel` package API (e.g., using `ExcelColor.yellow.colorHex`).
+  - Ensured worksheet names are sanitized to comply with Excel sheet name constraints.
+
+- **Improved Export Flow and UX:**
+  - Added snackbar feedback during export (loading, success, error, or cancel).
+  - Integrated permission request logic using `_checkAndRequestFilePermissions()` for Android/iOS compatibility.
+  - Added more robust `try-catch` with `debugPrint()` for better troubleshooting during export failures.
+
+- **Better State Handling on Data Return:**
+  - After navigating to submission edit or add screen, the list is now refreshed using `.then((_) => refreshData())`.
+
+### 🐛 Fixed
+- **AppBar Export Button Behavior in `SubmissionsFormScreen`:**
+  - Export button now correctly shows a loading spinner (`CircularProgressIndicator`) when export is ongoing.
+  - Ensures export menu is disabled while structure/submission data is still loading.
+
+- **Refresh Button Fix:**
+  - `IconButton` for refresh now checks both `isLoadingStructure` and `isLoadingSubmissions` to avoid unintended reloads during transitions.
+
+- **Improved Empty State Feedback:**
+  - Message now differentiates between “No submissions found” vs. “No results for your search” for clearer user understanding.
+
+---
 ## [0.24.0] - 2025-05-31
 > Contributed by [Lutfi Indra Nur Praditya]
 
