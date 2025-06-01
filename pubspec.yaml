@@ -61,6 +61,8 @@ dev_dependencies:
   file_picker: any
   flutter_launcher_icons: any
   device_info_plus: any
+  csv: any
+  excel: any
 
 flutter_launcher_icons:
   android: "launcher_icon"

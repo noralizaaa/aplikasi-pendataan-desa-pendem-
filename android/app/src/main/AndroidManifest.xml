@@ -9,7 +9,7 @@
 
 
     <application
-        android:label="aplikasi_pendataan_desa"
+        android:label="SensusKu"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
