@@ -3,6 +3,41 @@
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+
+## [0.26.0] - 2025-06-01
+> Contributed by [Lutfi Indra Nur Praditya]
+
+> Fetch Value Grid Input Behavior, Enhanced "Other" Option Handling, and Strengthened Validation Logic in Form Interactions.
+
+### 🎉 Added
+-   **New State Variables:** Introduced `userOtherAnswers` and `repeatableGroupOtherAnswers` to manage text inputs for "Other" option selections.
+-   **Firestore Initialization:** Implemented logic to detect and initialize "Other" option answers from Firestore into the new state variables.
+
+### 🛠️ Changed
+-   **Answer Update Logic:**
+  - Adjusted answer update mechanism to reflect changes when switching to/from the "Other" option.
+  - Ensures that the associated text input is cleared or restored as needed.
+-   **Validation Enhancements:**
+  - Added conditional validation to ensure "Other" text fields are filled if the option is marked as required.
+-   **Submission Logic:**
+  - Modified submission behavior to convert `_kOtherOptionValue` back to its original input text before storing to Firestore.
+-   **Grid Field Behavior:**
+  - **Grid Numerik (1 Baris):** Fixed issue where values were not displayed during edit mode.
+  - Adjusted data loading strategy in the UI to ensure values are correctly shown for numeric grid rows.
+-   **UI Layout Adjustments:**
+  - Removed `mainAxisSize: MainAxisSize.min` from "Other Option" `Row` to allow it to expand fully according to its parent container.
+  - Set `mainAxisAlignment: MainAxisAlignment.end` in the same `Row` to right-align the switch, allowing the label text to fill remaining space.
+  - improved UI `LandingPage.dart`  
+
+### 🐛 Fixed
+-   **ART Field Validation:**
+  - Resolved validation error related to the number of household members (ART) by correcting data fetching logic for ART validation.
+-   **Controller Method Errors:**
+  - Addressed missing method errors (`triggerDependentQuestionUpdates`, `getGridMap`) by:
+    - Commenting out one unused method call.
+    - Inlining the logic of the other method directly in the UI to maintain functionality and avoid controller dependencies.
+
 ---
 
 ## [0.25.0] - 2025-06-01

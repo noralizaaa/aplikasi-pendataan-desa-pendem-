@@ -6,11 +6,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart';
-import './input_user_model.dart'; // Pastikan model ini ada dan sesuai
+import './input_user_model.dart';
 
 class InputUserController extends GetxController {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Konstanta untuk nilai opsi "Lainnya" (harus sama dengan yang di UI)
+  static const String _kOtherOptionValue = '__other_option_value__';
 
   final RxBool isLoading = false.obs;
   final RxString formId = ''.obs;
@@ -22,37 +25,48 @@ class InputUserController extends GetxController {
   final Rx<FormSubmission?> loadedSubmission = Rx<FormSubmission?>(null);
 
   final RxMap<String, dynamic> userAnswers = <String, dynamic>{}.obs;
-  final RxMap<String, RxMap<int, dynamic>> repeatableGroupAnswers =
-      <String, RxMap<int, dynamic>>{}.obs;
+  final RxMap<String, RxMap<int, dynamic>> repeatableGroupAnswers = <String, RxMap<int, dynamic>>{}.obs;
+
+  // --- AWAL TAMBAHAN: State untuk Teks "Lainnya" ---
+  final RxMap<String, String> userOtherAnswers = <String, String>{}.obs;
+  final RxMap<String, RxMap<int, String>> repeatableGroupOtherAnswers = <String, RxMap<int, String>>{}.obs;
+  // --- AKHIR TAMBAHAN ---
+
   final RxMap<String, int> repeatableGroupCounts = <String, int>{}.obs;
   final RxMap<String, bool> questionVisibility = <String, bool>{}.obs;
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   List<String> _allQuestionIdsInOrder = [];
 
-  // --- TAMBAHAN UNTUK EXPANDABLE SECTION CARD ---
   final RxString expandedSectionId = ''.obs;
 
   void toggleSectionExpansion(String sectionId) {
     if (expandedSectionId.value == sectionId) {
-      expandedSectionId.value = ''; // Jika ID sama, tutup section tersebut
+      expandedSectionId.value = '';
     } else {
-      expandedSectionId.value =
-          sectionId; // Jika ID beda, buka section baru
+      expandedSectionId.value = sectionId;
     }
   }
 
   bool sectionHasAnswers(String sectionId) {
+    // ... (logika sectionHasAnswers tetap sama)
     final section =
     loadedForm.value?.sections.firstWhereOrNull((s) => s.id == sectionId);
     if (section == null) return false;
 
     for (var question in section.questions) {
+      bool hasMainAnswer = false;
+      bool hasOtherTextForSelectedOther = false;
+
       if (question.belongsToGroupTag == null ||
           question.belongsToGroupTag!.isEmpty) {
         // Regular question
-        if (userAnswers.containsKey(question.id) &&
-            !_isAnswerEmpty(userAnswers[question.id], question.type)) {
+        hasMainAnswer = userAnswers.containsKey(question.id) &&
+            !_isAnswerEmpty(userAnswers[question.id], question.type);
+        if (question.hasOtherOption && userAnswers[question.id] == _kOtherOptionValue) {
+          hasOtherTextForSelectedOther = userOtherAnswers[question.id]?.isNotEmpty ?? false;
+          if (hasMainAnswer && hasOtherTextForSelectedOther) return true;
+        } else if (hasMainAnswer) {
           return true;
         }
       } else {
@@ -61,9 +75,14 @@ class InputUserController extends GetxController {
         final count = repeatableGroupCounts[groupTag] ?? 0;
         if (repeatableGroupAnswers.containsKey(question.id)) {
           for (int i = 0; i < count; i++) {
-            if (repeatableGroupAnswers[question.id]!.containsKey(i) &&
+            hasMainAnswer = repeatableGroupAnswers[question.id]!.containsKey(i) &&
                 !_isAnswerEmpty(
-                    repeatableGroupAnswers[question.id]![i], question.type)) {
+                    repeatableGroupAnswers[question.id]![i], question.type);
+
+            if (question.hasOtherOption && repeatableGroupAnswers[question.id]![i] == _kOtherOptionValue) {
+              hasOtherTextForSelectedOther = repeatableGroupOtherAnswers[question.id]?[i]?.isNotEmpty ?? false;
+              if (hasMainAnswer && hasOtherTextForSelectedOther) return true;
+            } else if (hasMainAnswer) {
               return true;
             }
           }
@@ -72,11 +91,12 @@ class InputUserController extends GetxController {
     }
     return false;
   }
-  // --- AKHIR TAMBAHAN ---
+
 
   @override
   void onInit() {
     super.onInit();
+    // ... (logika onInit untuk mengambil argumen tetap sama)
     isLoading.value = true;
     final dynamic arguments = Get.arguments;
     String? extractedFormId;
@@ -85,10 +105,7 @@ class InputUserController extends GetxController {
     if (arguments != null) {
       if (arguments is String) {
         extractedFormId = arguments;
-        print(
-            "Info (onInit): Argumen diterima sebagai String (hanya formId): $extractedFormId");
       } else if (arguments is Map) {
-        print("Info (onInit): Argumen diterima sebagai Map: $arguments");
         if (arguments.containsKey('formId') &&
             arguments['formId'] is String &&
             (arguments['formId'] as String).isNotEmpty) {
@@ -103,10 +120,7 @@ class InputUserController extends GetxController {
             arguments['submissionId'] is String &&
             (arguments['submissionId'] as String).isNotEmpty) {
           extractedSubmissionId = arguments['submissionId'] as String;
-          submissionId.value =
-              extractedSubmissionId; // Simpan submissionId jika ada
-          print(
-              "Info (onInit): Mode Edit diaktifkan. SubmissionId: ${submissionId.value}");
+          submissionId.value = extractedSubmissionId;
         }
       } else {
         errorMessage.value =
@@ -130,6 +144,7 @@ class InputUserController extends GetxController {
   }
 
   Future<void> fetchFormAndPotentialSubmissionData() async {
+    // ... (logika pengambilan form dan submission tetap sama)
     isLoading.value = true;
     errorMessage.value = '';
     loadedForm.value = null;
@@ -147,7 +162,6 @@ class InputUserController extends GetxController {
     }
 
     try {
-      print("Mengambil struktur form untuk ID: ${formId.value}");
       final formDocSnapshot =
       await _db.collection('adminForms').doc(formId.value).get();
       if (formDocSnapshot.exists) {
@@ -159,8 +173,6 @@ class InputUserController extends GetxController {
               _allQuestionIdsInOrder.add(question.id);
             }
           }
-          print(
-              "Struktur form berhasil dimuat. Jumlah pertanyaan terurut: ${_allQuestionIdsInOrder.length}");
         } else {
           errorMessage.value =
           "Gagal memproses struktur form dari Firestore.";
@@ -175,9 +187,6 @@ class InputUserController extends GetxController {
       }
 
       if (isEditMode.value) {
-        // Periksa isEditMode.value
-        print(
-            "Mode Edit: Mencoba mengambil data submission ID: ${submissionId.value}");
         final submissionDocSnapshot = await _db
             .collection('formSubmissions')
             .doc(submissionId.value)
@@ -191,15 +200,11 @@ class InputUserController extends GetxController {
             Get.snackbar("Peringatan", errorMessage.value,
                 snackPosition: SnackPosition.BOTTOM,
                 duration: const Duration(seconds: 4));
-          } else {
-            print(
-                "Mode Edit: Data submission berhasil dimuat dengan ${loadedSubmission.value!.answers.length} jawaban.");
           }
         } else {
           errorMessage.value =
           "Data submission dengan ID '${submissionId.value}' tidak ditemukan. Menampilkan form sebagai isian baru.";
-          submissionId.value =
-          ''; // Keluar dari mode edit jika data submission tidak ditemukan
+          submissionId.value = '';
           Get.snackbar("Info", errorMessage.value,
               snackPosition: SnackPosition.BOTTOM,
               duration: const Duration(seconds: 4));
@@ -215,6 +220,7 @@ class InputUserController extends GetxController {
   }
 
   dynamic _getDefaultAnswerForQuestionType(QuestionType type) {
+    // ... (tetap sama)
     switch (type) {
       case QuestionType.checkboxes:
         return <String>[];
@@ -223,61 +229,57 @@ class InputUserController extends GetxController {
       case QuestionType.dropdown:
         return null;
       default:
-        return ''; // text, paragraph, number, date (date akan dihandle khusus saat display/save)
+        return '';
     }
   }
 
   void _initializeStatesBasedOnMode() {
-    if (loadedForm.value == null) {
-      print("_initializeStatesBasedOnMode: loadedForm null, tidak bisa lanjut.");
-      return;
-    }
+    if (loadedForm.value == null) return;
 
     userAnswers.clear();
     repeatableGroupAnswers.forEach((_, rxMap) => rxMap.clear());
     repeatableGroupAnswers.clear();
+    // --- AWAL TAMBAHAN: Bersihkan state "OtherAnswers" ---
+    userOtherAnswers.clear();
+    repeatableGroupOtherAnswers.forEach((_, rxMap) => rxMap.clear());
+    repeatableGroupOtherAnswers.clear();
+    // --- AKHIR TAMBAHAN ---
     repeatableGroupCounts.clear();
     questionVisibility.clear();
 
     if (isEditMode.value && loadedSubmission.value != null) {
-      print("Mode Edit: Memulai _populateAnswersFromSubmission.");
       _populateAnswersFromSubmission();
     } else {
-      if (isEditMode.value && loadedSubmission.value == null) {
-        print(
-            "Mode Edit: Data submission tidak termuat, inisialisasi sebagai form baru.");
-      } else {
-        print("Mode Baru: Inisialisasi form kosong.");
-      }
+      // Inisialisasi form kosong (logika yang sudah ada)
       for (var qId in _allQuestionIdsInOrder) {
         final question = findQuestionById(qId);
         if (question == null) continue;
 
-        if (question.belongsToGroupTag == null ||
-            question.belongsToGroupTag!.isEmpty) {
+        if (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty) {
           if (!userAnswers.containsKey(question.id)) {
-            userAnswers[question.id] =
-                _getDefaultAnswerForQuestionType(question.type);
+            userAnswers[question.id] = _getDefaultAnswerForQuestionType(question.type);
           }
         }
-        if (question.isRepeatableGroupController &&
-            question.controlledGroupTag != null) {
+        if (question.isRepeatableGroupController && question.controlledGroupTag != null) {
           if (!repeatableGroupCounts.containsKey(question.controlledGroupTag!)) {
             dynamic controllerAnswer = userAnswers[question.id];
             int count = 0;
-            if (controllerAnswer is String) {
-              count = int.tryParse(controllerAnswer) ?? 0;
-            } else if (controllerAnswer is num) {
-              count = controllerAnswer.toInt();
-            }
+            if (controllerAnswer is String) count = int.tryParse(controllerAnswer) ?? 0;
+            else if (controllerAnswer is num) count = controllerAnswer.toInt();
             repeatableGroupCounts[question.controlledGroupTag!] = count;
           }
         }
-        if (question.belongsToGroupTag != null &&
-            question.belongsToGroupTag!.isNotEmpty) {
+        if (question.belongsToGroupTag != null && question.belongsToGroupTag!.isNotEmpty) {
           if (!repeatableGroupAnswers.containsKey(question.id)) {
             repeatableGroupAnswers[question.id] = RxMap<int, dynamic>();
           }
+          // --- AWAL TAMBAHAN: Inisialisasi map untuk repeatableGroupOtherAnswers ---
+          if (question.hasOtherOption) {
+            if (!repeatableGroupOtherAnswers.containsKey(question.id)) {
+              repeatableGroupOtherAnswers[question.id] = RxMap<int, String>();
+            }
+          }
+          // --- AKHIR TAMBAHAN ---
         }
       }
       repeatableGroupCounts.forEach((groupTag, count) {
@@ -288,12 +290,12 @@ class InputUserController extends GetxController {
   }
 
   Future<void> fetchFormStructure() async {
+    // ... (logika fetchFormStructure tetap sama)
     if (formId.value.isEmpty) {
       errorMessage.value =
       "ID Form kosong atau tidak valid. Tidak dapat memuat form.";
       isLoading.value = false;
       loadedForm.value = null;
-      print("Error dalam fetchFormStructure: formId.value kosong.");
       Get.snackbar('Error Kritis', errorMessage.value,
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.red.shade700,
@@ -324,8 +326,6 @@ class InputUserController extends GetxController {
         loadedForm.value = null;
       }
     } catch (e, s) {
-      print(
-          "Error fetching form structure for ID '${formId.value}': $e\n$s");
       errorMessage.value = "Gagal memuat form: ${e.toString()}";
       loadedForm.value = null;
       Get.snackbar('Error Memuat', errorMessage.value,
@@ -338,54 +338,101 @@ class InputUserController extends GetxController {
   }
 
   void _populateAnswersFromSubmission() {
-    if (loadedSubmission.value == null || loadedForm.value == null) {
-      print("Populate: loadedSubmission atau loadedForm null, tidak bisa lanjut.");
-      return;
-    }
-    print(
-        "Populate: Memulai memuat jawaban dari submission ID: ${loadedSubmission.value!.id}");
-    print(
-        "Populate: Jawaban mentah dari submission: ${loadedSubmission.value!.answers.map((e) => '${e.questionCode}(${e.questionId}): ${e.answer}').toList()}");
+    if (loadedSubmission.value == null || loadedForm.value == null) return;
 
     Map<String, int> tempGroupCounts = {};
+
+    // Inisialisasi userAnswers dan userOtherAnswers dengan default dulu
+    for (var qId in _allQuestionIdsInOrder) {
+      final question = findQuestionById(qId);
+      if (question == null) continue;
+      if (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty) {
+        userAnswers[question.id] = _getDefaultAnswerForQuestionType(question.type);
+        if (question.hasOtherOption) {
+          userOtherAnswers[question.id] = '';
+        }
+      } else if (question.belongsToGroupTag != null && question.belongsToGroupTag!.isNotEmpty) {
+        if (!repeatableGroupAnswers.containsKey(question.id)) {
+          repeatableGroupAnswers[question.id] = RxMap<int, dynamic>();
+        }
+        if (question.hasOtherOption && !repeatableGroupOtherAnswers.containsKey(question.id)) {
+          repeatableGroupOtherAnswers[question.id] = RxMap<int, String>();
+        }
+      }
+    }
+
 
     for (var savedAnswer in loadedSubmission.value!.answers) {
       String originalQuestionId = savedAnswer.questionId;
       bool isRepeatableMemberInstance = false;
+      int? potentialRepeatIndex;
 
       if (savedAnswer.questionId.contains('_')) {
         final parts = savedAnswer.questionId.split('_');
-        if (parts.length > 1 && int.tryParse(parts.last) != null) {
+        potentialRepeatIndex = int.tryParse(parts.last);
+        if (potentialRepeatIndex != null) {
           originalQuestionId = parts.sublist(0, parts.length - 1).join('_');
           isRepeatableMemberInstance = true;
         }
       }
 
       final FormQuestion? questionDef = findQuestionById(originalQuestionId);
-      if (questionDef == null) {
-        print(
-            "Warning (populate): Definisi pertanyaan untuk ID '${originalQuestionId}' (dari '${savedAnswer.questionId}') tidak ditemukan. Dilewati.");
-        continue;
-      }
+      if (questionDef == null) continue;
 
-      dynamic answerValue =
-      _mapAnswerToCorrectType(savedAnswer.answer, questionDef.type);
-      print(
-          "Populate Detail: QID: ${questionDef.id}, QCode: ${questionDef.code ?? 'N/A'}, RawAnswer: ${savedAnswer.answer}, MappedAnswer: $answerValue, Type: ${questionDef.type}");
+      // --- AWAL MODIFIKASI: Logika untuk memisahkan jawaban utama dan teks "Lainnya" ---
+      dynamic mappedMainAnswer;
+      String? otherText;
+
+      if (questionDef.hasOtherOption && savedAnswer.answer is String) {
+        bool isPredefinedOption = questionDef.options.contains(savedAnswer.answer as String);
+        if (questionDef.type == QuestionType.multipleChoice) {
+          if (!isPredefinedOption && (savedAnswer.answer as String).isNotEmpty) { // Anggap sebagai teks "Lainnya"
+            mappedMainAnswer = _kOtherOptionValue;
+            otherText = savedAnswer.answer as String;
+          } else { // Opsi standar atau kosong (jika tidak wajib)
+            mappedMainAnswer = _mapAnswerToCorrectType(savedAnswer.answer, questionDef.type);
+          }
+        } else if (questionDef.type == QuestionType.checkboxes && savedAnswer.answer is List) {
+          List<String> tempCheckboxAnswers = [];
+          bool otherFound = false;
+          for(var item in (savedAnswer.answer as List)){
+            if(questionDef.options.contains(item.toString())){
+              tempCheckboxAnswers.add(item.toString());
+            } else if (item.toString().isNotEmpty) { // Anggap item ini adalah teks "Lainnya"
+              if(!otherFound){ // Hanya satu teks "Lainnya" per pertanyaan checkbox
+                tempCheckboxAnswers.add(_kOtherOptionValue);
+                otherText = item.toString();
+                otherFound = true;
+              } else {
+                // Jika ada lebih dari satu item non-predefined, ini anomali,
+                // mungkin tambahkan ke otherText atau log error. Untuk saat ini, ambil yang pertama.
+                print("Warning: Multiple non-predefined options found for checkbox ${questionDef.id}, using first as 'Other'.");
+              }
+            }
+          }
+          mappedMainAnswer = tempCheckboxAnswers;
+        } else {
+          mappedMainAnswer = _mapAnswerToCorrectType(savedAnswer.answer, questionDef.type);
+        }
+      } else {
+        mappedMainAnswer = _mapAnswerToCorrectType(savedAnswer.answer, questionDef.type);
+      }
+      // --- AKHIR MODIFIKASI ---
 
       if (!isRepeatableMemberInstance) {
-        userAnswers[originalQuestionId] = answerValue;
+        userAnswers[originalQuestionId] = mappedMainAnswer;
+        if (otherText != null) {
+          userOtherAnswers[originalQuestionId] = otherText;
+        }
 
-        if (questionDef.isRepeatableGroupController &&
-            questionDef.controlledGroupTag != null) {
+        if (questionDef.isRepeatableGroupController && questionDef.controlledGroupTag != null) {
           int count = 0;
-          if (answerValue is String) {
-            count = int.tryParse(answerValue) ?? 0;
-          } else if (answerValue is num) {
-            count = answerValue.toInt();
-          }
+          if (mappedMainAnswer is String) count = int.tryParse(mappedMainAnswer) ?? 0;
+          else if (mappedMainAnswer is num) count = mappedMainAnswer.toInt();
           tempGroupCounts[questionDef.controlledGroupTag!] = count;
         }
+      } else if (potentialRepeatIndex != null) {
+        // Penanganan untuk repeatable group members sudah dipindahkan ke loop kedua
       }
     }
 
@@ -394,9 +441,28 @@ class InputUserController extends GetxController {
     });
 
     repeatableGroupCounts.forEach((groupTag, count) {
-      _adjustRepeatableGroupAnswers(groupTag, count);
+      _adjustRepeatableGroupAnswers(groupTag, count); // Pastikan map diinisialisasi
+      // Inisialisasi juga untuk repeatableGroupOtherAnswers
+      loadedForm.value?.sections.forEach((section) {
+        section.questions.forEach((qInGroup) {
+          if (qInGroup.belongsToGroupTag == groupTag && qInGroup.hasOtherOption) {
+            if (!repeatableGroupOtherAnswers.containsKey(qInGroup.id)) {
+              repeatableGroupOtherAnswers[qInGroup.id] = RxMap<int, String>();
+            }
+            final otherAnswerMap = repeatableGroupOtherAnswers[qInGroup.id]!;
+            for (int i = 0; i < count; i++) {
+              if (!otherAnswerMap.containsKey(i)) {
+                otherAnswerMap[i] = '';
+              }
+            }
+          }
+        });
+      });
     });
 
+
+    // Loop kedua untuk mengisi repeatableGroupAnswers dan repeatableGroupOtherAnswers
+    // Ini dilakukan setelah repeatableGroupCounts dan struktur map diinisialisasi
     for (var savedAnswer in loadedSubmission.value!.answers) {
       String originalQuestionId = savedAnswer.questionId;
       int? repeatIndex;
@@ -411,43 +477,65 @@ class InputUserController extends GetxController {
       }
 
       final FormQuestion? questionDef = findQuestionById(originalQuestionId);
-      if (questionDef == null) continue;
+      if (questionDef == null || questionDef.belongsToGroupTag == null || questionDef.belongsToGroupTag!.isEmpty || repeatIndex == null) {
+        continue; // Hanya proses anggota grup repeatable di sini
+      }
 
-      if (questionDef.belongsToGroupTag != null &&
-          questionDef.belongsToGroupTag!.isNotEmpty &&
-          repeatIndex != null) {
-        if (repeatableGroupAnswers.containsKey(originalQuestionId) &&
-            (repeatableGroupAnswers[originalQuestionId]?.length ?? 0) >
-                repeatIndex) {
-          dynamic answerValue =
-          _mapAnswerToCorrectType(savedAnswer.answer, questionDef.type);
-          repeatableGroupAnswers[originalQuestionId]![repeatIndex] =
-              answerValue;
+      if (repeatableGroupAnswers.containsKey(originalQuestionId) &&
+          (repeatableGroupAnswers[originalQuestionId]?.length ?? 0) > repeatIndex) {
+
+        dynamic mappedMainAnswerRepeat;
+        String? otherTextRepeat;
+
+        if (questionDef.hasOtherOption && savedAnswer.answer is String) {
+          bool isPredefinedOption = questionDef.options.contains(savedAnswer.answer as String);
+          if (questionDef.type == QuestionType.multipleChoice) {
+            if (!isPredefinedOption && (savedAnswer.answer as String).isNotEmpty) {
+              mappedMainAnswerRepeat = _kOtherOptionValue;
+              otherTextRepeat = savedAnswer.answer as String;
+            } else {
+              mappedMainAnswerRepeat = _mapAnswerToCorrectType(savedAnswer.answer, questionDef.type);
+            }
+          } else { // Untuk checkbox dalam repeatable (asumsi format answer sama)
+            mappedMainAnswerRepeat = _mapAnswerToCorrectType(savedAnswer.answer, questionDef.type);
+          }
+        } else if (questionDef.hasOtherOption && questionDef.type == QuestionType.checkboxes && savedAnswer.answer is List) {
+          List<String> tempCheckboxAnswers = [];
+          bool otherFound = false;
+          for(var item in (savedAnswer.answer as List)){
+            if(questionDef.options.contains(item.toString())){
+              tempCheckboxAnswers.add(item.toString());
+            } else if (item.toString().isNotEmpty) {
+              if(!otherFound){
+                tempCheckboxAnswers.add(_kOtherOptionValue);
+                otherTextRepeat = item.toString();
+                otherFound = true;
+              }
+            }
+          }
+          mappedMainAnswerRepeat = tempCheckboxAnswers;
+        }
+        else {
+          mappedMainAnswerRepeat = _mapAnswerToCorrectType(savedAnswer.answer, questionDef.type);
+        }
+
+        repeatableGroupAnswers[originalQuestionId]![repeatIndex] = mappedMainAnswerRepeat;
+        if (otherTextRepeat != null && repeatableGroupOtherAnswers.containsKey(originalQuestionId)) {
+          repeatableGroupOtherAnswers[originalQuestionId]![repeatIndex] = otherTextRepeat;
         }
       }
     }
 
-    for (var qId in _allQuestionIdsInOrder) {
-      final qDef = findQuestionById(qId);
-      if (qDef != null &&
-          (qDef.belongsToGroupTag == null ||
-              qDef.belongsToGroupTag!.isEmpty)) {
-        if (!userAnswers.containsKey(qId)) {
-          userAnswers[qId] = _getDefaultAnswerForQuestionType(qDef.type);
-        }
-      }
-    }
 
     userAnswers.refresh();
+    userOtherAnswers.refresh();
     repeatableGroupAnswers.refresh();
+    repeatableGroupOtherAnswers.refresh();
     repeatableGroupCounts.refresh();
-    print("Populate: Selesai memuat. userAnswers: ${Map.from(userAnswers)}");
-    print(
-        "Populate: Selesai memuat. repeatableGroupCounts: ${Map.from(repeatableGroupCounts)}");
   }
 
-  dynamic _mapAnswerToCorrectType(
-      dynamic rawAnswer, QuestionType questionType) {
+  dynamic _mapAnswerToCorrectType(dynamic rawAnswer, QuestionType questionType) {
+    // ... (Bagian awal _mapAnswerToCorrectType tetap sama)
     if (rawAnswer == null) {
       return _getDefaultAnswerForQuestionType(questionType);
     }
@@ -455,9 +543,11 @@ class InputUserController extends GetxController {
     switch (questionType) {
       case QuestionType.checkboxes:
         if (rawAnswer is List) {
+          // Penanganan pemisahan _kOtherOptionValue sudah dilakukan di _populateAnswersFromSubmission
           return List<String>.from(rawAnswer.map((item) => item.toString()));
         }
         return <String>[];
+    // ... (case lain tetap sama seperti sebelumnya)
       case QuestionType.number:
         if (rawAnswer is num) return rawAnswer.toString();
         if (rawAnswer is String) return rawAnswer;
@@ -503,26 +593,24 @@ class InputUserController extends GetxController {
                           })));
                 }));
           } catch (e) {
-            print("Error mapping grid answer: $e. Raw: $rawAnswer");
             return <String, Map<String, Map<String, num?>>>{};
           }
         }
         return <String, Map<String, Map<String, num?>>>{};
       case QuestionType.dropdown:
-      case QuestionType.multipleChoice:
+      case QuestionType.multipleChoice: // Penanganan pemisahan _kOtherOptionValue sudah dilakukan di _populate
         if (rawAnswer is String) return rawAnswer;
         return rawAnswer?.toString();
-      default: // text, paragraph
+      default:
         return rawAnswer.toString();
     }
   }
 
   void _initializeAndEvaluateInitialVisibility() {
+    // ... (tetap sama)
     if (_allQuestionIdsInOrder.isEmpty) {
       questionVisibility.clear();
       questionVisibility.refresh();
-      print(
-          "_initializeAndEvaluateInitialVisibility: Tidak ada pertanyaan, visibilitas dikosongkan.");
       return;
     }
 
@@ -534,14 +622,9 @@ class InputUserController extends GetxController {
     final firstQuestion = findQuestionById(firstVisibleCandidateId);
 
     if (firstQuestion != null) {
-      print(
-          "InitialVisibility: Memproses pertanyaan pertama: ${firstQuestion.code ?? firstQuestion.id}");
       questionVisibility[firstQuestion.id] = true;
       evaluateAndExecuteJumps(
           firstQuestion.id, userAnswers[firstQuestion.id]);
-    } else {
-      print(
-          "InitialVisibility: Pertanyaan pertama tidak ditemukan dalam _allQuestionIdsInOrder.");
     }
 
     if (firstQuestion != null &&
@@ -551,11 +634,10 @@ class InputUserController extends GetxController {
       questionVisibility[firstQuestion.id] = true;
     }
     questionVisibility.refresh();
-    print(
-        "InitialVisibility: Selesai. Visible Qs: ${questionVisibility.entries.where((e) => e.value).map((e) => findQuestionById(e.key)?.code ?? e.key).toList()}");
   }
 
   FormQuestion? findQuestionById(String questionId) {
+    // ... (tetap sama)
     if (loadedForm.value == null) return null;
     for (var section in loadedForm.value!.sections) {
       for (var q in section.questions) {
@@ -566,6 +648,7 @@ class InputUserController extends GetxController {
   }
 
   FormQuestion? findQuestionByCode(String questionCode) {
+    // ... (tetap sama)
     if (loadedForm.value == null) return null;
     for (var section in loadedForm.value!.sections) {
       for (var q in section.questions) {
@@ -576,10 +659,53 @@ class InputUserController extends GetxController {
   }
 
   dynamic getAnswerByQuestionId(String questionId) {
+    // ... (tetap sama)
     return userAnswers[questionId];
   }
 
+  // --- AWAL TAMBAHAN: Metode untuk get/update "Other" answer ---
+  String? getOtherAnswer(String questionId, {int? repeatIndex}) {
+    if (repeatIndex != null) {
+      return repeatableGroupOtherAnswers[questionId]?[repeatIndex];
+    } else {
+      return userOtherAnswers[questionId];
+    }
+  }
+
+  void updateOtherAnswer(String questionId, String value, {int? repeatIndex}) {
+    if (repeatIndex != null) {
+      if (!repeatableGroupOtherAnswers.containsKey(questionId)) {
+        repeatableGroupOtherAnswers[questionId] = RxMap<int, String>();
+      }
+      // Pastikan map untuk repeatIndex sudah ada jika belum
+      if (!repeatableGroupOtherAnswers[questionId]!.containsKey(repeatIndex)){
+        final groupTag = findQuestionById(questionId)?.belongsToGroupTag;
+        if(groupTag != null){
+          final count = repeatableGroupCounts[groupTag] ?? 0;
+          if(repeatIndex < count){ // Hanya inisialisasi jika index valid
+            repeatableGroupOtherAnswers[questionId]![repeatIndex] = '';
+          } else {
+            // Seharusnya tidak terjadi jika UI benar, tapi sebagai safety
+            print("Warning: updateOtherAnswer for invalid repeatIndex $repeatIndex in QID $questionId");
+            return;
+          }
+        } else {
+          repeatableGroupOtherAnswers[questionId]![repeatIndex] = ''; // fallback jika groupTag tidak ketemu
+        }
+      }
+      repeatableGroupOtherAnswers[questionId]![repeatIndex] = value;
+      repeatableGroupOtherAnswers.refresh(); // Perlu refresh untuk RxMap dalam RxMap
+    } else {
+      userOtherAnswers[questionId] = value;
+      userOtherAnswers.refresh();
+    }
+    final question = findQuestionById(questionId);
+    print("updateOtherAnswer for Q: ${question?.code ?? questionId}${repeatIndex != null ? '[$repeatIndex]' : ''}, NewOtherValue: '$value'");
+  }
+  // --- AKHIR TAMBAHAN ---
+
   String? _getSectionIdForQuestion(String questionId) {
+    // ... (tetap sama)
     if (loadedForm.value == null) return null;
     for (var section in loadedForm.value!.sections) {
       if (section.questions.any((q) => q.id == questionId)) {
@@ -590,6 +716,7 @@ class InputUserController extends GetxController {
   }
 
   String? _getFirstQuestionIdOfSection(String sectionId) {
+    // ... (tetap sama)
     if (loadedForm.value == null) return null;
     final section =
     loadedForm.value!.sections.firstWhereOrNull((s) => s.id == sectionId);
@@ -598,8 +725,11 @@ class InputUserController extends GetxController {
         : null;
   }
 
-  void _resetDependentChildrenAnswers(String parentQuestionId,
-      {bool calledFromJumpClear = false}) {
+  void _resetDependentChildrenAnswers(String parentQuestionId, {bool calledFromJumpClear = false}) {
+    // ... (logika _resetDependentChildrenAnswers tetap sama)
+    // PERLU DIPERTIMBANGKAN: Apakah reset dependent children juga harus mengosongkan 'other answers' mereka?
+    // Jika ya, tambahkan logika serupa untuk userOtherAnswers dan repeatableGroupOtherAnswers.
+    // Untuk saat ini, saya biarkan seperti semula karena kompleksitasnya.
     if (loadedForm.value == null) return;
     bool changed = false;
     for (var qId in _allQuestionIdsInOrder) {
@@ -611,28 +741,28 @@ class InputUserController extends GetxController {
         if (userAnswers.containsKey(qChild.id) &&
             userAnswers[qChild.id] != defaultValue &&
             (questionVisibility[qChild.id] == true || calledFromJumpClear)) {
-          print(
-              "Resetting dependent child ${qChild.code ?? qChild.id} of parent ${findQuestionById(parentQuestionId)?.code ?? parentQuestionId}");
           userAnswers[qChild.id] = defaultValue;
+          // Jika child yang direset juga punya opsi "Lainnya", kosongkan teksnya
+          if (qChild.hasOtherOption) userOtherAnswers[qChild.id] = '';
           changed = true;
-          _resetDependentChildrenAnswers(qChild.id,
-              calledFromJumpClear: calledFromJumpClear);
+          _resetDependentChildrenAnswers(qChild.id, calledFromJumpClear: calledFromJumpClear);
         }
         if (repeatableGroupAnswers.containsKey(qChild.id) &&
             (questionVisibility[qChild.id] == true || calledFromJumpClear)) {
-          if (!(findQuestionById(parentQuestionId)?.isRepeatableGroupController ??
-              false)) {
+          if (!(findQuestionById(parentQuestionId)?.isRepeatableGroupController ?? false)) {
             final groupTag = qChild.belongsToGroupTag;
             if (groupTag != null) {
               final count = repeatableGroupCounts[groupTag] ?? 0;
               for (int i = 0; i < count; i++) {
                 if (repeatableGroupAnswers[qChild.id]![i] != defaultValue) {
                   repeatableGroupAnswers[qChild.id]![i] = defaultValue;
+                  // Jika child yang direset juga punya opsi "Lainnya", kosongkan teksnya
+                  if (qChild.hasOtherOption && repeatableGroupOtherAnswers.containsKey(qChild.id)) {
+                    repeatableGroupOtherAnswers[qChild.id]![i] = '';
+                  }
                   changed = true;
                 }
               }
-              print(
-                  "Resetting repeatable dependent child instances for ${qChild.code ?? qChild.id}");
             }
           }
         }
@@ -640,51 +770,59 @@ class InputUserController extends GetxController {
     }
     if (changed) {
       userAnswers.refresh();
+      userOtherAnswers.refresh(); // Tambahan refresh
       repeatableGroupAnswers.refresh();
+      repeatableGroupOtherAnswers.refresh(); // Tambahan refresh
     }
   }
 
   void _clearAnswersForSkippedQuestions(List<String> skippedQuestionIds) {
+    // ... (logika _clearAnswersForSkippedQuestions)
     if (skippedQuestionIds.isEmpty) return;
-    print(
-        "Clearing answers for skipped questions: ${skippedQuestionIds.map((id) => findQuestionById(id)?.code ?? id).toList()}");
     bool changed = false;
     for (String qId in skippedQuestionIds) {
       final question = findQuestionById(qId);
       if (question == null) continue;
-
       dynamic defaultValue = _getDefaultAnswerForQuestionType(question.type);
 
       if (userAnswers.containsKey(qId) && userAnswers[qId] != defaultValue) {
-        print(
-            "DEBUG CLEAR: Clearing regular Q: ${question.code ?? qId}. Old: ${userAnswers[qId]} -> New: $defaultValue");
         userAnswers[qId] = defaultValue;
         changed = true;
       }
+      // --- AWAL TAMBAHAN: Bersihkan juga other answers ---
+      if (userOtherAnswers.containsKey(qId) && userOtherAnswers[qId]!.isNotEmpty) {
+        userOtherAnswers[qId] = '';
+        changed = true;
+      }
+      // --- AKHIR TAMBAHAN ---
 
       if (repeatableGroupAnswers.containsKey(qId)) {
         final groupTag = question.belongsToGroupTag;
         if (groupTag != null) {
           final count = repeatableGroupCounts[groupTag] ?? 0;
           final answerMap = repeatableGroupAnswers[qId]!;
+          // --- AWAL TAMBAHAN: Map untuk other answers repeatable ---
+          final otherAnswerMap = repeatableGroupOtherAnswers[qId];
+          // --- AKHIR TAMBAHAN ---
           for (int i = 0; i < count; i++) {
             if (answerMap.containsKey(i) && answerMap[i] != defaultValue) {
-              print(
-                  "DEBUG CLEAR: Clearing repeatable Q: ${question.code ?? qId}[$i]. Old: ${answerMap[i]} -> New: $defaultValue");
               answerMap[i] = defaultValue;
               changed = true;
             }
+            // --- AWAL TAMBAHAN: Bersihkan juga other answers repeatable ---
+            if (otherAnswerMap != null && otherAnswerMap.containsKey(i) && otherAnswerMap[i]!.isNotEmpty) {
+              otherAnswerMap[i] = '';
+              changed = true;
+            }
+            // --- AKHIR TAMBAHAN ---
           }
         }
       }
-      if (question.isRepeatableGroupController &&
-          question.controlledGroupTag != null) {
+      if (question.isRepeatableGroupController && question.controlledGroupTag != null) {
         final groupTag = question.controlledGroupTag!;
         if ((repeatableGroupCounts[groupTag] ?? 0) > 0) {
           repeatableGroupCounts[groupTag] = 0;
           _adjustRepeatableGroupAnswers(groupTag, 0);
-          print(
-              "Reset count and members for group: $groupTag (controller: ${question.code ?? qId})");
           changed = true;
         }
       }
@@ -692,35 +830,38 @@ class InputUserController extends GetxController {
     }
     if (changed) {
       userAnswers.refresh();
+      userOtherAnswers.refresh(); // Tambahan
       repeatableGroupAnswers.refresh();
+      repeatableGroupOtherAnswers.refresh(); // Tambahan
       repeatableGroupCounts.refresh();
     }
   }
 
   void evaluateAndExecuteJumps(String currentQuestionId, dynamic answerValue) {
+    // ... (logika evaluateAndExecuteJumps tetap sama)
     final question = findQuestionById(currentQuestionId);
     if (question == null ||
         loadedForm.value == null ||
         (questionVisibility[currentQuestionId] != true &&
-            !isLoading.value)) {
-      if (question != null) {
-        print(
-            "Skipping jump eval for Q: ${question.code ?? currentQuestionId} (Visible: ${questionVisibility[currentQuestionId]}, Loading: ${isLoading.value})");
-      }
+            !isLoading.value)) { // Cek isLoading agar tidak skip jump saat awal load
       return;
     }
-    print(
-        "Evaluating jumps for Q: ${question.code ?? currentQuestionId} with answer: '$answerValue' (Visible: ${questionVisibility[currentQuestionId]})");
 
     String? jumpToTargetCompositeValue;
 
     if (question.unconditionalJumpTarget != null &&
         question.unconditionalJumpTarget!.isNotEmpty) {
       jumpToTargetCompositeValue = question.unconditionalJumpTarget;
-      print(
-          "Unconditional jump triggered from Q: ${question.code ?? currentQuestionId} to $jumpToTargetCompositeValue");
     } else if (question.conditionalJumps.isNotEmpty) {
       String currentAnswerString = answerValue?.toString() ?? "";
+      // --- AWAL MODIFIKASI: Jika jawaban adalah "Lainnya", gunakan teks "Lainnya" untuk evaluasi kondisi ---
+      if (question.hasOtherOption && answerValue == _kOtherOptionValue) {
+        currentAnswerString = getOtherAnswer(currentQuestionId) ?? "";
+        // Jika ini repeatable, perlu repeatIndex. Tapi jump biasanya dari non-repeatable parent.
+        // Jika jump dari repeatable, logika ini perlu penyesuaian.
+        // Untuk saat ini, asumsi jump dari non-repeatable parent / pertanyaan tunggal
+      }
+      // --- AKHIR MODIFIKASI ---
       for (var jumpRule in question.conditionalJumps) {
         if (jumpRule.conditionValue == currentAnswerString) {
           if (jumpRule.jumpToQuestionId == 'END_OF_FORM') {
@@ -736,8 +877,6 @@ class InputUserController extends GetxController {
             'question_${jumpRule.jumpToQuestionId}';
           }
           if (jumpToTargetCompositeValue != null) {
-            print(
-                "Conditional jump from Q: ${question.code ?? currentQuestionId} on answer '$currentAnswerString' to $jumpToTargetCompositeValue");
             break;
           }
         }
@@ -754,26 +893,20 @@ class InputUserController extends GetxController {
         _allQuestionIdsInOrder[currentIndex + 1];
         if (questionVisibility[nextQuestionInSequenceId] != true) {
           questionVisibility[nextQuestionInSequenceId] = true;
-          print(
-              "No jump from ${question.code ?? currentQuestionId}, making next in sequence ${findQuestionById(nextQuestionInSequenceId)?.code ?? nextQuestionInSequenceId} visible.");
           questionVisibility.refresh();
           evaluateAndExecuteJumps(nextQuestionInSequenceId,
               userAnswers[nextQuestionInSequenceId]);
         }
-      } else if (currentIndex == _allQuestionIdsInOrder.length - 1) {
-        print(
-            "Last question ${question.code ?? currentQuestionId} answered, no jump, end of form flow.");
       }
     }
   }
 
   void _performJump(String currentQuestionId, String targetCompositeValue) {
+    // ... (logika _performJump tetap sama)
     if (loadedForm.value == null) return;
     final currentIndexInOrder =
     _allQuestionIdsInOrder.indexOf(currentQuestionId);
     if (currentIndexInOrder == -1) {
-      print(
-          "Error (_performJump): currentQuestionId '$currentQuestionId' not found in _allQuestionIdsInOrder.");
       return;
     }
 
@@ -823,8 +956,6 @@ class InputUserController extends GetxController {
     if (effectiveNextVisibleQId != null) {
       targetIndex = _allQuestionIdsInOrder.indexOf(effectiveNextVisibleQId);
       if (targetIndex == -1) {
-        print(
-            "Warning (_performJump): Target question '$effectiveNextVisibleQId' not in _allQuestionIdsInOrder. Treating as end of form.");
         effectiveNextVisibleQId = null;
         targetIndex = _allQuestionIdsInOrder.length;
       }
@@ -836,7 +967,7 @@ class InputUserController extends GetxController {
         idsToHideAndClear.add(_allQuestionIdsInOrder[i]);
       }
     }
-    if (effectiveNextVisibleQId != null && targetIndex < currentIndexInOrder) {
+    if (effectiveNextVisibleQId != null && targetIndex < currentIndexInOrder) { // Backward jump
       for (int i = targetIndex + 1; i < currentIndexInOrder; i++) {
         idsToHideAndClear.add(_allQuestionIdsInOrder[i]);
       }
@@ -849,26 +980,23 @@ class InputUserController extends GetxController {
           questionVisibility[qId] = true;
           visibilityChanged = true;
         }
-      } else if (qId != currentQuestionId &&
-          questionVisibility[qId] != false) {
+      } else if (qId != currentQuestionId && questionVisibility[qId] != false) {
         if (idsToHideAndClear.contains(qId) ||
-            (effectiveNextVisibleQId == null &&
-                _allQuestionIdsInOrder.indexOf(qId) > currentIndexInOrder)) {
+            (effectiveNextVisibleQId == null && _allQuestionIdsInOrder.indexOf(qId) > currentIndexInOrder) ){
           questionVisibility[qId] = false;
           visibilityChanged = true;
-        } else if (effectiveNextVisibleQId != null &&
-            _allQuestionIdsInOrder.indexOf(qId) > targetIndex) {
+        } else if (effectiveNextVisibleQId != null && _allQuestionIdsInOrder.indexOf(qId) > targetIndex) {
+          // Sembunyikan pertanyaan setelah target jika target bukan null
           questionVisibility[qId] = false;
           visibilityChanged = true;
         }
       }
     }
 
+
     Set<String> uniqueIdsToClear = Set.from(idsToHideAndClear);
-    if (effectiveNextVisibleQId == null) {
-      for (int i = currentIndexInOrder + 1;
-      i < _allQuestionIdsInOrder.length;
-      i++) {
+    if(effectiveNextVisibleQId == null){ // Jump ke akhir form atau akhir section (yang juga akhir form)
+      for(int i = currentIndexInOrder + 1; i < _allQuestionIdsInOrder.length; i++){
         uniqueIdsToClear.add(_allQuestionIdsInOrder[i]);
       }
     }
@@ -880,22 +1008,8 @@ class InputUserController extends GetxController {
       questionVisibility.refresh();
     }
 
-    print("---");
-    print(
-        "DEBUG VISIBILITY FINAL: Visible Questions after jump from ${findQuestionById(currentQuestionId)?.code ?? currentQuestionId}:");
-    questionVisibility.entries.where((e) => e.value).forEach((entry) {
-      print(
-          "  - ${findQuestionById(entry.key)?.code ?? entry.key} (ID: ${entry.key})");
-    });
-    print("---");
-
-    print(
-        "_performJump from ${findQuestionById(currentQuestionId)?.code} to target: ${findQuestionById(effectiveNextVisibleQId ?? '')?.code ?? targetCompositeValue}. Cleared answers for: ${uniqueIdsToClear.map((id) => findQuestionById(id)?.code ?? id).toList()}");
-
-    if (effectiveNextVisibleQId != null &&
-        questionVisibility[effectiveNextVisibleQId] == true) {
-      evaluateAndExecuteJumps(
-          effectiveNextVisibleQId, userAnswers[effectiveNextVisibleQId]);
+    if (effectiveNextVisibleQId != null && questionVisibility[effectiveNextVisibleQId] == true) {
+      evaluateAndExecuteJumps(effectiveNextVisibleQId, userAnswers[effectiveNextVisibleQId]);
     }
   }
 
@@ -903,12 +1017,15 @@ class InputUserController extends GetxController {
     dynamic oldValue = userAnswers[questionId];
     userAnswers[questionId] = value;
     final question = findQuestionById(questionId);
-    print(
-        "updateUserAnswer for Q: ${question?.code ?? questionId}, NewValue: '$value', OldValue: '$oldValue'");
 
-    if (question != null &&
-        question.isRepeatableGroupController &&
-        question.controlledGroupTag != null) {
+    // --- AWAL TAMBAHAN: Kosongkan other answer jika pilihan standar dipilih ---
+    if (question != null && question.hasOtherOption && value != _kOtherOptionValue && oldValue == _kOtherOptionValue) {
+      updateOtherAnswer(questionId, ''); // Kosongkan teks "Lainnya"
+    }
+    // --- AKHIR TAMBAHAN ---
+
+    if (question != null && question.isRepeatableGroupController && question.controlledGroupTag != null) {
+      // ... (logika repeatable group controller tetap sama)
       int count = 0;
       if (value is String) {
         count =
@@ -945,8 +1062,7 @@ class InputUserController extends GetxController {
           }
         }
       }
-      if ((repeatableGroupCounts[question.controlledGroupTag!] ?? 0) !=
-          count) {
+      if ((repeatableGroupCounts[question.controlledGroupTag!] ?? 0) != count) {
         repeatableGroupCounts[question.controlledGroupTag!] = count;
         _adjustRepeatableGroupAnswers(question.controlledGroupTag!, count);
       }
@@ -964,37 +1080,40 @@ class InputUserController extends GetxController {
     userAnswers.refresh();
   }
 
-  void updateRepeatableGroupAnswer(
-      String questionId, int repeatIndex, dynamic value) {
+  void updateRepeatableGroupAnswer(String questionId, int repeatIndex, dynamic value) {
+    // ... (logika updateRepeatableGroupAnswer)
     if (!repeatableGroupAnswers.containsKey(questionId)) {
       repeatableGroupAnswers[questionId] = RxMap<int, dynamic>();
     }
 
+    // Pastikan map untuk repeatIndex sudah ada
     if (repeatableGroupAnswers[questionId]!.length <= repeatIndex) {
-      for (int i = repeatableGroupAnswers[questionId]!.length;
-      i <= repeatIndex;
-      i++) {
+      for(int i = repeatableGroupAnswers[questionId]!.length; i <= repeatIndex; i++){
         final qDef = findQuestionById(questionId);
-        repeatableGroupAnswers[questionId]![i] = qDef != null
-            ? _getDefaultAnswerForQuestionType(qDef.type)
-            : '';
+        repeatableGroupAnswers[questionId]![i] = qDef != null ? _getDefaultAnswerForQuestionType(qDef.type) : '';
       }
     }
-
+    dynamic oldValue = repeatableGroupAnswers[questionId]![repeatIndex];
     repeatableGroupAnswers[questionId]![repeatIndex] = value;
+
+    // --- AWAL TAMBAHAN: Kosongkan other answer repeatable jika pilihan standar dipilih ---
     final question = findQuestionById(questionId);
-    print(
-        "updateRepeatableGroupAnswer for Q: ${question?.code ?? questionId}[$repeatIndex], NewValue: '$value'");
-    if (question != null) evaluateAndExecuteJumps(questionId, value);
+    if (question != null && question.hasOtherOption && value != _kOtherOptionValue && oldValue == _kOtherOptionValue) {
+      updateOtherAnswer(questionId, '', repeatIndex: repeatIndex); // Kosongkan teks "Lainnya"
+    }
+    // --- AKHIR TAMBAHAN ---
+
+    if (question != null) evaluateAndExecuteJumps(questionId, value); // Perlu penyesuaian untuk jump dari repeatable
     repeatableGroupAnswers.refresh();
   }
 
   void _adjustRepeatableGroupAnswers(String groupTag, int newCount) {
+    // ... (logika _adjustRepeatableGroupAnswers)
     if (loadedForm.value == null) return;
-    print("Adjusting repeatable group '$groupTag' to $newCount items.");
     for (var section in loadedForm.value!.sections) {
       for (var qInGroup in section.questions) {
         if (qInGroup.belongsToGroupTag == groupTag) {
+          // Adjust main answers
           if (!repeatableGroupAnswers.containsKey(qInGroup.id)) {
             repeatableGroupAnswers[qInGroup.id] = RxMap<int, dynamic>();
           }
@@ -1005,48 +1124,87 @@ class InputUserController extends GetxController {
               answerMap[i] = _getDefaultAnswerForQuestionType(qInGroup.type);
             }
           }
+          // --- AWAL TAMBAHAN: Adjust "other" answers ---
+          if (qInGroup.hasOtherOption) {
+            if (!repeatableGroupOtherAnswers.containsKey(qInGroup.id)) {
+              repeatableGroupOtherAnswers[qInGroup.id] = RxMap<int, String>();
+            }
+            final otherAnswerMap = repeatableGroupOtherAnswers[qInGroup.id]!;
+            otherAnswerMap.removeWhere((key, _) => key >= newCount);
+            for (int i = 0; i < newCount; i++) {
+              if (!otherAnswerMap.containsKey(i)) {
+                otherAnswerMap[i] = ''; // Default empty string untuk other text
+              }
+            }
+          }
+          // --- AKHIR TAMBAHAN ---
         }
       }
     }
     repeatableGroupAnswers.refresh();
+    repeatableGroupOtherAnswers.refresh(); // Tambahan
   }
 
   void updateGridAnswer(String questionId, int? repeatIndex, String rowLabel,
       String colLabel, String subColLabel, String? value) {
+    // ... (logika updateGridAnswer tetap sama)
     String? parseableValue = value?.replaceAll(',', '.');
     num? numericValue = parseableValue != null && parseableValue.isNotEmpty
         ? num.tryParse(parseableValue)
         : null;
 
-    Map<String, Map<String, Map<String, num?>>> getGridMap(
-        dynamic currentGridData) {
+    Map<String, Map<String, Map<String, num?>>> getGridMap(dynamic currentGridData) {
       if (currentGridData is Map<String, Map<String, Map<String, num?>>>) {
-        return currentGridData;
+        return currentGridData; // Kembalikan langsung jika tipe sudah sesuai
       }
       if (currentGridData is Map) {
         try {
+          // Lakukan konversi dari Map<dynamic, dynamic>
           return Map<String, Map<String, Map<String, num?>>>.fromEntries(
-              (currentGridData).entries.map((rowEntry) {
+              (currentGridData as Map<dynamic, dynamic>).entries.map((rowEntry) {
                 var colMap = rowEntry.value;
+                // Pastikan colMap adalah Map, jika tidak, jadikan Map kosong
                 if (colMap is! Map) colMap = <String, dynamic>{};
+
                 return MapEntry(
-                    rowEntry.key.toString(),
+                    rowEntry.key.toString(), // Key baris
                     Map<String, Map<String, num?>>.fromEntries(
-                        (colMap as Map).entries.map((colEntry) {
+                        (colMap as Map<dynamic, dynamic>).entries.map((colEntry) {
                           var subColMap = colEntry.value;
+                          // Pastikan subColMap adalah Map, jika tidak, jadikan Map kosong
                           if (subColMap is! Map) subColMap = <String, dynamic>{};
+
                           return MapEntry(
-                              colEntry.key.toString(),
+                              colEntry.key.toString(), // Key kolom
                               Map<String, num?>.fromEntries(
-                                  (subColMap as Map).entries.map((subColEntry) =>
-                                      MapEntry(subColEntry.key.toString(),
-                                          subColEntry.value as num?))));
-                        })));
-              }));
+                                  (subColMap as Map<dynamic, dynamic>).entries.map((subColEntry) {
+                                    // Konversi nilai sel ke num?
+                                    num? cellValue;
+                                    if (subColEntry.value == null) {
+                                      cellValue = null;
+                                    } else if (subColEntry.value is num) {
+                                      cellValue = subColEntry.value as num;
+                                    } else {
+                                      cellValue = num.tryParse(subColEntry.value.toString());
+                                    }
+                                    return MapEntry(
+                                        subColEntry.key.toString(), // Key sub-kolom
+                                        cellValue
+                                    );
+                                  })
+                              )
+                          );
+                        })
+                    )
+                );
+              })
+          );
         } catch (e) {
-          return <String, Map<String, Map<String, num?>>>{};
+          print("Error dalam getGridMap saat konversi: $e. Data: $currentGridData");
+          return <String, Map<String, Map<String, num?>>>{}; // Kembalikan map kosong jika error
         }
       }
+      // Jika currentGridData bukan Map, kembalikan map kosong
       return <String, Map<String, Map<String, num?>>>{};
     }
 
@@ -1070,22 +1228,45 @@ class InputUserController extends GetxController {
     }
   }
 
-  bool _performLocalValidation(
-      FormQuestion question, dynamic answer, String questionDisplayName) {
+  bool _performLocalValidation(FormQuestion question, dynamic answer, String questionDisplayName) {
+    // ... (logika _performLocalValidation)
     if (questionVisibility[question.id] != true) return true;
 
-    if (question.isRequired) {
-      bool isEmpty = _isAnswerEmpty(answer, question.type);
-      if (isEmpty) {
+    bool isEmpty = _isAnswerEmpty(answer, question.type);
+
+    // --- AWAL MODIFIKASI: Validasi untuk "Lainnya" yang wajib ---
+    if (question.isRequired && question.hasOtherOption && answer == _kOtherOptionValue) {
+      String? otherText;
+      // Cek apakah ini pertanyaan repeatable atau bukan untuk mendapatkan otherText
+      bool isRepeatableContext = question.belongsToGroupTag != null && question.belongsToGroupTag!.isNotEmpty;
+      if (isRepeatableContext) {
+        // Perlu repeatIndex untuk mendapatkan otherText, ini tidak tersedia langsung di sini.
+        // Validasi spesifik "Lainnya" yang wajib untuk repeatable akan lebih baik ditangani di UI
+        // atau memerlukan passing repeatIndex ke _performLocalValidation.
+        // Untuk saat ini, jika "Lainnya" dipilih, anggap tidak kosong untuk validasi isRequired umum.
+        // Validasi teks "Lainnya" itu sendiri akan ditangani oleh validator TextFormField di UI.
+        isEmpty = false; // Anggap tidak kosong jika _kOtherOptionValue dipilih
+      } else {
+        otherText = userOtherAnswers[question.id];
+      }
+      if (otherText == null || otherText.trim().isEmpty) {
         Get.snackbar('Validasi Gagal',
-            'Pertanyaan "$questionDisplayName" wajib diisi.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.orange.shade700,
-            colorText: Colors.white,
-            duration: const Duration(seconds: 3));
+            'Isian "Lainnya" untuk "$questionDisplayName" wajib diisi.',
+            snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white);
         return false;
       }
+      isEmpty = false; // Jika otherText ada, maka tidak kosong
     }
+    // --- AKHIR MODIFIKASI ---
+
+
+    if (question.isRequired && isEmpty) {
+      Get.snackbar('Validasi Gagal',
+          'Pertanyaan "$questionDisplayName" wajib diisi.',
+          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white, duration: const Duration(seconds: 3));
+      return false;
+    }
+    // ... (sisa validasi standar tetap sama)
     final ValidationRule? rule = question.validation;
     if (rule == null) return true;
 
@@ -1198,53 +1379,35 @@ class InputUserController extends GetxController {
   }
 
   Future<void> submitForm() async {
-    print("SubmitForm: Memulai proses submit.");
+    // ... (validasi formKey dan custom validation tetap sama di awal)
     if (loadedForm.value == null || _auth.currentUser == null) {
-      Get.snackbar('Error', 'Form atau pengguna tidak valid.',
-          snackPosition: SnackPosition.BOTTOM);
-      print("SubmitForm: Error - Form atau pengguna tidak valid.");
+      Get.snackbar('Error', 'Form atau pengguna tidak valid.', snackPosition: SnackPosition.BOTTOM);
       return;
     }
 
-    print("SubmitForm: Memvalidasi formKey...");
     if (!formKey.currentState!.validate()) {
       Get.snackbar('Validasi Form Gagal',
           'Harap periksa kembali isian Anda pada kolom yang ditandai error.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange.shade700,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 4));
-      print("SubmitForm: Validasi formKey GAGAL.");
+          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white, duration: const Duration(seconds: 4));
       return;
     }
-    print("SubmitForm: Validasi formKey BERHASIL.");
 
     bool allCustomValidationPassed = true;
-    print("SubmitForm: Memulai validasi kustom...");
     for (var section in loadedForm.value!.sections) {
       for (var question in section.questions) {
         if (questionVisibility[question.id] != true) continue;
 
-        if (question.belongsToGroupTag == null ||
-            question.belongsToGroupTag!.isEmpty) {
-          if (!_performLocalValidation(
-              question, userAnswers[question.id], question.questionText)) {
+        if (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty) {
+          if (!_performLocalValidation(question, userAnswers[question.id], question.questionText)) {
             allCustomValidationPassed = false;
-            print(
-                "SubmitForm: Validasi kustom GAGAL untuk pertanyaan (non-group): ${question.code ?? question.id} - ${question.questionText}");
             break;
           }
         } else {
           final groupTag = question.belongsToGroupTag!;
           final count = repeatableGroupCounts[groupTag] ?? 0;
           for (int i = 0; i < count; i++) {
-            if (!_performLocalValidation(
-                question,
-                repeatableGroupAnswers[question.id]?[i],
-                "[Data ke-${i + 1}] ${question.questionText}")) {
+            if (!_performLocalValidation(question, repeatableGroupAnswers[question.id]?[i], "[Data ke-${i + 1}] ${question.questionText}")) {
               allCustomValidationPassed = false;
-              print(
-                  "SubmitForm: Validasi kustom GAGAL untuk pertanyaan (group): ${question.code ?? question.id}[$i] - ${question.questionText}");
               break;
             }
           }
@@ -1254,47 +1417,52 @@ class InputUserController extends GetxController {
       if (!allCustomValidationPassed) break;
     }
 
-    if (!allCustomValidationPassed) {
-      print(
-          "SubmitForm: Validasi kustom secara keseluruhan GAGAL. Proses dihentikan.");
-      return;
-    }
-    print("SubmitForm: Validasi kustom BERHASIL.");
+    if (!allCustomValidationPassed) return;
+
 
     isLoading.value = true;
-    print("SubmitForm: isLoading di-set ke true. Mempersiapkan data...");
     List<QuestionAnswer> answersToSubmit = [];
 
     loadedForm.value!.sections.forEach((section) {
       section.questions.forEach((question) {
         if (questionVisibility[question.id] == true) {
-          if (question.belongsToGroupTag == null ||
-              question.belongsToGroupTag!.isEmpty) {
+          if (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty) {
             dynamic answer = userAnswers[question.id];
-            if (!_isAnswerEmpty(answer, question.type) ||
-                !question.isRequired) {
+            String? otherText = userOtherAnswers[question.id]; // Ambil teks "Lainnya"
+
+            // --- AWAL MODIFIKASI: Ganti _kOtherOptionValue dengan otherText ---
+            if (question.hasOtherOption && answer == _kOtherOptionValue) {
+              answer = otherText ?? ''; // Gunakan teks "Lainnya", atau string kosong jika null
+            }
+            // --- AKHIR MODIFIKASI ---
+
+            if (!_isAnswerEmpty(answer, question.type) || (question.hasOtherOption && answer == (otherText??'')) || !question.isRequired) {
               answersToSubmit.add(QuestionAnswer(
                   questionId: question.id,
                   questionCode: question.code ?? '',
                   questionText: question.questionText,
-                  answer:
-                  _prepareAnswerForFirestore(answer, question.type),
+                  answer: _prepareAnswerForFirestore(answer, question.type, question.hasOtherOption, otherText),
                   questionType: question.type.toShortString()));
             }
-          } else {
+          } else { // Repeatable group
             final groupTag = question.belongsToGroupTag!;
             final count = repeatableGroupCounts[groupTag] ?? 0;
             for (int i = 0; i < count; i++) {
               dynamic answer = repeatableGroupAnswers[question.id]?[i];
-              if (!_isAnswerEmpty(answer, question.type) ||
-                  !question.isRequired) {
+              String? otherText = repeatableGroupOtherAnswers[question.id]?[i]; // Ambil teks "Lainnya" repeatable
+
+              // --- AWAL MODIFIKASI: Ganti _kOtherOptionValue dengan otherText untuk repeatable ---
+              if (question.hasOtherOption && answer == _kOtherOptionValue) {
+                answer = otherText ?? '';
+              }
+              // --- AKHIR MODIFIKASI ---
+
+              if (!_isAnswerEmpty(answer, question.type) || (question.hasOtherOption && answer == (otherText??'')) || !question.isRequired) {
                 answersToSubmit.add(QuestionAnswer(
                     questionId: "${question.id}_$i",
                     questionCode: "${question.code ?? ''}_${i + 1}",
-                    questionText:
-                    "[Data ke-${i + 1}] ${question.questionText}",
-                    answer: _prepareAnswerForFirestore(
-                        answer, question.type),
+                    questionText: "[Data ke-${i + 1}] ${question.questionText}",
+                    answer: _prepareAnswerForFirestore(answer, question.type, question.hasOtherOption, otherText),
                     questionType: question.type.toShortString()));
               }
             }
@@ -1302,19 +1470,14 @@ class InputUserController extends GetxController {
         }
       });
     });
-    print(
-        "SubmitForm: Data siap: ${answersToSubmit.length} jawaban akan dikirim.");
 
     final submissionData = FormSubmission(
       id: isEditMode.value ? submissionId.value : null,
       formId: loadedForm.value!.id,
       formTitle: loadedForm.value!.title,
       userId: _auth.currentUser!.uid,
-      userName: _auth.currentUser!.displayName ??
-          _auth.currentUser!.email ??
-          'Anonim',
-      submittedAt: (isEditMode.value &&
-          loadedSubmission.value?.submittedAt != null)
+      userName: _auth.currentUser!.displayName ?? _auth.currentUser!.email ?? 'Anonim',
+      submittedAt: (isEditMode.value && loadedSubmission.value?.submittedAt != null)
           ? loadedSubmission.value!.submittedAt
           : Timestamp.now(),
       answers: answersToSubmit,
@@ -1326,46 +1489,27 @@ class InputUserController extends GetxController {
     }
 
     try {
-      print(
-          "SubmitForm: Mencoba mengirim/menyimpan ke Firestore. Mode Edit: ${isEditMode.value}");
       if (isEditMode.value) {
-        await _db
-            .collection('formSubmissions')
-            .doc(submissionId.value)
-            .set(firestoreData, SetOptions(merge: true));
-        print("SubmitForm: BERHASIL update (mode edit).");
-        Get.snackbar(
-            'Berhasil', 'Perubahan berhasil disimpan!',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green.shade600,
-            colorText: Colors.white);
+        await _db.collection('formSubmissions').doc(submissionId.value).set(firestoreData, SetOptions(merge: true));
+        Get.snackbar('Berhasil', 'Perubahan berhasil disimpan!', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
       } else {
-        DocumentReference docRef =
         await _db.collection('formSubmissions').add(firestoreData);
-        print(
-            "SubmitForm: BERHASIL menambah data baru dengan ID: ${docRef.id}.");
-        Get.snackbar('Berhasil', 'Form berhasil dikirim!',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green.shade600,
-            colorText: Colors.white);
+        Get.snackbar('Berhasil', 'Form berhasil dikirim!', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
       }
-    } catch (e, s) {
-      print("SubmitForm: GAGAL mengirim/menyimpan. Error: $e\nStackTrace: $s");
-      Get.snackbar(
-          'Error Simpan/Kirim', 'Gagal menyimpan data: ${e.toString()}',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.shade400,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 5));
-      throw e;
+    } catch (e) {
+      Get.snackbar('Error Simpan/Kirim', 'Gagal menyimpan data: ${e.toString()}', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade400, colorText: Colors.white, duration: const Duration(seconds: 5));
+      throw e; // Dilempar lagi agar UI bisa menangani jika perlu (misal: Get.back() di onConfirm dialog)
     } finally {
-      print(
-          "SubmitForm: Blok finally dieksekusi. isLoading akan di-set ke false.");
       isLoading.value = false;
     }
   }
 
   bool _isAnswerEmpty(dynamic answer, QuestionType type) {
+    // ... (logika _isAnswerEmpty tetap sama)
+    // PERTIMBANGAN: Jika jawaban utama adalah _kOtherOptionValue,
+    // apakah ini dianggap kosong jika teks "Lainnya" juga kosong?
+    // Untuk saat ini, _isAnswerEmpty hanya memeriksa nilai 'answer' utama.
+    // Validasi spesifik teks "Lainnya" yang wajib ditangani di _performLocalValidation atau UI validator.
     if (answer == null) return true;
     if (answer is String) return answer.trim().isEmpty;
     if (answer is List) return answer.isEmpty;
@@ -1383,7 +1527,29 @@ class InputUserController extends GetxController {
     return false;
   }
 
-  dynamic _prepareAnswerForFirestore(dynamic answer, QuestionType type) {
+  dynamic _prepareAnswerForFirestore(dynamic answer, QuestionType type, bool hasOtherOption, String? otherText) {
+    // --- AWAL MODIFIKASI: Penanganan untuk _kOtherOptionValue dan Checkbox ---
+    if (hasOtherOption) {
+      if (type == QuestionType.multipleChoice && answer == _kOtherOptionValue) {
+        return otherText ?? ''; // Kirim teks "Lainnya"
+      }
+      if (type == QuestionType.checkboxes && answer is List) {
+        List<dynamic> preparedList = [];
+        for (var item in answer) {
+          if (item == _kOtherOptionValue) {
+            if (otherText != null && otherText.isNotEmpty) {
+              preparedList.add(otherText); // Ganti placeholder dengan teks
+            }
+          } else {
+            preparedList.add(item);
+          }
+        }
+        return preparedList;
+      }
+    }
+    // --- AKHIR MODIFIKASI ---
+
+    // ... (sisa logika _prepareAnswerForFirestore tetap sama)
     if (type == QuestionType.number) {
       if (answer is String) {
         return num.tryParse(answer.replaceAll(',', '.'));

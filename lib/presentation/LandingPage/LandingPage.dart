@@ -59,7 +59,7 @@ class LandingPageScreen extends GetView<LandingPageController> {
                   top: statusBarHeight + 15.0, // Lebih rapat ke status bar
                   left: 24.0,
                   right: 24.0,
-                  bottom: 80.0, // Mengurangi padding bawah secara signifikan
+                  bottom: 120.0, // Mengurangi padding bawah secara signifikan
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -95,7 +95,7 @@ class LandingPageScreen extends GetView<LandingPageController> {
                       errorBuilder: (context, error, stackTrace) =>
                       const Text("SensusKu", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
                     ),
-                    const SizedBox(height: 20), // Mengurangi jarak signifikan
+                    const SizedBox(height: 70), // Mengurangi jarak signifikan
 
                     Obx(() => AnimatedOpacity(
                       opacity: controller.isIllustrationVisible.value ? 1.0 : 0.0,
@@ -103,7 +103,7 @@ class LandingPageScreen extends GetView<LandingPageController> {
                       curve: Curves.easeIn,
                       child: Image.asset(
                         'assets/images/undraw_mobile-ux_5h2w.png',
-                        width: mediaSize.width * 0.60, // Mengurangi lebar ilustrasi
+                        width: mediaSize.width * 0.70, // Mengurangi lebar ilustrasi
                         // Pertimbangkan untuk memberi maxHeight jika perlu
                         // height: mediaSize.height * 0.25, // Contoh constraint tinggi
                         fit: BoxFit.contain,
@@ -132,7 +132,7 @@ class LandingPageScreen extends GetView<LandingPageController> {
                 mainAxisAlignment: MainAxisAlignment.center, // atau MainAxisAlignment.spaceAround
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const Spacer(flex: 2), // Beri ruang lebih di atas
+                  const Spacer(flex: 1), // Beri ruang lebih di atas
                   const Text(
                     "Aplikasi Pendataan dan Pengelolaan Desa\noleh BPS Kota Batu",
                     textAlign: TextAlign.center,

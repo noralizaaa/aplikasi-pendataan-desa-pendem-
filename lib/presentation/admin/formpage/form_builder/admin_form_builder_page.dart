@@ -746,17 +746,26 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                     activeColor: accentThemeColor,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  const Spacer(),
+                  const Spacer(), // flex: 1 default
                   if (question.type == QuestionType.multipleChoice || question.type == QuestionType.checkboxes)
                     Flexible(
+                      flex: 3, // Anda menggunakan 3, ini bagus
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                        // --- PERUBAHAN DI SINI ---
+                        // 1. Hapus atau komentari mainAxisSize: MainAxisSize.min
+                        //    agar Row ini mengambil semua lebar yang diberikan oleh Flexible pembungkusnya.
+                        // mainAxisSize: MainAxisSize.min, (Dihapus/dikomentari)
+
+                        // 2. Atur mainAxisAlignment ke MainAxisAlignment.end
+                        //    agar anak-anak Row ini (teks dan switch) rata ke kanan.
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          const Flexible(
+                          const Flexible( // Teks tetap Flexible agar bisa mengisi sisa ruang
                             child: Text(
-                              'Opsi "Lainnya"', style: TextStyle(fontSize: 14),
-                              overflow: TextOverflow.ellipsis, softWrap: false,
+                              'Opsi "Lainnya"',
+                              style: TextStyle(fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
                             ),
                           ),
                           const SizedBox(width: 4),
@@ -935,71 +944,135 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
 
 
   Widget _buildOptionsSection(String sectionId, FormQuestion question) {
-    // Asumsi optionInputDecoration sudah didefinisikan di dalam kelas AdminFormBuilderPage
+    // Definisi InputDecoration lokal, pastikan accentThemeColor dapat diakses
+    // (misalnya, sebagai variabel anggota kelas atau konstanta global)
+    // Jika accentThemeColor adalah variabel anggota dari kelas AdminFormBuilderPage,
+    // Anda mungkin perlu meneruskannya ke fungsi ini atau mengaksesnya secara langsung jika ini adalah metode kelas.
+    // Untuk contoh ini, saya asumsikan ia bisa diakses.
+    // final Color accentThemeColor = ... ; // Anda perlu memastikan ini terdefinisi
+
     InputDecoration optionInputDecoration(String hint) {
       return InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
         border: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade300)),
         enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade300)),
-        focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: accentThemeColor)),
+        focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accentThemeColor)), // Pastikan accentThemeColor tersedia
         contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
         isDense: true,
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6.0, top: 4.0),
-          child: Text('Opsi Pilihan:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.grey.shade800)),
-        ),
-        ...question.options.asMap().entries.map((entry) {
-          int index = entry.key;
-          String option = entry.value;
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 6.0),
-                child: Icon(
-                  question.type == QuestionType.multipleChoice ? Icons.radio_button_off_rounded :
-                  question.type == QuestionType.checkboxes ? Icons.check_box_outline_blank_rounded :
-                  Icons.arrow_right_rounded, // Untuk dropdown
-                  color: Colors.grey.shade500, size: 18,
+    // Membuat daftar widget anak untuk Column secara dinamis
+    List<Widget> children = [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 6.0, top: 4.0),
+        child: Text('Opsi Pilihan:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.grey.shade800)),
+      ),
+    ];
+
+    // Menambahkan opsi-opsi yang sudah ada
+    children.addAll(question.options.asMap().entries.map((entry) {
+      int index = entry.key;
+      String option = entry.value;
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 6.0),
+            child: Icon(
+              question.type == QuestionType.multipleChoice ? Icons.radio_button_off_rounded :
+              question.type == QuestionType.checkboxes ? Icons.check_box_outline_blank_rounded :
+              Icons.arrow_right_rounded, // Untuk dropdown
+              color: Colors.grey.shade500, size: 18,
+            ),
+          ),
+          Expanded(
+            child: _PersistentTextField(
+              fieldKey: ValueKey('${question.id}_option_${index}_persistent'),
+              initialValue: option,
+              onChanged: (text) => controller.updateOption(sectionId, question.id, index, text),
+              decoration: optionInputDecoration('Opsi ${index + 1}'),
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.remove_circle_outline_rounded, color: Colors.red.shade300, size: 20),
+            onPressed: () => controller.removeOption(sectionId, question.id, index),
+            splashRadius: 16, padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      );
+    }).toList());
+
+    // --- AWAL PERUBAHAN: Menambahkan representasi "Opsi Lainnya" ---
+    if (question.hasOtherOption && (question.type == QuestionType.multipleChoice || question.type == QuestionType.checkboxes)) {
+      children.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0, bottom: 4.0), // Sedikit spasi
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 6.0),
+                  child: Icon(
+                    question.type == QuestionType.multipleChoice ? Icons.radio_button_checked_rounded : Icons.check_box_rounded,
+                    color: Colors.grey.shade700, // Warna sedikit beda untuk menandakan ini spesial
+                    size: 18,
+                  ),
                 ),
-              ),
-              Expanded(
-                child: _PersistentTextField( // Menggunakan _PersistentTextField
-                  fieldKey: ValueKey('${question.id}_option_${index}_persistent'),
-                  initialValue: option,
-                  onChanged: (text) => controller.updateOption(sectionId, question.id, index, text),
-                  decoration: optionInputDecoration('Opsi ${index + 1}'),
-                  style: const TextStyle(fontSize: 14),
+                Expanded(
+                  child: AbsorbPointer( // Membuat TextField tidak interaktif
+                    child: TextField(
+                      enabled: false, // Secara visual tampak nonaktif
+                      decoration: InputDecoration(
+                        labelText: 'Lainnya...', // Label yang jelas
+                        labelStyle: TextStyle(fontSize: 14, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                        hintText: 'Kolom input teks akan muncul untuk responden',
+                        hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontStyle: FontStyle.italic),
+                        // Menggunakan border yang berbeda untuk menandakan ini placeholder
+                        border: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade400, style: BorderStyle.solid)),
+                        disabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade400, style: BorderStyle.solid)),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+                    ),
+                  ),
                 ),
-              ),
-              IconButton(
-                icon: Icon(Icons.remove_circle_outline_rounded, color: Colors.red.shade300, size: 20),
-                onPressed: () => controller.removeOption(sectionId, question.id, index),
-                splashRadius: 16, padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
-          );
-        }).toList(),
+                // Memberi ruang agar sejajar dengan tombol hapus pada opsi biasa
+                // Sesuaikan nilai width jika perlu agar tampak rapi
+                const SizedBox(width: 48), // (lebar IconButton sekitar 20 + padding 2*4)*2 = 48, atau sesuaikan
+              ],
+            ),
+          )
+      );
+    }
+    // --- AKHIR PERUBAHAN ---
+
+    // Tombol "Tambah Opsi"
+    children.add(
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
             onPressed: () => controller.addOption(sectionId, question.id),
-            icon: const Icon(Icons.add_circle_outline_rounded, color: accentThemeColor, size: 20),
-            label: const Text('Tambah Opsi', style: TextStyle(color: accentThemeColor, fontSize: 14, fontWeight: FontWeight.w500)),
+            icon: const Icon(Icons.add_circle_outline_rounded, color: accentThemeColor, size: 20), // Pastikan accentThemeColor tersedia
+            label: const Text('Tambah Opsi', style: TextStyle(color: accentThemeColor, fontSize: 14, fontWeight: FontWeight.w500)), // Pastikan accentThemeColor tersedia
             style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4)),
           ),
-        ),
-        const Divider(height: 16, thickness: 0.5),
-      ],
+        )
+    );
+
+    // Divider
+    children.add(
+      const Divider(height: 16, thickness: 0.5),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
     );
   }
 
