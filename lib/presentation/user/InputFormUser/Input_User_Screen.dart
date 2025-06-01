@@ -80,9 +80,6 @@ class InputUserScreen extends GetView<InputUserController> {
 
   @override
   Widget build(BuildContext context) {
-    // ... (Build method tetap sama, tidak ada perubahan di sini) ...
-    // Kode build() Anda sudah cukup panjang, jadi saya tidak akan mengulanginya di sini.
-    // Pastikan sisanya tetap sama.
     return Scaffold(
       backgroundColor: pageBackgroundColor,
       appBar: AppBar(
@@ -624,20 +621,13 @@ class InputUserScreen extends GetView<InputUserController> {
     );
   }
 
-  // --- AWAL PERUBAHAN PADA _buildQuestionInput ---
-  // File: Input_User_Screen.dart
-// ... (kode lainnya tetap sama)
 
   Widget _buildQuestionInput(BuildContext context, FormQuestion question,
       {int? repeatIndex, required String keyPrefix}) {
     return Obx(() {
       dynamic initialValue;
       Function(dynamic) onChangedCallback;
-      // ... (definisi initialOtherText, onOtherTextChangedCallback, fieldKeyId,
-      //     dan logika untuk mengambil initialValue & onChangedCallback tetap sama seperti sebelumnya)
 
-      // Bagian ini tetap sama untuk mengambil initialValue dan onChangedCallback
-      // --- AWAL BAGIAN YANG SAMA ---
       String? initialOtherText;
       if (repeatIndex != null) {
         initialOtherText = controller.repeatableGroupOtherAnswers[question.id]?[repeatIndex];
@@ -684,7 +674,6 @@ class InputUserScreen extends GetView<InputUserController> {
         initialValue = controller.userAnswers[question.id];
         onChangedCallback = (value) => controller.updateUserAnswer(question.id, value);
       }
-      // --- AKHIR BAGIAN YANG SAMA ---
 
       String? validatorFunction(dynamic val) {
         final FormQuestion currentQuestionState =
@@ -748,7 +737,6 @@ class InputUserScreen extends GetView<InputUserController> {
 
         if (rule != null) {
           if (val is String && val.isNotEmpty) {
-            // ... (validasi string lainnya tetap sama)
             if (rule.minLength != null &&
                 effectiveValueString.length < rule.minLength!) {
               return '$questionLabel minimal ${rule.minLength} karakter.';
@@ -792,15 +780,12 @@ class InputUserScreen extends GetView<InputUserController> {
                   currentQuestionState.code == "204") {
                 final artQuestion = controller.findQuestionByCode("112");
                 if (artQuestion != null) {
-                  // --- AWAL PERUBAHAN UNTUK MENGAMBIL JAWABAN ART ---
                   dynamic artCountValueDynamic;
-                  // `repeatIndex` berasal dari parameter _buildQuestionInput
                   if (repeatIndex != null) {
                     artCountValueDynamic = controller.repeatableGroupAnswers[artQuestion.id]?[repeatIndex];
                   } else {
                     artCountValueDynamic = controller.userAnswers[artQuestion.id];
                   }
-                  // --- AKHIR PERUBAHAN UNTUK MENGAMBIL JAWABAN ART ---
                   num? artCount;
                   if (artCountValueDynamic is num) {
                     artCount = artCountValueDynamic;
@@ -821,7 +806,6 @@ class InputUserScreen extends GetView<InputUserController> {
 
 
       switch (question.type) {
-      // ... (kasus QuestionType.text, paragraph, number, date, multipleChoice, checkboxes tetap sama seperti sebelumnya)
         case QuestionType.text:
           return TextFormField(
             key: ValueKey(fieldKeyId),
@@ -844,7 +828,7 @@ class InputUserScreen extends GetView<InputUserController> {
             validator: validatorFunction,
             autovalidateMode: AutovalidateMode.onUserInteraction,
           );
-        case QuestionType.number: // Pastikan ini tidak bentrok dengan validasi di validatorFunction
+        case QuestionType.number:
           return TextFormField(
             key: ValueKey(fieldKeyId),
             initialValue: initialValue != null ? initialValue.toString().replaceAll('.', ',') : '',
@@ -905,7 +889,6 @@ class InputUserScreen extends GetView<InputUserController> {
                 } catch (e) {/* biarkan default jika parse gagal */}
               }
               DateTime? pickedDate = await showDatePicker(
-                // ... (showDatePicker tetap sama)
                   context: context,
                   initialDate: initialDatePickerDate,
                   firstDate: DateTime(1900),
@@ -931,16 +914,15 @@ class InputUserScreen extends GetView<InputUserController> {
             autovalidateMode: AutovalidateMode.onUserInteraction,
           );
         case QuestionType.multipleChoice:
-        // ... (kode multipleChoice tetap sama seperti yang Anda berikan sebelumnya, dibungkus FormField)
           String? currentGroupValue = initialValue as String?;
           List<Widget> radioTiles = question.options.map((option) {
             return RadioListTile<String>(
               key: ValueKey("${fieldKeyId}_${option}_radio"),
               title: Text(option, style: const TextStyle(fontSize: 15.0)),
               value: option,
-              groupValue: currentGroupValue, // Akan diupdate oleh FormField builder
+              groupValue: currentGroupValue,
               onChanged: (String? value) {
-                // onChangedCallback dan field.didChange akan dipanggil di dalam builder FormField
+                // Handled by FormField builder
               },
               activeColor: accentHeaderColor,
               contentPadding: EdgeInsets.zero,
@@ -954,9 +936,9 @@ class InputUserScreen extends GetView<InputUserController> {
                 key: ValueKey("${fieldKeyId}_other_radio"),
                 title: const Text("Lainnya...", style: TextStyle(fontSize: 15.0)),
                 value: _kOtherOptionValue,
-                groupValue: currentGroupValue, // Akan diupdate oleh FormField builder
+                groupValue: currentGroupValue,
                 onChanged: (String? value) {
-                  // onChangedCallback dan field.didChange akan dipanggil di dalam builder FormField
+                  // Handled by FormField builder
                 },
                 activeColor: accentHeaderColor,
                 contentPadding: EdgeInsets.zero,
@@ -1031,9 +1013,7 @@ class InputUserScreen extends GetView<InputUserController> {
               }
           );
         case QuestionType.checkboxes:
-        // ... (kode checkboxes tetap sama seperti yang Anda berikan sebelumnya, dibungkus FormField)
           List<String> currentSelectedValues = List<String>.from(initialValue as List<dynamic>? ?? []);
-          bool isOtherOptionSelectedInitially = currentSelectedValues.contains(_kOtherOptionValue);
 
           return FormField<List<String>>(
             key: ValueKey("${fieldKeyId}_checkbox_formfield"),
@@ -1207,7 +1187,6 @@ class InputUserScreen extends GetView<InputUserController> {
                 : (String? newValue) {
               if (newValue != null) {
                 onChangedCallback(newValue);
-                // --- MENGOMENTARI PEMANGGILAN triggerDependentQuestionUpdates ---
                 // controller.triggerDependentQuestionUpdates(question.id, newValue, repeatIndex);
               }
             },
@@ -1220,7 +1199,6 @@ class InputUserScreen extends GetView<InputUserController> {
           );
 
         case QuestionType.gridNumeric:
-        // ... (kode gridNumeric yang sudah diperbaiki dari respons sebelumnya tetap sama)
           Map<String, Map<String, Map<String, num?>>> effectiveGridAnswers = {};
 
           if (initialValue is Map && (initialValue as Map).isNotEmpty) {
@@ -1228,12 +1206,24 @@ class InputUserScreen extends GetView<InputUserController> {
 
             if (question.gridRowLabels.isEmpty) {
               if (rawInitialDataMap.entries.isNotEmpty) {
-                MapEntry<dynamic, dynamic>? targetEntry;
+                // =================== AWAL PERBAIKAN targetEntry ===================
+                MapEntry<dynamic, dynamic> targetEntry = rawInitialDataMap.entries.first; // Inisialisasi default
+
+                bool foundSpecificEmptyKeyEntry = false;
                 if (rawInitialDataMap.containsKey("")) {
-                  targetEntry = rawInitialDataMap.entries.firstWhere((e) => e.key == "", orElse: () => rawInitialDataMap.entries.first);
-                } else {
-                  targetEntry = rawInitialDataMap.entries.first;
+                  for (final MapEntry<dynamic, dynamic> entryInLoop in rawInitialDataMap.entries) {
+                    if (entryInLoop.key == "") {
+                      targetEntry = entryInLoop; // Override jika key "" ditemukan
+                      foundSpecificEmptyKeyEntry = true;
+                      break;
+                    }
+                  }
+                  if (!foundSpecificEmptyKeyEntry) {
+                    print("Peringatan (InputUserScreen): GridNumeric - containsKey('') true, tapi iterasi tidak menemukan entry dengan key ''. Menggunakan entry pertama yang sudah diassign.");
+                    // Tidak perlu aksi tambahan karena targetEntry sudah diinisialisasi dengan entries.first
+                  }
                 }
+                // =================== AKHIR PERBAIKAN targetEntry ===================
 
                 final rowDataMap = targetEntry.value;
 
@@ -1246,17 +1236,29 @@ class InputUserScreen extends GetView<InputUserController> {
                           return MapEntry(
                               colEntry.key.toString(),
                               Map<String, num?>.fromEntries(
-                                  (subColMapData as Map<dynamic, dynamic>).entries.map((subColEntry) => MapEntry(
-                                      subColEntry.key.toString(),
-                                      subColEntry.value as num?
-                                  ))
+                                  (subColMapData as Map<dynamic, dynamic>).entries.map((subColEntry) {
+                                    num? cellValueNum;
+                                    if (subColEntry.value == null) {
+                                      cellValueNum = null;
+                                    } else if (subColEntry.value is num) {
+                                      cellValueNum = subColEntry.value as num;
+                                    } else {
+                                      cellValueNum = num.tryParse(subColEntry.value.toString().replaceAll(',', '.')); // Tambah replaceAll
+                                    }
+                                    return MapEntry(
+                                        subColEntry.key.toString(),
+                                        cellValueNum
+                                    );
+                                  })
                               )
                           );
                         })
                     );
                   } catch (e) {
-                    print("Error casting single-row grid data for $fieldKeyId: $e. InitialValue: $initialValue");
+                    print("Error casting single-row grid data for $fieldKeyId (dalam _buildQuestionInput): $e. rowDataMap: $rowDataMap");
                   }
+                } else {
+                  print("Peringatan: rowDataMap untuk baris grid tunggal bukan Map. rowDataMap: $rowDataMap");
                 }
               }
             } else {
@@ -1276,10 +1278,19 @@ class InputUserScreen extends GetView<InputUserController> {
                                 return MapEntry(
                                     colEntry.key.toString(),
                                     Map<String, num?>.fromEntries(
-                                        (subColMapData as Map<dynamic, dynamic>).entries.map((subColEntry) => MapEntry(
-                                            subColEntry.key.toString(),
-                                            subColEntry.value as num?
-                                        ))
+                                        (subColMapData as Map<dynamic, dynamic>).entries.map((subColEntry) {
+                                          num? valNum; // Konversi yang lebih aman
+                                          if (subColEntry.value == null) {
+                                            valNum = null;
+                                          } else if (subColEntry.value is num) {
+                                            valNum = subColEntry.value as num;
+                                          } else {
+                                            valNum = num.tryParse(subColEntry.value.toString().replaceAll(',', '.'));
+                                          }
+                                          return MapEntry(
+                                              subColEntry.key.toString(),
+                                              valNum);
+                                        })
                                     )
                                 );
                               })
@@ -1325,7 +1336,6 @@ class InputUserScreen extends GetView<InputUserController> {
                                     child: Text(uiRowLabel, style: Get.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: titleTextColor)),
                                   ),
                                 Table(
-                                  // ... (definisi Table tetap sama)
                                   border: TableBorder.all(color: Colors.grey.shade300, width: 0.7),
                                   defaultColumnWidth: const MinColumnWidth(IntrinsicColumnWidth(), FixedColumnWidth(65)),
                                   children: [
@@ -1381,7 +1391,6 @@ class InputUserScreen extends GetView<InputUserController> {
                                                         subColLabel,
                                                         value.replaceAll(',', '.'));
 
-                                                    // Ambil state terbaru untuk validasi FormField
                                                     var currentGridAnswerState;
                                                     if (repeatIndex != null) {
                                                       currentGridAnswerState = controller.repeatableGroupAnswers[question.id]?[repeatIndex];
@@ -1390,7 +1399,7 @@ class InputUserScreen extends GetView<InputUserController> {
                                                     }
 
                                                     if (currentGridAnswerState != null) {
-                                                      // --- AWAL LOGIKA getGridMap YANG DI-INLINE (MENGGANTIKAN controller.getGridMap) ---
+                                                      // =================== AWAL PERBAIKAN getGridMap (inline) ===================
                                                       Map<String, Map<String, Map<String, num?>>> convertedMap;
                                                       if (currentGridAnswerState is Map<String, Map<String, Map<String, num?>>>) {
                                                         convertedMap = currentGridAnswerState;
@@ -1412,13 +1421,13 @@ class InputUserScreen extends GetView<InputUserController> {
                                                                               colEntry.key.toString(),
                                                                               Map<String, num?>.fromEntries(
                                                                                   (subColMap as Map<dynamic, dynamic>).entries.map((subColEntry) {
-                                                                                    num? cellValueNum; // Ganti nama variabel agar tidak bentrok
+                                                                                    num? cellValueNum;
                                                                                     if (subColEntry.value == null) {
                                                                                       cellValueNum = null;
                                                                                     } else if (subColEntry.value is num) {
                                                                                       cellValueNum = subColEntry.value as num;
                                                                                     } else {
-                                                                                      cellValueNum = num.tryParse(subColEntry.value.toString());
+                                                                                      cellValueNum = num.tryParse(subColEntry.value.toString().replaceAll(',', '.'));
                                                                                     }
                                                                                     return MapEntry(
                                                                                         subColEntry.key.toString(),
@@ -1433,13 +1442,13 @@ class InputUserScreen extends GetView<InputUserController> {
                                                               })
                                                           );
                                                         } catch (e) {
-                                                          print("Error in inlined getGridMap casting within InputUserScreen: $e. Data: $currentGridAnswerState");
+                                                          print("Error in inlined getGridMap (onChanged): $e. Data: $currentGridAnswerState");
                                                           convertedMap = <String, Map<String, Map<String, num?>>>{};
                                                         }
                                                       } else {
                                                         convertedMap = <String, Map<String, Map<String, num?>>>{};
                                                       }
-                                                      // --- AKHIR LOGIKA getGridMap YANG DI-INLINE ---
+                                                      // =================== AKHIR PERBAIKAN getGridMap (inline) ===================
                                                       field.didChange(convertedMap);
                                                     } else {
                                                       field.didChange(<String, Map<String, Map<String, num?>>>{});
@@ -1487,8 +1496,4 @@ class InputUserScreen extends GetView<InputUserController> {
       }
     });
   }
-
-// ... (sisa kode Input_User_Screen.dart)
-// --- AKHIR PERUBAHAN PADA _buildQuestionInput ---
-
 }

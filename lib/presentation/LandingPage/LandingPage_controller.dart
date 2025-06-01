@@ -5,25 +5,27 @@ class LandingPageController extends GetxController {
   final isLogoVisible = false.obs;
   final isIllustrationVisible = false.obs;
 
-  PrototypeController() {
-    print('PrototypeController: Constructor called');
+  // KONSTRUKTOR YANG BENAR: Nama harus sama dengan kelas
+  LandingPageController() {
+    print('LandingPageController: Constructor called');
   }
 
   @override
   void onInit() {
     super.onInit();
-    print('PrototypeController: onInit called');
+    print('LandingPageController: onInit called');
     _startAnimation();
   }
 
   void _startAnimation() async {
     // Show logo immediately
     isLogoVisible.value = true;
-    print('PrototypeController: Logo animation started');
+    print('LandingPageController: Logo animation started');
 
-    // Wait 1 second, then show illustration
-    await Future.delayed(const Duration(milliseconds: 1000));
+    // Wait a bit, then show illustration
+    // Anda bisa menyesuaikan durasi delay ini
+    await Future.delayed(const Duration(milliseconds: 800)); // Contoh delay
     isIllustrationVisible.value = true;
-    print('PrototypeController: Illustration animation started');
+    print('LandingPageController: Illustration animation started');
   }
 }
