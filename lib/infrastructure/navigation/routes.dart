@@ -44,14 +44,13 @@ import '../../presentation/admin/Admin_Profile/all_account_page.dart';
 import '../../presentation/admin/submissions_form/submissions_form_screen.dart';
 
 
-// Definisikan LoginBinding
 class LoginBinding extends Bindings {
   @override
   void dependencies() {
-    Get.put<LoginController>(LoginController(), permanent: true);
+    Get.lazyPut<LoginController>(() => LoginController());
+    // or Get.put(LoginController()); if you need it immediately
   }
 }
-
 // Definisikan LandingPageBinding
 class LandingPageBinding extends Bindings {
   @override

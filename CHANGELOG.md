@@ -4,6 +4,35 @@ This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+---
+
+## [0.27.0] - 2025-06-02
+> Contributed by [Lutfi Indra Nur Praditya]
+
+> Implemented login state tracking using Firestore with support for automatic migration, state validation, and conditional navigation.
+
+### 🎉 Added
+- **Login State Field (`isLogin`) for Users:**
+  - Implemented automatic migration logic to add `isLogin: false` to all existing users who do not already have the field.
+  - Migration is executed only once, marked via the `system/migration_status` collection in Firestore.
+
+- **User Login Status Initialization:**
+  - On user login, the system checks whether the user document contains the `isLogin` field.
+  - If not present, the field is automatically added with a default value of `true`.
+  - On successful login, `isLogin` is explicitly set to `true`, and `lastLoginAt` is updated.
+
+- **User Logout Handling:**
+  - On logout, the user's `isLogin` field is set to `false`, and `lastLogoutAt` is recorded.
+  - The user is also signed out from Firebase Authentication.
+
+- **Login State-Based Navigation:**
+  - On app start, if a Firebase Auth user is detected:
+    - The system checks the corresponding `isLogin` status in Firestore.
+    - If `isLogin` is `true`, the user is navigated to the appropriate dashboard based on their role (`admin` or `user`).
+    - If `isLogin` is `false` or missing, the user is redirected to the login screen.
+
+---
+
 
 ## [0.26.0] - 2025-06-01
 > Contributed by [Lutfi Indra Nur Praditya]

@@ -2,9 +2,9 @@ import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../../infrastructure/navigation/routes.dart'; // Pastikan path ini benar
-import '../../domain/auth/models/auth_user.dart'; // Pastikan path ini benar
-import '../../domain/auth/models/user_model.dart'; // Pastikan path ini benar
+import '../../infrastructure/navigation/routes.dart';
+import '../../domain/auth/models/auth_user.dart';
+import '../../domain/auth/models/user_model.dart';
 
 class LoginController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -14,7 +14,7 @@ class LoginController extends GetxController {
   final TextEditingController passwordController = TextEditingController();
   final RxBool isPasswordVisible = false.obs;
   final RxBool isLoading = false.obs;
-  final RxBool isManualLogin = false.obs; // Untuk mencegah login otomatis
+  final RxBool isManualLogin = false.obs;
   final Rx<AuthUser?> loggedInAuthUser = Rx<AuthUser?>(null);
 
   static int _loginAttemptCounter = 0;
@@ -46,7 +46,6 @@ class LoginController extends GetxController {
       } else {
         print('DEBUG: Auth State Changed - No user detected or not manual login. Staying on LoginScreen.');
         loggedInAuthUser.value = null;
-        // Tidak navigasi, biarkan tetap di LoginScreen
       }
     });
   }
@@ -68,15 +67,40 @@ class LoginController extends GetxController {
       String? finalProgramId;
 
       if (userDoc.exists) {
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
         UserModel firestoreUserModel = UserModel.fromFirestore(userDoc as DocumentSnapshot<Map<String, dynamic>>);
         finalRoleFromFirestore = firestoreUserModel.role;
         print('DEBUG: User document found in Firestore. Role: $finalRoleFromFirestore');
+
+        // Cek apakah field isLogin sudah ada, jika belum tambahkan
+        Map<String, dynamic> updateData = {
+          'isLogin': true,
+          'lastLoginAt': FieldValue.serverTimestamp(),
+        };
+
+        // Jika field isLogin belum ada, tambahkan dengan timestamp
+        if (!userData.containsKey('isLogin')) {
+          updateData['isLoginFieldAddedAt'] = FieldValue.serverTimestamp();
+          print('DEBUG: Adding isLogin field for the first time for user: ${firebaseUser.email}');
+        }
+
+        await _firestore.collection('users').doc(firebaseUser.uid).update(updateData);
+        print('DEBUG: Updated isLogin to true for user: ${firebaseUser.email}');
+
       } else {
         print('DEBUG: User document NOT found in Firestore for UID: ${firebaseUser.uid}. Assigning default role and creating doc.');
         finalRoleFromFirestore = 'user';
         finalProgramId = '000';
-        await _firestore.collection('users').doc(firebaseUser.uid).set(
-            UserModel(uid: firebaseUser.uid, email: firebaseUser.email, role: 'user').toFirestore());
+        await _firestore.collection('users').doc(firebaseUser.uid).set({
+          'uid': firebaseUser.uid,
+          'email': firebaseUser.email,
+          'role': 'user',
+          'programId': finalProgramId,
+          'isLogin': true, // Set true saat pertama kali login
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLoginAt': FieldValue.serverTimestamp(),
+        });
+        print('DEBUG: Created new user document with isLogin: true');
       }
 
       loggedInAuthUser.value = tempAuthUser.copyWith(
@@ -106,38 +130,32 @@ class LoginController extends GetxController {
 
   Future<void> loginUser() async {
     isLoading.value = true;
-    isManualLogin.value = true; // Tandai sebagai login manual
+    isManualLogin.value = true;
     _loginAttemptCounter++;
     print('DEBUG: Attempting login via UI. Counter: $_loginAttemptCounter');
 
-    // Di dalam fungsi loginUser(), sebelum blok try untuk FirebaseAuth
     final String email = emailController.text.trim();
     final String password = passwordController.text.trim();
 
-// --- AWAL PERBAIKAN ---
-
-// 1. Validasi Input Kosong
+    // Validasi Input Kosong
     if (email.isEmpty || password.isEmpty) {
-      print(
-          'DEBUG: Login input empty. Email: "$email", Password: "$password"'); // Lebih detail
+      print('DEBUG: Login input empty. Email: "$email", Password: "$password"');
       Get.snackbar(
-        'Input Tidak Lengkap', // Judul lebih generik jika ada validasi lain
-        'Email dan password tidak boleh kosong.', // Pesan lebih jelas
+        'Input Tidak Lengkap',
+        'Email dan password tidak boleh kosong.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.orangeAccent,
-        // Warna yang sedikit berbeda untuk warning
         colorText: Colors.white,
         margin: const EdgeInsets.all(12),
         borderRadius: 8,
         duration: const Duration(seconds: 3),
       );
-      isLoading.value =
-      false; // Pastikan isLoading di-reset jika validasi gagal
-      isManualLogin.value = false; // Reset juga jika perlu
-      return; // Hentikan eksekusi lebih lanjut
+      isLoading.value = false;
+      isManualLogin.value = false;
+      return;
     }
 
-// 2. (Opsional) Validasi Format Email Sederhana
+    // Validasi Format Email
     if (!GetUtils.isEmail(email)) {
       print('DEBUG: Invalid email format: "$email"');
       Get.snackbar(
@@ -155,103 +173,38 @@ class LoginController extends GetxController {
       return;
     }
 
-// 3. (Opsional) Validasi Panjang Password Minimum (jika ada aturan)
-// if (password.length < 6) {
-//   print('DEBUG: Password too short.');
-//   Get.snackbar(
-//     'Password Terlalu Pendek',
-//     'Password minimal harus 6 karakter.',
-//     snackPosition: SnackPosition.BOTTOM,
-//     backgroundColor: Colors.orangeAccent,
-//     colorText: Colors.white,
-//     margin: const EdgeInsets.all(12),
-//     borderRadius: 8,
-//     duration: const Duration(seconds: 3),
-//   );
-//   isLoading.value = false;
-//   isManualLogin.value = false;
-//   return;
-// }
-
-// --- AKHIR PERBAIKAN ---
-
-// Setelah semua validasi lolos, baru lanjutkan ke proses login Firebase
     try {
-      isLoading.value =
-      true; // isLoading bisa di-set di sini jika validasi dipisah
-      isManualLogin.value = true;
-      _loginAttemptCounter++;
-      print(
-          'DEBUG: Attempting login via UI. Counter: $_loginAttemptCounter. Email: $email');
+      print('DEBUG: Attempting Firebase login. Email: $email');
 
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      print('DEBUG: Firebase login successful for ${userCredential.user
-          ?.email}. UID: ${userCredential.user?.uid}');
-      // Navigasi akan ditangani oleh authStateChanges
-    } on FirebaseAuthException catch (e) {
-      // ... (penanganan error FirebaseAuthException)
-    } catch (e) {
-      // ... (penanganan error umum)
-    } finally {
-      isLoading.value = false;
-      isManualLogin.value =
-      false; // Reset setelah login selesai (baik sukses maupun gagal)
-    }
+      print('DEBUG: Firebase login successful for ${userCredential.user?.email}. UID: ${userCredential.user?.uid}');
 
-    try {
-      if (email.isEmpty || password.isEmpty) {
-        print('DEBUG: Login input empty.');
-        Get.snackbar(
-          'Input Kosong',
-          'Silakan isi email dan password.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-        );
-        return;
-      }
-
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      print('DEBUG: Firebase login successful for ${userCredential.user
-          ?.email}. UID: ${userCredential.user?.uid}');
-      // Navigasi akan ditangani oleh authStateChanges
+      // Navigasi akan ditangani oleh authStateChanges dan _loadAndSetAuthUser
+      // yang akan mengupdate isLogin menjadi true
 
     } on FirebaseAuthException catch (e) {
-      // Pastikan ini masih ada dan Anda melihat outputnya di konsol saat error terjadi
       print('DEBUG: FirebaseAuthException - RAW ERROR CODE: "${e.code}", Message: "${e.message}"');
 
       String errorMessage;
-      // Normalisasi kode error untuk konsistensi (opsional tapi bisa membantu)
       String normalizedCode = e.code.toLowerCase().replaceAll('error_', '').replaceAll('-', '_');
-      // Contoh: 'auth/invalid-credential' menjadi 'auth_invalid_credential'
-      // 'INVALID_CREDENTIAL' menjadi 'invalid_credential'
 
-
-      // switch (e.code) { // Anda bisa tetap menggunakan e.code jika lebih suka
-      switch (normalizedCode) { // Atau gunakan versi yang dinormalisasi
-        case 'user_not_found': // Cocok untuk 'user-not-found' atau 'auth/user-not-found'
+      switch (normalizedCode) {
+        case 'user_not_found':
         case 'auth_user_not_found':
           errorMessage = 'Akun dengan email ini tidak ditemukan. Silakan daftar atau cek email Anda.';
           break;
-        case 'wrong_password': // Cocok untuk 'wrong-password' atau 'auth/wrong-password'
+        case 'wrong_password':
         case 'auth_wrong_password':
           errorMessage = 'Password yang Anda masukkan salah. Silakan coba lagi.';
           break;
-
-      // --- INI BAGIAN PENTING UNTUK KASUS ANDA ---
-        case 'invalid_credential': // Cocok untuk 'invalid-credential'
-        case 'auth_invalid_credential': // Cocok untuk 'auth/invalid-credential'
+        case 'invalid_credential':
+        case 'auth_invalid_credential':
           errorMessage = 'Email atau password yang Anda masukkan salah. Silakan periksa kembali.';
           break;
-      // ------------------------------------------
-
-        case 'invalid_email': // Cocok untuk 'invalid-email' atau 'auth/invalid-email'
+        case 'invalid_email':
         case 'auth_invalid_email':
           errorMessage = 'Format email yang Anda masukkan tidak valid.';
           break;
@@ -268,7 +221,6 @@ class LoginController extends GetxController {
           errorMessage = 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
           break;
         default:
-        // Jika kode yang dinormalisasi pun tidak cocok, tampilkan kode asli dari Firebase
           errorMessage = 'Terjadi kesalahan saat login. (Kode Asli: ${e.code})';
       }
 
@@ -284,7 +236,17 @@ class LoginController extends GetxController {
       );
 
     } catch (e) {
-      // ... (penanganan error umum lainnya)
+      print('DEBUG: General login error: $e');
+      Get.snackbar(
+        'Error Tidak Dikenal',
+        'Terjadi kesalahan tidak terduga: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(12),
+        borderRadius: 8,
+        duration: const Duration(seconds: 4),
+      );
     } finally {
       isLoading.value = false;
       isManualLogin.value = false;
@@ -320,10 +282,92 @@ class LoginController extends GetxController {
   }
 
   void logout() async {
-    print('DEBUG: Logout initiated. Signing out from Firebase.');
-    await _auth.signOut();
-    loggedInAuthUser.value = null;
-    print('DEBUG: Redirecting to LoginScreen after logout.');
-    Get.offAllNamed(AppRoutes.login);
+    print('DEBUG: Logout initiated.');
+
+    try {
+      // Update isLogin menjadi false di Firestore sebelum sign out
+      User? currentUser = _auth.currentUser;
+      if (currentUser != null) {
+        await _firestore.collection('users').doc(currentUser.uid).update({
+          'isLogin': false,
+          'lastLogoutAt': FieldValue.serverTimestamp(),
+        });
+        print('DEBUG: Updated isLogin to false for user: ${currentUser.email}');
+      }
+
+      // Sign out dari Firebase Auth
+      await _auth.signOut();
+      loggedInAuthUser.value = null;
+
+      print('DEBUG: Firebase sign out completed. Redirecting to LoginScreen.');
+      Get.offAllNamed(AppRoutes.login);
+
+    } catch (e) {
+      print('DEBUG: Error during logout: $e');
+      // Tetap sign out meskipun ada error saat update Firestore
+      await _auth.signOut();
+      loggedInAuthUser.value = null;
+      Get.offAllNamed(AppRoutes.login);
+    }
+  }
+
+  // Method untuk mengupdate semua user existing dengan field isLogin
+  Future<void> addIsLoginFieldToAllUsers() async {
+    try {
+      print('DEBUG: Starting batch update to add isLogin field to all existing users');
+
+      QuerySnapshot usersSnapshot = await _firestore.collection('users').get();
+      WriteBatch batch = _firestore.batch();
+      int updateCount = 0;
+
+      for (QueryDocumentSnapshot doc in usersSnapshot.docs) {
+        Map<String, dynamic> userData = doc.data() as Map<String, dynamic>;
+
+        // Cek apakah field isLogin sudah ada
+        if (!userData.containsKey('isLogin')) {
+          batch.update(doc.reference, {
+            'isLogin': false, // Default false untuk user yang sudah ada
+            'fieldAddedAt': FieldValue.serverTimestamp(),
+          });
+          updateCount++;
+          print('DEBUG: Will add isLogin field to user: ${userData['email'] ?? userData['uid']}');
+        }
+      }
+
+      if (updateCount > 0) {
+        await batch.commit();
+        print('DEBUG: Successfully added isLogin field to $updateCount users');
+
+        Get.snackbar(
+          'Update Berhasil',
+          'Field isLogin berhasil ditambahkan ke $updateCount user',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+      } else {
+        print('DEBUG: All users already have isLogin field');
+        Get.snackbar(
+          'Info',
+          'Semua user sudah memiliki field isLogin',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.blue,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+      }
+
+    } catch (e) {
+      print('DEBUG: Error adding isLogin field to users: $e');
+      Get.snackbar(
+        'Error',
+        'Gagal menambahkan field isLogin: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
+      );
+    }
   }
 }
