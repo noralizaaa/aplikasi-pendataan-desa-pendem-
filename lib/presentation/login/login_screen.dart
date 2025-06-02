@@ -39,7 +39,7 @@ class LoginScreen extends GetView<LoginController> {
             children: <Widget>[
               const SizedBox(height: 40),
               Text(
-                'Silakan isi Username dan\nPassword Terlebih Dahulu',
+                'Silakan isi Email dan\nPassword Terlebih Dahulu',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 22,

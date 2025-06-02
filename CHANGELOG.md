@@ -3,6 +3,27 @@
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## [0.27.1] - 2025-06-02
+> Contributed by [Bayu Ardiyansyah]
+
+> Fix images decoration 
+
+### 🎉 Added
+- **Image** : Add Image Content to SplashScreen & LandingPage
+- **Scrollable** : Add Scrollable function to LandingPage
+
+### 🛠️ Changed
+- **Routes Logic**
+  - **Routes toLandingPage** : Change routes toLandingPage
+- **IconChange** : Change Icon, newest one.
+### 🐛 Fixed
+
+- **Wrong routes** : Fix the issue of routes from SplashScreen to LandingPage ()
+  Not Login)
+- **LandingPageScrollabelIssue** : Fix the page to prevent unusable.
+
 
 ---
 
