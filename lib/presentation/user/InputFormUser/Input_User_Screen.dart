@@ -4,25 +4,150 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Untuk TextInputFormatter
 import 'package:get/get.dart';
 import '../../../infrastructure/navigation/routes.dart'; // Pastikan path ini benar
-import 'input_user_controller.dart';
+import 'input_user_controller.dart'; // Pastikan ini mengarah ke file controller yang benar
 import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart'; // Untuk QuestionType, dll.
 import 'package:intl/intl.dart';
+
+// --- AWAL TAMBAHAN: Widget untuk Grup Berulang ---
+class RepeatableGroupInstanceWidget extends StatelessWidget {
+  final String groupTag;
+  final List<FormQuestion> questionsInGroup;
+  final InputUserController controller;
+  final InputUserScreen screenInstance; // Untuk akses metode _buildQuestionLabel/Input
+
+  const RepeatableGroupInstanceWidget({
+    Key? key,
+    required this.groupTag,
+    required this.questionsInGroup,
+    required this.controller,
+    required this.screenInstance,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final int totalRepeatCount = controller.repeatableGroupCounts[groupTag] ?? 0;
+      final int activeIndex = controller.activeRepeatIndexForGroup[groupTag] ?? 0;
+
+      if (totalRepeatCount == 0 || activeIndex >= totalRepeatCount) {
+        return const SizedBox.shrink();
+      }
+
+      List<Widget> itemWidgets = [];
+      bool hasVisibleQuestionInInstance = false;
+
+      for (int i = 0; i < questionsInGroup.length; i++) {
+        final q = questionsInGroup[i];
+        final bool isQuestionStructurallyVisible = controller.questionVisibility[q.id] ?? true;
+
+        if (!isQuestionStructurallyVisible) {
+          continue;
+        }
+        hasVisibleQuestionInInstance = true;
+
+        String itemTitle = "[Data ${q.code != null && q.code!.isNotEmpty ? q.code : ''} ke-${activeIndex + 1} dari $totalRepeatCount] ${q.questionText}";
+
+        itemWidgets.add(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Column(
+                key: ValueKey("${q.id}_${groupTag}_${activeIndex}_col_ingroup_widget"),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  screenInstance._buildQuestionLabel(q, itemTitleOverride: itemTitle, isGroupedItem: true),
+                  const SizedBox(height: 10),
+                  screenInstance._buildQuestionInput(context, q,
+                      repeatIndex: activeIndex,
+                      keyPrefix: "${q.id}_${groupTag}_${activeIndex}"),
+                ],
+              ),
+            )
+        );
+        if (i < questionsInGroup.length - 1) {
+          if (i + 1 < questionsInGroup.length) {
+            final nextQ = questionsInGroup[i+1];
+            final bool isNextQVisible = controller.questionVisibility[nextQ.id] ?? true;
+            if (isNextQVisible) {
+              itemWidgets.add(Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 0.0),
+                child: Divider(height: 20, thickness: 0.5, color: Colors.blue.shade200.withOpacity(0.7)),
+              ));
+            }
+          }
+        }
+      }
+
+      if (!hasVisibleQuestionInInstance && questionsInGroup.isNotEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      return Padding(
+        padding: const EdgeInsets.only(top: 10.0, bottom: 8.0),
+        child: Container(
+          padding: const EdgeInsets.all(14.0),
+          decoration: BoxDecoration(
+              color: Colors.blue.shade50.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.blue.shade100, width: 0.8)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ...itemWidgets,
+              if (itemWidgets.isNotEmpty) const SizedBox(height: 16), // Tambah spasi sedikit lebih banyak
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  (activeIndex > 0)
+                      ? ElevatedButton.icon(
+                    icon: const Icon(Icons.navigate_before_rounded, size: 18),
+                    label: const Text("Data Sblmnya"),
+                    onPressed: () => controller.goToPreviousRepeatableItem(groupTag),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey.shade300,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        textStyle: const TextStyle(fontSize: 13)),
+                  )
+                      : const SizedBox.shrink(),
+                  const Spacer(),
+                  Text(
+                    "Data ${activeIndex + 1} dari $totalRepeatCount",
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+                  ),
+                  const Spacer(),
+                  (activeIndex < totalRepeatCount - 1)
+                      ? ElevatedButton.icon(
+                    icon: const Icon(Icons.navigate_next_rounded, size: 18),
+                    label: const Text("Data Brktnya"),
+                    onPressed: () => controller.goToNextRepeatableItem(groupTag),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: InputUserScreen.accentHeaderColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        textStyle: const TextStyle(fontSize: 13)),
+                  )
+                      : const SizedBox.shrink(),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+}
+// --- AKHIR TAMBAHAN ---
 
 class InputUserScreen extends GetView<InputUserController> {
   const InputUserScreen({Key? key}) : super(key: key);
 
-  // Definisi Warna
   static const Color pageBackgroundColor = Color(0xFFF2FAFF);
-  static const Color primaryHeaderColor = Color(0xFFFFCC80); // Lighter Orange
-  static const Color accentHeaderColor = Color(0xFFFF9800);  // Darker Orange
+  static const Color primaryHeaderColor = Color(0xFFFFCC80);
+  static const Color accentHeaderColor = Color(0xFFFF9800);
   static const Color cardBackgroundColor = Colors.white;
   static Color get titleTextColor => Colors.grey.shade800;
   static Color get subtitleTextColor => Colors.grey.shade600;
   static Color get mandatoryAsteriskColor => Colors.red.shade700;
-
-  // Konstanta untuk nilai opsi "Lainnya"
   static const String _kOtherOptionValue = '__other_option_value__';
-
 
   String _toRoman(int number) {
     if (number < 1 || number > 3999) return number.toString();
@@ -178,15 +303,13 @@ class InputUserScreen extends GetView<InputUserController> {
 
                       try {
                         await controller.submitForm();
-                        if (formIdForNavigation != null &&
-                            formIdForNavigation.isNotEmpty) {
-                          Get.offNamed(AppRoutes.LIST_SUBMISSION_FORM,
-                              arguments: formIdForNavigation);
-                        } else {
-                          Get.snackbar("Navigasi Gagal", "ID Form tidak ditemukan.", snackPosition: SnackPosition.BOTTOM);
+                        if (!controller.isEditMode.value && formIdForNavigation != null) {
+                          Get.offNamed(AppRoutes.LIST_SUBMISSION_FORM, arguments: formIdForNavigation);
+                        } else if (controller.isEditMode.value && formIdForNavigation != null) {
+                          Get.offNamed(AppRoutes.LIST_SUBMISSION_FORM, arguments: formIdForNavigation);
                         }
                       } catch (e) {
-                        // Error sudah dihandle di controller atau di sini jika perlu
+                        print("Error caught during submit confirmation: $e");
                       }
                     },
                     radius: 10,
@@ -235,7 +358,7 @@ class InputUserScreen extends GetView<InputUserController> {
                     ElevatedButton.icon(
                       icon: const Icon(Icons.refresh_rounded),
                       label: const Text("Coba Lagi Memuat Form"),
-                      onPressed: () => controller.fetchFormStructure(),
+                      onPressed: () => controller.fetchFormAndPotentialSubmissionData(),
                       style: ElevatedButton.styleFrom(
                           backgroundColor: accentHeaderColor,
                           foregroundColor: Colors.white),
@@ -362,7 +485,7 @@ class InputUserScreen extends GetView<InputUserController> {
 
                   return Obx(() {
                     final bool isExpanded =
-                        controller.expandedSectionId.value == section.id;
+                        controller.expandedSectionId.value == section.id || controller.loadedForm.value!.sections.length == 1;
                     final bool hasAnswers = controller.isEditMode.value &&
                         controller.sectionHasAnswers(section.id);
 
@@ -372,83 +495,84 @@ class InputUserScreen extends GetView<InputUserController> {
                           bottom: 16, left: 4, right: 4),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
-                      child: InkWell(
-                        onTap: () =>
-                            controller.toggleSectionExpansion(section.id),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16.0, vertical: 16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      displaySectionTitle,
-                                      style: Get.textTheme.titleLarge
-                                          ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: titleTextColor,
-                                          fontSize: 18),
-                                    ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    displaySectionTitle,
+                                    style: Get.textTheme.titleLarge
+                                        ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: titleTextColor,
+                                        fontSize: 18),
                                   ),
-                                  if (hasAnswers && !isExpanded)
-                                    Padding(
-                                      padding:
-                                      const EdgeInsets.only(left: 8.0),
-                                      child: Icon(
-                                          Icons.check_circle_outline_rounded,
-                                          color: Colors.green.shade600,
-                                          size: 20),
-                                    ),
-                                  Icon(
-                                    isExpanded
-                                        ? Icons.expand_less_rounded
-                                        : Icons.expand_more_rounded,
-                                    color: accentHeaderColor,
-                                    size: 28,
-                                  ),
-                                ],
-                              ),
-                              if (section.description != null &&
-                                  section.description!.isNotEmpty &&
-                                  !isExpanded) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  section.description!,
-                                  style: Get.textTheme.bodySmall?.copyWith(
-                                    color: subtitleTextColor,
-                                    fontSize: 13,
-                                    height: 1.4,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
+                                if (hasAnswers && !isExpanded)
+                                  Padding(
+                                    padding:
+                                    const EdgeInsets.only(left: 8.0),
+                                    child: Icon(
+                                        Icons.check_circle_outline_rounded,
+                                        color: Colors.green.shade600,
+                                        size: 20),
+                                  ),
+                                if (controller.loadedForm.value!.sections.length > 1)
+                                  IconButton(
+                                    icon: Icon(
+                                      isExpanded
+                                          ? Icons.expand_less_rounded
+                                          : Icons.expand_more_rounded,
+                                      color: accentHeaderColor,
+                                    ),
+                                    iconSize: 28,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: () => controller.toggleSectionExpansion(section.id),
+                                  ),
                               ],
-                              if (isExpanded) ...[
-                                Divider(
-                                    height: 24,
-                                    thickness: 0.7,
-                                    color: Colors.grey.shade300),
-                                if (section.description != null &&
-                                    section.description!.isNotEmpty) ...[
-                                  Text(section.description!,
-                                      style: Get.textTheme.bodySmall
-                                          ?.copyWith(
-                                          color: subtitleTextColor,
-                                          fontSize: 13,
-                                          height: 1.4)),
-                                  const SizedBox(height: 16),
-                                ],
-                                ..._buildQuestionsForSection(context, section),
-                              ],
+                            ),
+                            if (section.description != null &&
+                                section.description!.isNotEmpty &&
+                                !isExpanded) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                section.description!,
+                                style: Get.textTheme.bodySmall?.copyWith(
+                                  color: subtitleTextColor,
+                                  fontSize: 13,
+                                  height: 1.4,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ],
-                          ),
+                            if (isExpanded) ...[
+                              Divider(
+                                  height: 24,
+                                  thickness: 0.7,
+                                  color: Colors.grey.shade300),
+                              if (section.description != null &&
+                                  section.description!.isNotEmpty) ...[
+                                Text(section.description!,
+                                    style: Get.textTheme.bodySmall
+                                        ?.copyWith(
+                                        color: subtitleTextColor,
+                                        fontSize: 13,
+                                        height: 1.4)),
+                                const SizedBox(height: 16),
+                              ],
+                              ..._buildQuestionsForSection(context, section, this),
+                            ],
+                          ],
                         ),
                       ),
                     );
@@ -474,69 +598,18 @@ class InputUserScreen extends GetView<InputUserController> {
     );
   }
 
+  List<Widget> _buildQuestionsForSection(BuildContext context, FormSection section, InputUserScreen screenInstance) {
+    List<Widget> sectionWidgets = [];
+    Set<String> processedGroupTagsThisSection = {};
 
-  List<Widget> _buildQuestionsForSection(
-      BuildContext context, FormSection section) {
-    List<Widget> questionWidgets = [];
     for (int i = 0; i < section.questions.length; i++) {
       final question = section.questions[i];
-      questionWidgets.add(Obx(() {
-        final bool isVisible =
-            controller.questionVisibility[question.id] ?? true;
-        if (!isVisible) return const SizedBox.shrink();
+      Widget? widgetToAdd;
+      final bool isQuestionStructurallyVisible = controller.questionVisibility[question.id] ?? true;
 
-        if (question.isRepeatableGroupController &&
-            question.controlledGroupTag != null) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16.0, top: 6.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildQuestionLabel(question),
-                const SizedBox(height: 10),
-                _buildQuestionInput(context, question, keyPrefix: question.id),
-              ],
-            ),
-          );
-        } else if (question.belongsToGroupTag != null &&
-            question.belongsToGroupTag!.isNotEmpty) {
-          final groupTag = question.belongsToGroupTag!;
-          final int repeatCount =
-              controller.repeatableGroupCounts[groupTag] ?? 0;
-
-          if (repeatCount == 0) return const SizedBox.shrink();
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: List.generate(repeatCount, (repeatIdx) {
-              String itemTitle =
-                  "[Data ${question.code != null && question.code!.isNotEmpty ? question.code : ''} ke-${repeatIdx + 1}] ${question.questionText}";
-              return Padding(
-                padding: const EdgeInsets.only(top: 10.0, bottom: 8.0),
-                child: Container(
-                  padding: const EdgeInsets.all(14.0),
-                  decoration: BoxDecoration(
-                      color: Colors.blue.shade50.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(10),
-                      border:
-                      Border.all(color: Colors.blue.shade100, width: 0.8)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildQuestionLabel(question,
-                          itemTitleOverride: itemTitle, isGroupedItem: true),
-                      const SizedBox(height: 10),
-                      _buildQuestionInput(context, question,
-                          repeatIndex: repeatIdx,
-                          keyPrefix: "${question.id}_${groupTag}_$repeatIdx"),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          );
-        } else {
-          return Padding(
+      if (question.isRepeatableGroupController && question.controlledGroupTag != null) {
+        if (isQuestionStructurallyVisible) {
+          widgetToAdd = Padding(
             padding: const EdgeInsets.only(bottom: 16.0, top: 6.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -548,13 +621,74 @@ class InputUserScreen extends GetView<InputUserController> {
             ),
           );
         }
-      }));
-      if (i < section.questions.length - 1) {
-        questionWidgets.add(Divider(
-            height: 32, thickness: 0.7, color: Colors.grey.shade300));
+        processedGroupTagsThisSection.remove(question.controlledGroupTag!);
+      } else if (question.belongsToGroupTag != null && question.belongsToGroupTag!.isNotEmpty) {
+        final groupTag = question.belongsToGroupTag!;
+        if (!processedGroupTagsThisSection.contains(groupTag)) {
+          List<FormQuestion> questionsInThisGroup = section.questions
+              .where((q) => q.belongsToGroupTag == groupTag)
+              .toList();
+
+          final controllerQ = section.questions.firstWhereOrNull((q) => q.isRepeatableGroupController && q.controlledGroupTag == groupTag);
+          bool isOwningControllerVisible = true;
+          if(controllerQ != null){
+            isOwningControllerVisible = controller.questionVisibility[controllerQ.id] ?? true;
+          }
+          final bool groupHasItems = (controller.repeatableGroupCounts[groupTag] ?? 0) > 0;
+
+          if (isOwningControllerVisible && groupHasItems) {
+            widgetToAdd = RepeatableGroupInstanceWidget(
+              key: ValueKey("group_instance_${groupTag}_${section.id}"),
+              groupTag: groupTag,
+              questionsInGroup: questionsInThisGroup,
+              controller: controller,
+              screenInstance: screenInstance,
+            );
+          }
+          processedGroupTagsThisSection.add(groupTag);
+        }
+      } else {
+        if (isQuestionStructurallyVisible) {
+          widgetToAdd = Padding(
+            padding: const EdgeInsets.only(bottom: 16.0, top: 6.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildQuestionLabel(question),
+                const SizedBox(height: 10),
+                _buildQuestionInput(context, question, keyPrefix: question.id),
+              ],
+            ),
+          );
+        }
+      }
+
+      if (widgetToAdd != null) {
+        if (widgetToAdd is RepeatableGroupInstanceWidget) {
+          sectionWidgets.add(widgetToAdd);
+        } else {
+          sectionWidgets.add(Obx(() {
+            final bool currentVisibility = controller.questionVisibility[question.id] ?? true;
+            return currentVisibility ? widgetToAdd! : const SizedBox.shrink();
+          }));
+        }
       }
     }
-    return questionWidgets;
+
+    List<Widget> finalWidgets = [];
+    for (int k = 0; k < sectionWidgets.length; k++) {
+      finalWidgets.add(sectionWidgets[k]);
+      if (k < sectionWidgets.length - 1) {
+        bool nextWidgetIsEffectivelyShrink = false;
+        if (sectionWidgets[k+1] is SizedBox && (sectionWidgets[k+1] as SizedBox).height == 0 && (sectionWidgets[k+1] as SizedBox).width == 0) {
+          nextWidgetIsEffectivelyShrink = true;
+        }
+        if (!nextWidgetIsEffectivelyShrink) {
+          finalWidgets.add(Divider(height: 32, thickness: 0.7, color: Colors.grey.shade300));
+        }
+      }
+    }
+    return finalWidgets;
   }
 
   Widget _buildQuestionLabel(FormQuestion question,
@@ -640,6 +774,9 @@ class InputUserScreen extends GetView<InputUserController> {
           if (!controller.repeatableGroupOtherAnswers.containsKey(question.id)) {
             controller.repeatableGroupOtherAnswers[question.id] = RxMap<int, String>();
           }
+          if (!controller.repeatableGroupOtherAnswers[question.id]!.containsKey(repeatIndex)) {
+            controller.repeatableGroupOtherAnswers[question.id]![repeatIndex] = '';
+          }
           controller.repeatableGroupOtherAnswers[question.id]![repeatIndex] = text;
         } else {
           controller.userOtherAnswers[question.id] = text;
@@ -680,8 +817,8 @@ class InputUserScreen extends GetView<InputUserController> {
             controller.findQuestionById(question.id) ?? question;
         final ValidationRule? rule = currentQuestionState.validation;
         final String questionLabel =
-        currentQuestionState.questionText.isNotEmpty
-            ? currentQuestionState.questionText
+        (itemTitleOverrideForValidation(currentQuestionState, repeatIndex) ?? currentQuestionState.questionText).isNotEmpty
+            ? (itemTitleOverrideForValidation(currentQuestionState, repeatIndex) ?? currentQuestionState.questionText)
             : "Isian ini";
 
         String effectiveValueString = "";
@@ -710,6 +847,7 @@ class InputUserScreen extends GetView<InputUserController> {
           isEmptyAnswer = val.isEmpty;
         }
 
+
         if (currentQuestionState.isRequired && isEmptyAnswer) {
           bool isOtherSelected = false;
           if (currentQuestionState.type == QuestionType.multipleChoice && val == _kOtherOptionValue) {
@@ -735,6 +873,7 @@ class InputUserScreen extends GetView<InputUserController> {
 
         if (isEmptyAnswer && !currentQuestionState.isRequired) return null;
 
+
         if (rule != null) {
           if (val is String && val.isNotEmpty) {
             if (rule.minLength != null &&
@@ -752,23 +891,31 @@ class InputUserScreen extends GetView<InputUserController> {
             }
             if (rule.predefinedRule == 'nik' &&
                 !RegExp(r'^\d{16}$').hasMatch(effectiveValueString)) {
-              return 'NIK harus 16 digit angka.';
+              return 'NIK untuk $questionLabel harus 16 digit angka.';
             }
+            // START MODIFICATION
+            if (rule.predefinedRule == 'noKK' && // Asumsikan 'kk' adalah predefinedRule untuk No. KK
+                !RegExp(r'^\d{16}$').hasMatch(effectiveValueString)) {
+              return 'No. KK untuk $questionLabel harus 16 digit angka.';
+            }
+            // END MODIFICATION
             if (rule.predefinedRule == 'email' &&
                 !GetUtils.isEmail(effectiveValueString)) {
-              return 'Format email tidak valid.';
+              return 'Format email untuk $questionLabel tidak valid.';
             }
             if (rule.predefinedRule == 'numbersOnly' &&
-                !GetUtils.isNumericOnly(effectiveValueString)) {
+                !GetUtils.isNumericOnly(effectiveValueString.replaceAll(',', '').replaceAll('.', ''))) {
               return '$questionLabel hanya boleh berisi angka.';
             }
           }
 
-          if (currentQuestionState.type == QuestionType.number) {
-            num? numAnswer = num.tryParse(effectiveValueString.replaceAll(',', '.'));
-            if (numAnswer == null && effectiveValueString.isNotEmpty) {
+          if (currentQuestionState.type == QuestionType.number && val != null && val.toString().isNotEmpty) {
+            num? numAnswer = num.tryParse(val.toString().replaceAll(',', '.'));
+
+            if (numAnswer == null && val.toString().isNotEmpty) {
               return '$questionLabel harus berupa angka.';
             }
+
             if (numAnswer != null) {
               if (rule.minValue != null && numAnswer < rule.minValue!) {
                 return '$questionLabel minimal ${rule.minValue}.';
@@ -781,11 +928,12 @@ class InputUserScreen extends GetView<InputUserController> {
                 final artQuestion = controller.findQuestionByCode("112");
                 if (artQuestion != null) {
                   dynamic artCountValueDynamic;
-                  if (repeatIndex != null) {
+                  if (repeatIndex != null && artQuestion.belongsToGroupTag == currentQuestionState.belongsToGroupTag) {
                     artCountValueDynamic = controller.repeatableGroupAnswers[artQuestion.id]?[repeatIndex];
                   } else {
                     artCountValueDynamic = controller.userAnswers[artQuestion.id];
                   }
+
                   num? artCount;
                   if (artCountValueDynamic is num) {
                     artCount = artCountValueDynamic;
@@ -815,6 +963,19 @@ class InputUserScreen extends GetView<InputUserController> {
             onChanged: onChangedCallback,
             validator: validatorFunction,
             autovalidateMode: AutovalidateMode.onUserInteraction,
+            // START MODIFICATION (Pastikan menggunakan 'noKK')
+            inputFormatters: (question.validation?.predefinedRule == 'nik' || question.validation?.predefinedRule == 'noKK') // Diubah dari 'kk' menjadi 'noKK'
+                ? [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(16),
+            ]
+                : (question.validation?.predefinedRule == 'numbersOnly')
+                ? [FilteringTextInputFormatter.digitsOnly]
+                : [],
+            keyboardType: (question.validation?.predefinedRule == 'nik' || question.validation?.predefinedRule == 'noKK' || question.validation?.predefinedRule == 'numbersOnly') // Diubah dari 'kk' menjadi 'noKK'
+                ? TextInputType.number
+                : TextInputType.text,
+            // END MODIFICATION
           );
         case QuestionType.paragraph:
           return TextFormField(
@@ -848,13 +1009,13 @@ class InputUserScreen extends GetView<InputUserController> {
           } else if (initialValue is String) {
             try {
               if (initialValue.isNotEmpty) {
-                DateTime? parsedDate = DateTime.tryParse(initialValue);
-                if (parsedDate != null) {
-                  displayDate = DateFormat('dd/MM/yyyy').format(parsedDate);
+                DateTime? parsedFromDisplay = DateFormat('dd/MM/yyyy').tryParse(initialValue);
+                if (parsedFromDisplay != null) {
+                  displayDate = initialValue;
                 } else {
-                  parsedDate = DateFormat('dd/MM/yyyy').tryParse(initialValue);
+                  DateTime? parsedDate = DateTime.tryParse(initialValue);
                   if (parsedDate != null) {
-                    displayDate = initialValue;
+                    displayDate = DateFormat('dd/MM/yyyy').format(parsedDate);
                   } else {
                     displayDate = initialValue;
                   }
@@ -864,6 +1025,7 @@ class InputUserScreen extends GetView<InputUserController> {
               displayDate = initialValue;
             }
           }
+
 
           return TextFormField(
             key: ValueKey(fieldKeyId + displayDate),
@@ -876,18 +1038,19 @@ class InputUserScreen extends GetView<InputUserController> {
             onTap: () async {
               FocusScope.of(context).requestFocus(FocusNode());
               DateTime initialDatePickerDate = DateTime.now();
-              if (initialValue is DateTime) {
-                initialDatePickerDate = initialValue;
-              } else if (initialValue is String && initialValue.isNotEmpty) {
+              if (initialValue is String && initialValue.isNotEmpty) {
                 try {
-                  DateTime? parsedInternal = DateTime.tryParse(initialValue);
-                  if (parsedInternal != null) {
-                    initialDatePickerDate = parsedInternal;
-                  } else {
-                    initialDatePickerDate = DateFormat('dd/MM/yyyy').parse(initialValue);
-                  }
-                } catch (e) {/* biarkan default jika parse gagal */}
+                  initialDatePickerDate = DateFormat('dd/MM/yyyy').parseStrict(initialValue);
+                } catch (e) {
+                  try {
+                    DateTime? parsedInternal = DateTime.tryParse(initialValue);
+                    if (parsedInternal != null) initialDatePickerDate = parsedInternal;
+                  } catch (e2) { /* biarkan default jika semua parse gagal */ }
+                }
+              } else if (initialValue is DateTime) {
+                initialDatePickerDate = initialValue;
               }
+
               DateTime? pickedDate = await showDatePicker(
                   context: context,
                   initialDate: initialDatePickerDate,
@@ -917,13 +1080,11 @@ class InputUserScreen extends GetView<InputUserController> {
           String? currentGroupValue = initialValue as String?;
           List<Widget> radioTiles = question.options.map((option) {
             return RadioListTile<String>(
-              key: ValueKey("${fieldKeyId}_${option}_radio"),
+              key: ValueKey("${fieldKeyId}_${option.hashCode}_radio"),
               title: Text(option, style: const TextStyle(fontSize: 15.0)),
               value: option,
               groupValue: currentGroupValue,
-              onChanged: (String? value) {
-                // Handled by FormField builder
-              },
+              onChanged: (String? value) {},
               activeColor: accentHeaderColor,
               contentPadding: EdgeInsets.zero,
               visualDensity: VisualDensity.compact,
@@ -937,9 +1098,7 @@ class InputUserScreen extends GetView<InputUserController> {
                 title: const Text("Lainnya...", style: TextStyle(fontSize: 15.0)),
                 value: _kOtherOptionValue,
                 groupValue: currentGroupValue,
-                onChanged: (String? value) {
-                  // Handled by FormField builder
-                },
+                onChanged: (String? value) {},
                 activeColor: accentHeaderColor,
                 contentPadding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
@@ -983,7 +1142,7 @@ class InputUserScreen extends GetView<InputUserController> {
                       Padding(
                         padding: const EdgeInsets.only(top: 0.0, left: 40.0, right: 0.0, bottom: 8.0),
                         child: TextFormField(
-                          key: ValueKey("${fieldKeyId}_other_text"),
+                          key: ValueKey("${fieldKeyId}_other_text_${repeatIndex ?? 'single'}"),
                           initialValue: initialOtherText ?? '',
                           decoration: _modernInputDecoration(context, hintText: "Sebutkan lainnya", isDense: true)
                               .copyWith(contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
@@ -1025,7 +1184,7 @@ class InputUserScreen extends GetView<InputUserController> {
 
               List<Widget> checkboxTiles = question.options.map((option) {
                 return CheckboxListTile(
-                  key: ValueKey("${fieldKeyId}_${option}_checkbox"),
+                  key: ValueKey("${fieldKeyId}_${option.hashCode}_checkbox"),
                   title: Text(option, style: const TextStyle(fontSize: 15.0)),
                   value: field.value?.contains(option) ?? false,
                   onChanged: (bool? selected) {
@@ -1080,7 +1239,7 @@ class InputUserScreen extends GetView<InputUserController> {
                     Padding(
                       padding: const EdgeInsets.only(top: 0.0, left: 40.0, right: 0.0, bottom: 8.0),
                       child: TextFormField(
-                        key: ValueKey("${fieldKeyId}_other_text"),
+                        key: ValueKey("${fieldKeyId}_other_text_checkbox_${repeatIndex ?? 'single'}"),
                         initialValue: initialOtherText ?? '',
                         decoration: _modernInputDecoration(context, hintText: "Sebutkan lainnya", isDense: true)
                             .copyWith(contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
@@ -1120,11 +1279,13 @@ class InputUserScreen extends GetView<InputUserController> {
 
           if (isDependent) {
             final parentQuestionId = question.dependentOptions!.parentQuestionId;
-            if (repeatIndex != null && controller.repeatableGroupAnswers.containsKey(parentQuestionId)) {
-              parentAnswer = controller.repeatableGroupAnswers[parentQuestionId]![repeatIndex] as String?;
+            final parentQuestionDef = controller.findQuestionById(parentQuestionId);
+            if (parentQuestionDef?.belongsToGroupTag == question.belongsToGroupTag && repeatIndex != null) {
+              parentAnswer = controller.repeatableGroupAnswers[parentQuestionId]?[repeatIndex] as String?;
             } else {
               parentAnswer = controller.userAnswers[parentQuestionId] as String?;
             }
+
 
             if (parentAnswer != null && parentAnswer.isNotEmpty) {
               optionsToDisplay =
@@ -1136,12 +1297,10 @@ class InputUserScreen extends GetView<InputUserController> {
 
           String? effectiveInitialValue = initialValue as String?;
           if (effectiveInitialValue != null &&
-              !optionsToDisplay.contains(effectiveInitialValue) &&
-              optionsToDisplay.isNotEmpty) {
-            effectiveInitialValue = null;
-          } else if (optionsToDisplay.isEmpty && effectiveInitialValue != null) {
+              !optionsToDisplay.contains(effectiveInitialValue) ) {
             effectiveInitialValue = null;
           }
+
 
           if (isDependent && (parentAnswer == null || parentAnswer.isEmpty) && optionsToDisplay.isEmpty) {
             return Padding(
@@ -1168,34 +1327,33 @@ class InputUserScreen extends GetView<InputUserController> {
             );
           }
 
+          String optionsKeyPart = optionsToDisplay.join(',');
+          Key dropdownKey = ValueKey("${fieldKeyId}_${effectiveInitialValue ?? 'null'}_$optionsKeyPart");
+
+
           return DropdownButtonFormField<String>(
-            key: ValueKey(fieldKeyId + (effectiveInitialValue ?? "_nullVal_") + optionsToDisplay.join('_') + (parentAnswer ?? "")),
-            value: effectiveInitialValue,
+            key: dropdownKey,
+            value: (optionsToDisplay.isEmpty && effectiveInitialValue != null) ? null : effectiveInitialValue,
             decoration: _modernInputDecoration(
                 context,
-                labelText: (optionsToDisplay.isEmpty &&
-                    (!isDependent || (isDependent && parentAnswer != null && parentAnswer.isNotEmpty)))
+                labelText: (optionsToDisplay.isEmpty)
                     ? "Tidak ada opsi tersedia"
                     : "Pilih salah satu"),
             items: optionsToDisplay.map((option) {
               return DropdownMenuItem<String>(
                   value: option,
-                  child: Text(option, style: const TextStyle(fontSize: 15)));
+                  child: Text(option, style: const TextStyle(fontSize: 15), overflow: TextOverflow.ellipsis,));
             }).toList(),
-            onChanged: (optionsToDisplay.isEmpty && (!isDependent || (isDependent && parentAnswer != null && parentAnswer.isNotEmpty)))
+            onChanged: (optionsToDisplay.isEmpty)
                 ? null
                 : (String? newValue) {
               if (newValue != null) {
                 onChangedCallback(newValue);
-                // controller.triggerDependentQuestionUpdates(question.id, newValue, repeatIndex);
               }
             },
             isExpanded: true,
             validator: validatorFunction,
             autovalidateMode: AutovalidateMode.onUserInteraction,
-            hint: (optionsToDisplay.isEmpty && isDependent && parentAnswer != null && parentAnswer.isNotEmpty)
-                ? const Text("Tidak ada opsi untuk pilihan induk ini")
-                : null,
           );
 
         case QuestionType.gridNumeric:
@@ -1203,30 +1361,18 @@ class InputUserScreen extends GetView<InputUserController> {
 
           if (initialValue is Map && (initialValue as Map).isNotEmpty) {
             final Map<dynamic, dynamic> rawInitialDataMap = initialValue as Map<dynamic, dynamic>;
-
             if (question.gridRowLabels.isEmpty) {
               if (rawInitialDataMap.entries.isNotEmpty) {
-                // ==================== AWAL PERBAIKAN targetEntry ===================
-                MapEntry<dynamic, dynamic> targetEntry = rawInitialDataMap.entries.first; // Inisialisasi default
-
-                bool foundSpecificEmptyKeyEntry = false;
+                MapEntry<dynamic, dynamic> targetEntry = rawInitialDataMap.entries.first;
                 if (rawInitialDataMap.containsKey("")) {
                   for (final MapEntry<dynamic, dynamic> entryInLoop in rawInitialDataMap.entries) {
                     if (entryInLoop.key == "") {
-                      targetEntry = entryInLoop; // Override jika key "" ditemukan
-                      foundSpecificEmptyKeyEntry = true;
+                      targetEntry = entryInLoop;
                       break;
                     }
                   }
-                  if (!foundSpecificEmptyKeyEntry) {
-                    print("Peringatan (InputUserScreen): GridNumeric - containsKey('') true, tapi iterasi tidak menemukan entry dengan key ''. Menggunakan entry pertama yang sudah diassign.");
-                    // Tidak perlu aksi tambahan karena targetEntry sudah diinisialisasi dengan entries.first
-                  }
                 }
-                // =================== AKHIR PERBAIKAN targetEntry ===================
-
                 final rowDataMap = targetEntry.value;
-
                 if (rowDataMap is Map) {
                   try {
                     effectiveGridAnswers[""] = Map<String, Map<String, num?>>.fromEntries(
@@ -1238,17 +1384,10 @@ class InputUserScreen extends GetView<InputUserController> {
                               Map<String, num?>.fromEntries(
                                   (subColMapData as Map<dynamic, dynamic>).entries.map((subColEntry) {
                                     num? cellValueNum;
-                                    if (subColEntry.value == null) {
-                                      cellValueNum = null;
-                                    } else if (subColEntry.value is num) {
-                                      cellValueNum = subColEntry.value as num;
-                                    } else {
-                                      cellValueNum = num.tryParse(subColEntry.value.toString().replaceAll(',', '.')); // Tambah replaceAll
-                                    }
-                                    return MapEntry(
-                                        subColEntry.key.toString(),
-                                        cellValueNum
-                                    );
+                                    if (subColEntry.value == null) cellValueNum = null;
+                                    else if (subColEntry.value is num) cellValueNum = subColEntry.value as num;
+                                    else cellValueNum = num.tryParse(subColEntry.value.toString().replaceAll(',', '.'));
+                                    return MapEntry(subColEntry.key.toString(), cellValueNum);
                                   })
                               )
                           );
@@ -1256,9 +1395,8 @@ class InputUserScreen extends GetView<InputUserController> {
                     );
                   } catch (e) {
                     print("Error casting single-row grid data for $fieldKeyId (dalam _buildQuestionInput): $e. rowDataMap: $rowDataMap");
+                    effectiveGridAnswers[""] = {};
                   }
-                } else {
-                  print("Peringatan: rowDataMap untuk baris grid tunggal bukan Map. rowDataMap: $rowDataMap");
                 }
               }
             } else {
@@ -1279,17 +1417,11 @@ class InputUserScreen extends GetView<InputUserController> {
                                     colEntry.key.toString(),
                                     Map<String, num?>.fromEntries(
                                         (subColMapData as Map<dynamic, dynamic>).entries.map((subColEntry) {
-                                          num? valNum; // Konversi yang lebih aman
-                                          if (subColEntry.value == null) {
-                                            valNum = null;
-                                          } else if (subColEntry.value is num) {
-                                            valNum = subColEntry.value as num;
-                                          } else {
-                                            valNum = num.tryParse(subColEntry.value.toString().replaceAll(',', '.'));
-                                          }
-                                          return MapEntry(
-                                              subColEntry.key.toString(),
-                                              valNum);
+                                          num? valNum;
+                                          if (subColEntry.value == null) valNum = null;
+                                          else if (subColEntry.value is num) valNum = subColEntry.value as num;
+                                          else valNum = num.tryParse(subColEntry.value.toString().replaceAll(',', '.'));
+                                          return MapEntry(subColEntry.key.toString(), valNum);
                                         })
                                     )
                                 );
@@ -1306,17 +1438,21 @@ class InputUserScreen extends GetView<InputUserController> {
 
 
           if (question.gridColumnLabels.isEmpty || question.gridSubColumnLabels.isEmpty) {
-            return Text("Grid Numerik: Konfigurasi label kolom/sub-kolom belum lengkap.", style: TextStyle(color: Colors.red.shade700));
+            return Text("Grid Numerik: Konfigurasi label 'Kolom' atau 'Sub-Kolom' belum lengkap.", style: TextStyle(color: Colors.red.shade700));
           }
 
-          List<String> rowsToRender = question.gridRowLabels.isNotEmpty ? question.gridRowLabels : [""];
+          List<String> superRowsToRender = question.gridRowLabels.isNotEmpty ? question.gridRowLabels : [""];
 
           return FormField<Map<String, Map<String, Map<String, num?>>>>(
-              key: ValueKey("${fieldKeyId}_grid_formfield"),
+              key: ValueKey("${fieldKeyId}_grid_formfield_${superRowsToRender.join('_')}_${question.gridColumnLabels.join('_')}_${question.gridSubColumnLabels.join('_')}_modified"),
               initialValue: effectiveGridAnswers,
               validator: validatorFunction,
               autovalidateMode: AutovalidateMode.onUserInteraction,
               builder: (FormFieldState<Map<String, Map<String, Map<String, num?>>>> field) {
+                num? getSafeCellValue(String superRowLabel, String originalGridColLabel, String originalGridSubColLabel) {
+                  return field.value?[superRowLabel]?[originalGridColLabel]?[originalGridSubColLabel];
+                }
+
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1324,57 +1460,60 @@ class InputUserScreen extends GetView<InputUserController> {
                       scrollDirection: Axis.horizontal,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: rowsToRender.map((uiRowLabel) {
+                        children: superRowsToRender.map((uiSuperRowLabel) {
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4.0),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (uiRowLabel.isNotEmpty && question.gridRowLabels.isNotEmpty)
+                                if (uiSuperRowLabel.isNotEmpty && question.gridRowLabels.isNotEmpty)
                                   Padding(
-                                    padding: const EdgeInsets.only(bottom: 4.0),
-                                    child: Text(uiRowLabel, style: Get.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: titleTextColor)),
+                                    padding: const EdgeInsets.only(bottom: 6.0, left: 2.0, top: 8.0),
+                                    child: Text(uiSuperRowLabel, style: Get.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: titleTextColor)),
                                   ),
                                 Table(
                                   border: TableBorder.all(color: Colors.grey.shade300, width: 0.7),
-                                  defaultColumnWidth: const MinColumnWidth(IntrinsicColumnWidth(), FixedColumnWidth(65)),
+                                  defaultColumnWidth: const MinColumnWidth(IntrinsicColumnWidth(), FixedColumnWidth(85)),
                                   children: [
                                     TableRow(
                                       decoration: BoxDecoration(color: Colors.grey.shade100),
                                       children: [
                                         const TableCell(child: Padding(padding: EdgeInsets.all(6.0), child: Text(" ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)))),
-                                        ...question.gridColumnLabels.map((colLabel) => TableCell(
+                                        ...question.gridSubColumnLabels.map((subColLabel) => TableCell(
                                           verticalAlignment: TableCellVerticalAlignment.middle,
                                           child: Padding(
-                                              padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
-                                              child: Text(colLabel, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
+                                            // MODIFIED: Increased horizontal padding for subcolumn headers
+                                              padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 20.0),
+                                              child: Text(subColLabel, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
                                         )).toList(),
                                       ],
                                     ),
-                                    ...question.gridSubColumnLabels.map((subColLabel) {
+                                    ...question.gridColumnLabels.map((originalGridColLabel) {
                                       return TableRow(
                                         children: [
                                           TableCell(
                                               verticalAlignment: TableCellVerticalAlignment.middle,
                                               child: Padding(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 8.0),
-                                                  child: Text(subColLabel, style: const TextStyle(fontSize: 12)))),
-                                          ...question.gridColumnLabels.map((colLabel) {
-                                            num? cellValue = effectiveGridAnswers[uiRowLabel]?[colLabel]?[subColLabel];
-                                            String cellKeyIdGrid = "${fieldKeyId}_grid_${uiRowLabel}_${colLabel}_$subColLabel";
+                                                  padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
+                                                  child: Text(originalGridColLabel, style: const TextStyle(fontSize: 12)))),
+                                          ...question.gridSubColumnLabels.map((originalGridSubColLabel) {
+                                            num? cellValue = getSafeCellValue(uiSuperRowLabel, originalGridColLabel, originalGridSubColLabel);
+                                            String cellKeyIdGrid = "${fieldKeyId}_grid_${uiSuperRowLabel}_${originalGridColLabel}_${originalGridSubColLabel}";
 
                                             return TableCell(
                                               verticalAlignment: TableCellVerticalAlignment.middle,
                                               child: Padding(
-                                                padding: const EdgeInsets.all(1.0),
+                                                // MODIFIED: Increased padding around the TextFormField
+                                                padding: const EdgeInsets.all(2.0),
                                                 child: TextFormField(
-                                                  key: ValueKey(cellKeyIdGrid),
+                                                  key: ValueKey(cellKeyIdGrid + (cellValue?.toString() ?? "")),
                                                   initialValue: cellValue?.toString().replaceAll('.', ',') ?? '',
                                                   textAlign: TextAlign.center,
                                                   style: const TextStyle(fontSize: 13),
                                                   decoration: InputDecoration(
                                                     border: InputBorder.none,
-                                                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 2),
+                                                    // MODIFIED: Increased contentPadding for the TextFormField
+                                                    contentPadding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
                                                     isDense: true,
                                                     fillColor: Colors.white,
                                                     filled: true,
@@ -1386,9 +1525,9 @@ class InputUserScreen extends GetView<InputUserController> {
                                                     controller.updateGridAnswer(
                                                         question.id,
                                                         repeatIndex,
-                                                        uiRowLabel,
-                                                        colLabel,
-                                                        subColLabel,
+                                                        uiSuperRowLabel,
+                                                        originalGridColLabel,
+                                                        originalGridSubColLabel,
                                                         value.replaceAll(',', '.'));
 
                                                     var currentGridAnswerState;
@@ -1398,60 +1537,18 @@ class InputUserScreen extends GetView<InputUserController> {
                                                       currentGridAnswerState = controller.userAnswers[question.id];
                                                     }
 
-                                                    if (currentGridAnswerState != null) {
-                                                      // =================== AWAL PERBAIKAN getGridMap (inline) ===================
-                                                      Map<String, Map<String, Map<String, num?>>> convertedMap;
-                                                      if (currentGridAnswerState is Map<String, Map<String, Map<String, num?>>>) {
-                                                        convertedMap = currentGridAnswerState;
-                                                      } else if (currentGridAnswerState is Map) {
-                                                        try {
-                                                          convertedMap = Map<String, Map<String, Map<String, num?>>>.fromEntries(
-                                                              (currentGridAnswerState as Map<dynamic, dynamic>).entries.map((rowEntry) {
-                                                                var colMap = rowEntry.value;
-                                                                if (colMap is! Map) colMap = <String, dynamic>{};
-
-                                                                return MapEntry(
-                                                                    rowEntry.key.toString(),
-                                                                    Map<String, Map<String, num?>>.fromEntries(
-                                                                        (colMap as Map<dynamic, dynamic>).entries.map((colEntry) {
-                                                                          var subColMap = colEntry.value;
-                                                                          if (subColMap is! Map) subColMap = <String, dynamic>{};
-
-                                                                          return MapEntry(
-                                                                              colEntry.key.toString(),
-                                                                              Map<String, num?>.fromEntries(
-                                                                                  (subColMap as Map<dynamic, dynamic>).entries.map((subColEntry) {
-                                                                                    num? cellValueNum;
-                                                                                    if (subColEntry.value == null) {
-                                                                                      cellValueNum = null;
-                                                                                    } else if (subColEntry.value is num) {
-                                                                                      cellValueNum = subColEntry.value as num;
-                                                                                    } else {
-                                                                                      cellValueNum = num.tryParse(subColEntry.value.toString().replaceAll(',', '.'));
-                                                                                    }
-                                                                                    return MapEntry(
-                                                                                        subColEntry.key.toString(),
-                                                                                        cellValueNum
-                                                                                    );
-                                                                                  })
-                                                                              )
-                                                                          );
-                                                                        })
-                                                                    )
-                                                                );
-                                                              })
-                                                          );
-                                                        } catch (e) {
-                                                          print("Error in inlined getGridMap (onChanged): $e. Data: $currentGridAnswerState");
-                                                          convertedMap = <String, Map<String, Map<String, num?>>>{};
-                                                        }
-                                                      } else {
-                                                        convertedMap = <String, Map<String, Map<String, num?>>>{};
+                                                    if (currentGridAnswerState is Map<String, Map<String, Map<String, num?>>>) {
+                                                      field.didChange(Map<String, Map<String, Map<String, num?>>>.from(currentGridAnswerState));
+                                                    } else if (currentGridAnswerState is Map) {
+                                                      try {
+                                                        Map<String, Map<String, Map<String, num?>>> convertedMap = controller.getGridMapForValidation(currentGridAnswerState);
+                                                        field.didChange(convertedMap);
+                                                      } catch (e) {
+                                                        print("Error converting grid state for FormField (onChanged): $e");
+                                                        field.didChange({});
                                                       }
-                                                      // =================== AKHIR PERBAIKAN getGridMap (inline) ===================
-                                                      field.didChange(convertedMap);
                                                     } else {
-                                                      field.didChange(<String, Map<String, Map<String, num?>>>{});
+                                                      field.didChange({});
                                                     }
                                                   },
                                                   validator: (cellValueString) {
@@ -1496,4 +1593,67 @@ class InputUserScreen extends GetView<InputUserController> {
       }
     });
   }
+
+  String? itemTitleOverrideForValidation(FormQuestion question, int? repeatIndex) {
+    if (repeatIndex != null && question.belongsToGroupTag != null) {
+      final groupTag = question.belongsToGroupTag!;
+      final totalRepeatCount = controller.repeatableGroupCounts[groupTag] ?? 0;
+      return "[Data ${question.code != null && question.code!.isNotEmpty ? question.code : ''} ke-${repeatIndex + 1} dari $totalRepeatCount] ${question.questionText}";
+    }
+    return question.questionText;
+  }
+} // Penutup Class InputUserScreen
+
+
+// **** AWAL PENAMBAHAN KEMBALI EXTENSION METHOD ****
+// Extension method di controller untuk konversi grid jika perlu
+extension GridMapConversion on InputUserController {
+  Map<String, Map<String, Map<String, num?>>> getGridMapForValidation(dynamic currentGridData) {
+    if (currentGridData is Map<String, Map<String, Map<String, num?>>>) {
+      return currentGridData;
+    }
+    if (currentGridData is Map) {
+      try {
+        return Map<String, Map<String, Map<String, num?>>>.fromEntries(
+            (currentGridData as Map<dynamic, dynamic>).entries.map((rowEntry) { // rowEntry.key adalah superRowLabel
+              var colMap = rowEntry.value; // colMap berisi Map<originalColLabel, Map<originalSubColLabel, value>>
+              if (colMap is! Map) colMap = <String, dynamic>{};
+              return MapEntry(
+                  rowEntry.key.toString(),
+                  Map<String, Map<String, num?>>.fromEntries(
+                      (colMap as Map<dynamic, dynamic>).entries.map((colEntry) { // colEntry.key adalah originalColLabel
+                        var subColMap = colEntry.value; // subColMap berisi Map<originalSubColLabel, value>
+                        if (subColMap is! Map) subColMap = <String, dynamic>{};
+                        return MapEntry(
+                            colEntry.key.toString(),
+                            Map<String, num?>.fromEntries(
+                                (subColMap as Map<dynamic, dynamic>).entries.map((subColEntry) { // subColEntry.key adalah originalSubColLabel
+                                  num? cellValueNum;
+                                  if (subColEntry.value == null) {
+                                    cellValueNum = null;
+                                  } else if (subColEntry.value is num) {
+                                    cellValueNum = subColEntry.value as num;
+                                  } else {
+                                    cellValueNum = num.tryParse(subColEntry.value.toString().replaceAll(',', '.'));
+                                  }
+                                  return MapEntry(
+                                      subColEntry.key.toString(),
+                                      cellValueNum
+                                  );
+                                })
+                            )
+                        );
+                      })
+                  )
+              );
+            })
+        );
+      } catch (e) {
+        print("Error in getGridMapForValidation: $e. Data: $currentGridData");
+        return <String, Map<String, Map<String, num?>>>{}; // Fallback
+      }
+    }
+    return <String, Map<String, Map<String, num?>>>{}; // Fallback if not a map at all
+  }
 }
+// **** AKHIR PENAMBAHAN KEMBALI EXTENSION METHOD ****
