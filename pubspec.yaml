@@ -92,6 +92,7 @@ flutter:
   #   - images/a_dot_ham.jpeg
   assets:
       - assets/images/bps.png
+      - assets/images/DaunSS.png
       - assets/images/undraw_mobile-ux_5h2w.png
       - assets/images/SensusKu.png
       - assets/images/Profile.png

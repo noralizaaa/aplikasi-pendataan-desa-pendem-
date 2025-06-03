@@ -3,6 +3,19 @@
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## [0.28.2] - 2025-06-03
+> Contributed by [Febri Bagus Triwibowo]
+
+### ✨ Added
+- **Splash Screen Image**: Added new asset `DaunSS.png` to `assets/images/` directory.
+- **Splash Screen Update**: Integrated the `DaunSS.png` image into the splash screen at `lib/presentation/splash/splash_screen.dart`.
+
+### 🎨 Changed
+- **Landing Page Title Styling**: Enhanced the text styling for the landing page title "SENSUSKU - Sistem Entri dan Survei untuk Statistik Desa/Kelurahan" in `LandingPage.dart`, making it more visually appealing and prominent.
+
+---
 
 ## [0.28.1] - 2025-06-03
 > Contributed by [Bayu Ardiyansyah]

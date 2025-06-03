@@ -152,7 +152,7 @@ class LandingPageScreen extends GetView<LandingPageController> {
                                       decoration: BoxDecoration(
                                         // Warna latar belakang yang sedikit berbeda untuk grouping
                                         // Misalnya, putih dengan sedikit opacity atau abu-abu sangat muda
-                                        color: Colors.white.withOpacity(0.15), // Contoh: semi-transparan
+                                        color: Colors.white.withOpacity(0.16), // Contoh: semi-transparan
                                         borderRadius: BorderRadius.circular(12.0),
                                         // Optional: tambahkan border jika diinginkan
                                         // border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
@@ -209,16 +209,31 @@ class LandingPageScreen extends GetView<LandingPageController> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const SizedBox(height: 6),
-                        const Text(
-                          "SENSUSKU\nSistem Entri dan Survei untuk Statistik Desa/Kelurahan",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF424242),
-                            height: 1.4,
-                          ),
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: const TextStyle( // Default style untuk paragraf
+                          fontSize: 14,
+                          color: Color(0xFF555555), // Sedikit lebih lembut dari abu-abu murni
+                          height: 1.6,
+                          fontFamily: 'Roboto', // Ganti dengan font pilihan Anda jika ada
                         ),
+                        children: <TextSpan>[
+                          TextSpan(
+                            text: "SENSUSKU\n",
+                            style: TextStyle(
+                              fontSize: 18, // Lebih besar
+                              fontWeight: FontWeight.bold, // Tebal
+                              color: Colors.orangeAccent.shade700, // Warna biru tua (sesuaikan dengan tema BPS atau aplikasi)
+                              letterSpacing: 0.5, // Sedikit jarak antar huruf
+                            ),
+                          ),
+                          const TextSpan(
+                            text: "Sistem Entri dan Survei untuk Statistik Desa/Kelurahan",
+                          ),
+                        ],
+                      ),
+                    ),
                         const SizedBox(height: 24),
                         SizedBox(
                           width: mediaSize.width * 0.85,

@@ -21,13 +21,13 @@ class SplashScreen extends GetView<SplashController> {
     // Precache images
     precacheImage(const AssetImage('assets/images/splashpage.png'), context);
     precacheImage(const AssetImage('assets/images/splashpage_1.png'), context);
-    // Anda mungkin ingin melakukan precache gambar daun juga jika ukurannya besar
-    // precacheImage(const AssetImage('assets/images/leaf_top_left.png'), context);
-    // precacheImage(const AssetImage('assets/images/leaf_bottom_right.png'), context);
+    precacheImage(const AssetImage('assets/images/DaunSS.png'), context); // Precache gambar daun baru
 
 
     // Get media size for responsive image sizing if needed
     // final mediaSize = MediaQuery.of(context).size;
+    const double leafSize = 500.0; // Ukuran default untuk daun, bisa disesuaikan
+    const double leafCornerOffset = -50.0; // Padding dari tepi layar, set 0 jika ingin menempel
 
     return Scaffold(
       body: Stack(
@@ -38,15 +38,7 @@ class SplashScreen extends GetView<SplashController> {
           ),
 
           // (Optional) Noise layer - kept commented as per original
-          // Container(
-          //   decoration: BoxDecoration(
-          //     image: DecorationImage(
-          //       image: AssetImage('assets/images/subtle_noise.png'), // GANTI DENGAN ASET NOISE ANDA
-          //       fit: BoxFit.cover,
-          //       opacity: 0.03, // Opacity sangat rendah untuk noise
-          //     ),
-          //   ),
-          // ),
+          // ...
 
           // 2. Lapisan Efek Kaca Buram (Glassmorphism)
           Positioned.fill(
@@ -59,60 +51,139 @@ class SplashScreen extends GetView<SplashController> {
                     color: glassBorderColor,
                     width: 0.8,
                   ),
-                  // Anda bisa menambahkan borderRadius di sini jika ingin sudut kaca yang melengkung
-                  // borderRadius: BorderRadius.circular(20),
                 ),
               ),
             ),
           ),
 
-          // BARU: Dekorasi Daun Hijau ================================================
+          // --- MODIFIKASI: Dekorasi DaunSS.png di 4 Sudut ---
           // Daun di Pojok Kiri Atas
           Positioned(
-            top: 40, // Sesuaikan posisi dari atas
-            left: 30,  // Sesuaikan posisi dari kiri
+            top: leafCornerOffset,  // Menggunakan offset
+            left: leafCornerOffset, // Menggunakan offset
             child: FadeInAnimation(
               child: Image.asset(
-                'assets/images/leaf_top_left.png', // <<< GANTI DENGAN ASET DAUN ANDA
-                width: 100, // Sesuaikan ukuran
-                height: 100, // Sesuaikan ukuran
+                'assets/images/DaunSS.png',
+                width: leafSize,
+                height: leafSize,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
-                  print("Error loading leaf_top_left.png: $error");
-                  // Tidak menampilkan apa-apa jika gambar gagal dimuat
+                  print("Error loading DaunSS.png (top-left): $error");
                   return const SizedBox.shrink();
                 },
+              ),
+            ),
+          ),
+
+          // Daun di Pojok Kanan Atas
+          Positioned(
+            top: leafCornerOffset,   // Menggunakan offset
+            right: leafCornerOffset, // Menggunakan offset
+            child: FadeInAnimation(
+              child: Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.rotationY(3.14159), // Flip horizontal
+                transformHitTests: false, // Tidak menangkap event sentuh
+                child: Image.asset(
+                  'assets/images/DaunSS.png',
+                  width: leafSize,
+                  height: leafSize,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    print("Error loading DaunSS.png (top-right): $error");
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+            ),
+          ),
+
+          // Daun di Pojok Kiri Bawah
+          Positioned(
+            bottom: leafCornerOffset, // Menggunakan offset
+            left: leafCornerOffset,  // Menggunakan offset
+            child: FadeInAnimation(
+              child: Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.rotationX(3.14159), // Flip vertikal
+                transformHitTests: false, // Tidak menangkap event sentuh
+                child: Image.asset(
+                  'assets/images/DaunSS.png',
+                  width: leafSize,
+                  height: leafSize,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    print("Error loading DaunSS.png (bottom-left): $error");
+                    return const SizedBox.shrink();
+                  },
+                ),
               ),
             ),
           ),
 
           // Daun di Pojok Kanan Bawah
           Positioned(
-            bottom: 80, // Sesuaikan posisi dari bawah (di atas logo bawah)
-            right: 30,   // Sesuaikan posisi dari kanan
+            bottom: leafCornerOffset, // Menggunakan offset
+            right: leafCornerOffset,  // Menggunakan offset
             child: FadeInAnimation(
-              child: Image.asset(
-                'assets/images/leaf_bottom_right.png', // <<< GANTI DENGAN ASET DAUN ANDA
-                width: 90, // Sesuaikan ukuran
-                height: 90, // Sesuaikan ukuran
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  print("Error loading leaf_bottom_right.png: $error");
-                  // Tidak menampilkan apa-apa jika gambar gagal dimuat
-                  return const SizedBox.shrink();
-                },
+              child: Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.rotationZ(3.14159), // Putar 180 derajat
+                transformHitTests: false, // Tidak menangkap event sentuh
+                child: Image.asset(
+                  'assets/images/DaunSS.png',
+                  width: leafSize,
+                  height: leafSize,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    print("Error loading DaunSS.png (bottom-right): $error");
+                    return const SizedBox.shrink();
+                  },
+                ),
               ),
             ),
           ),
-          // AKHIR BARU: Dekorasi Daun Hijau ===========================================
+          // --- AKHIR MODIFIKASI ---
+
+
+          // HAPUS ATAU KOMENTARI DEKORASI DAUN LAMA JIKA TIDAK DIPERLUKAN LAGI
+          // // Daun di Pojok Kiri Atas (LAMA)
+          // Positioned(
+          //   top: 40,
+          //   left: 30,
+          //   child: FadeInAnimation(
+          //     child: Image.asset(
+          //       'assets/images/leaf_top_left.png', // INI ADALAH GAMBAR LAMA
+          //       width: 100,
+          //       height: 100,
+          //       fit: BoxFit.contain,
+          //       // ... errorBuilder ...
+          //     ),
+          //   ),
+          // ),
+          // // Daun di Pojok Kanan Bawah (LAMA)
+          // Positioned(
+          //   bottom: 80,
+          //   right: 30,
+          //   child: FadeInAnimation(
+          //     child: Image.asset(
+          //       'assets/images/leaf_bottom_right.png', // INI ADALAH GAMBAR LAMA
+          //       width: 90,
+          //       height: 90,
+          //       fit: BoxFit.contain,
+          //       // ... errorBuilder ...
+          //     ),
+          //   ),
+          // ),
+
 
           // 3. Konten Utama (Logo Tengah) di atas lapisan glassmorphism
           Center(
             child: FadeInAnimation(
               child: Image.asset(
-                  'assets/images/splashpage_1.png', // <<< CHANGED LOGO
-                  width: 200, // You can adjust this
-                  height: 200, // You can adjust this
+                  'assets/images/splashpage_1.png',
+                  width: 200,
+                  height: 200,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
                     print("Error loading splashpage_1.png: $error");
@@ -126,15 +197,14 @@ class SplashScreen extends GetView<SplashController> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 15.0), // Jarak 15px dari bawah
-              child: FadeInAnimation( // Apply fade-in animation
+              padding: const EdgeInsets.only(bottom: 15.0),
+              child: FadeInAnimation(
                 child: Image.asset(
-                    'assets/images/splashpage.png', // <<< NEW BOTTOM LOGO
-                    width: 180, // Adjust width as needed, e.g., mediaSize.width * 0.4
-                    // height: 60, // Optionally specify height or let fit: BoxFit.contain manage it
+                    'assets/images/splashpage.png',
+                    width: 250,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
-                      print("Error loading splashpage.png: $error"); // Path yang benar adalah splashpage.png
+                      print("Error loading splashpage.png: $error");
                       return const Icon(Icons.broken_image, size: 50, color: Colors.black54);
                     }
                 ),
@@ -170,9 +240,6 @@ class _FadeInAnimationState extends State<FadeInAnimation> with SingleTickerProv
     _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
-    // Optional: Add a slight delay for the second image if needed,
-    // but for now, both start animating when widget is built.
-    // For simultaneous animation, this is fine.
     _animationController.forward();
     print('FadeInAnimation: Animation started for a child widget');
   }
