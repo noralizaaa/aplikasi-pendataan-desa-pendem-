@@ -6,7 +6,7 @@ import 'package:flutter/services.dart'; // Untuk TextInputFormatter
 import 'package:get/get.dart';
 import '../../../infrastructure/navigation/routes.dart'; // Pastikan path ini benar
 import 'input_user_controller.dart'; // Pastikan ini mengarah ke file controller yang benar
-import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart'; // Untuk QuestionType, dll.
+import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart'; // Untuk QuestionType, ValidationRule, ComparisonOperatorType
 import 'package:intl/intl.dart';
 
 // --- AWAL TAMBAHAN: Widget untuk Grup Berulang ---
@@ -208,12 +208,8 @@ class InputUserScreen extends GetView<InputUserController> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        // Variabel untuk menyimpan keputusan pengguna dari dialog.
-        // Default ke 'false' (jangan keluar) jika dialog ditutup tanpa pilihan eksplisit
-        // (meskipun barrierDismissible: false seharusnya mencegah ini).
         bool allowPop = false;
-
-        await Get.defaultDialog<void>( // Menggunakan <void> karena kita handle keputusan via `allowPop`
+        await Get.defaultDialog<void>(
           title: "Konfirmasi Keluar",
           titleStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           middleText: "Apakah Anda yakin ingin keluar dari Form ini?\nData yang belum diisi atau disimpan akan hilang.",
@@ -221,29 +217,24 @@ class InputUserScreen extends GetView<InputUserController> {
           textConfirm: "Ya, Keluar",
           textCancel: "Batal",
           confirmTextColor: Colors.white,
-          buttonColor: accentHeaderColor, // Menggunakan konstanta warna dari class Anda
+          buttonColor: accentHeaderColor,
           cancelTextColor: Colors.grey.shade700,
           onConfirm: () {
-            allowPop = true; // Pengguna setuju untuk keluar (pop)
+            allowPop = true;
             if (Get.isDialogOpen ?? false) {
-              Get.back(); // Tutup dialog ini saja
+              Get.back();
             }
           },
           onCancel: () {
-            allowPop = false; // Pengguna membatalkan (jangan pop)
+            allowPop = false;
           },
           radius: 10,
-          barrierDismissible: false, // Sangat disarankan agar pengguna membuat pilihan eksplisit
+          barrierDismissible: false,
         );
-
-        // Kembalikan keputusan yang telah di-set.
-        // Jika allowPop adalah true, halaman akan di-pop.
-        // Jika allowPop adalah false, Anda akan tetap di halaman form.
-        print("WillPopScope is returning: $allowPop"); // Untuk debugging
         return allowPop;
       },
       child: Scaffold(
-        backgroundColor: pageBackgroundColor, // Menggunakan konstanta dari class
+        backgroundColor: pageBackgroundColor,
         appBar: AppBar(
           elevation: 3.0,
           shadowColor: Colors.black.withOpacity(0.4),
@@ -311,7 +302,7 @@ class InputUserScreen extends GetView<InputUserController> {
                   onPressed: controller.isLoading.value
                       ? null
                       : () {
-                    Get.defaultDialog( // Ini adalah dialog konfirmasi untuk tombol KIRIM/SIMPAN
+                    Get.defaultDialog(
                       title: "Konfirmasi",
                       titleStyle: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w600),
@@ -319,12 +310,11 @@ class InputUserScreen extends GetView<InputUserController> {
                       "Anda yakin ingin ${isEditing ? 'menyimpan perubahan' : 'mengirim jawaban'} form ini?",
                       middleTextStyle: const TextStyle(fontSize: 15),
                       textConfirm: isEditing ? "Ya, Simpan" : "Ya, Kirim",
-                      textCancel: "Batal", // Tombol batal di sini hanya akan menutup dialog ini
+                      textCancel: "Batal",
                       confirmTextColor: Colors.white,
                       buttonColor: accentHeaderColor,
                       cancelTextColor: Colors.grey.shade700,
                       onConfirm: () async {
-                        // --- Logika Tombol Kirim/Simpan ---
                         String? formIdForNavigation;
                         try {
                           formIdForNavigation = controller.loadedForm.value?.id;
@@ -334,26 +324,23 @@ class InputUserScreen extends GetView<InputUserController> {
                           return;
                         }
 
-                        // Tutup dialog konfirmasi KIRIM ini dulu
                         if (Get.isDialogOpen ?? false) {
-                          Get.back(); // Tutup dialog konfirmasi ini. <--- PERUBAHAN: Hapus closeOverlays: true
+                          Get.back();
                         }
 
                         bool submissionSuccessful = false;
                         try {
                           submissionSuccessful = await controller.submitForm();
-                          if (submissionSuccessful) { // Hanya navigasi jika submitForm mengembalikan true
+                          if (submissionSuccessful) {
                             if (!controller.isEditMode.value && formIdForNavigation != null) {
                               Get.offNamed(AppRoutes.LIST_SUBMISSION_FORM, arguments: formIdForNavigation);
                             } else if (controller.isEditMode.value && formIdForNavigation != null) {
                               Get.offNamed(AppRoutes.LIST_SUBMISSION_FORM, arguments: formIdForNavigation);
                             }
                           }
-                          // Jika submissionSuccessful false, controller sudah handle error dan UI tetap di page form
                         } catch (e) {
                           print("Error caught during submit confirmation: $e");
                         }
-                        // --- Akhir Logika Tombol Kirim/Simpan ---
                       },
                       radius: 10,
                     );
@@ -372,7 +359,7 @@ class InputUserScreen extends GetView<InputUserController> {
           if (controller.isLoading.value &&
               controller.loadedForm.value == null) {
             return const Center(
-                child: CircularProgressIndicator(color: accentHeaderColor)); // Menggunakan konstanta warna dari class
+                child: CircularProgressIndicator(color: accentHeaderColor));
           }
           if (controller.errorMessage.value.isNotEmpty &&
               controller.loadedForm.value == null) {
@@ -403,7 +390,7 @@ class InputUserScreen extends GetView<InputUserController> {
                         label: const Text("Coba Lagi Memuat Form"),
                         onPressed: () => controller.fetchFormAndPotentialSubmissionData(),
                         style: ElevatedButton.styleFrom(
-                            backgroundColor: accentHeaderColor, // Menggunakan konstanta warna dari class
+                            backgroundColor: accentHeaderColor,
                             foregroundColor: Colors.white),
                       )
                     else
@@ -432,16 +419,15 @@ class InputUserScreen extends GetView<InputUserController> {
             child: Stack(
               children: [
                 ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(12.0, 12.0, 12.0, 70.0), // Padding untuk floating action button jika ada
-                  itemCount: form.sections.length + 1, // +1 untuk header form
+                  padding: const EdgeInsets.fromLTRB(12.0, 12.0, 12.0, 70.0),
+                  itemCount: form.sections.length + 1,
                   itemBuilder: (context, index) {
                     if (index == 0) {
-                      // Header Form
                       return Card(
                         elevation: 2.5,
                         margin: const EdgeInsets.only(bottom: 24, left: 4, right: 4, top: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-                        color: cardBackgroundColor, // Menggunakan konstanta warna dari class
+                        color: cardBackgroundColor,
                         child: Padding(
                           padding: const EdgeInsets.all(20.0),
                           child: Column(
@@ -452,7 +438,7 @@ class InputUserScreen extends GetView<InputUserController> {
                                 children: [
                                   Icon(
                                     Icons.assignment_ind_outlined,
-                                    color: accentHeaderColor.withOpacity(0.9), // Menggunakan konstanta warna dari class
+                                    color: accentHeaderColor.withOpacity(0.9),
                                     size: 38.0,
                                   ),
                                   const SizedBox(width: 16.0),
@@ -464,7 +450,7 @@ class InputUserScreen extends GetView<InputUserController> {
                                           form.title,
                                           style: Get.textTheme.headlineSmall?.copyWith(
                                             fontWeight: FontWeight.bold,
-                                            color: accentHeaderColor, // Menggunakan konstanta warna dari class
+                                            color: accentHeaderColor,
                                             fontSize: 21,
                                           ),
                                         ),
@@ -488,14 +474,14 @@ class InputUserScreen extends GetView<InputUserController> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
                                 decoration: BoxDecoration(
-                                    color: primaryHeaderColor.withOpacity(0.15), // Menggunakan konstanta warna dari class
+                                    color: primaryHeaderColor.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(10.0),
-                                    border: Border.all(color: primaryHeaderColor.withOpacity(0.3), width: 0.8) // Menggunakan konstanta warna dari class
+                                    border: Border.all(color: primaryHeaderColor.withOpacity(0.3), width: 0.8)
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.info_outline_rounded, color: accentHeaderColor.withOpacity(0.85), size: 22), // Menggunakan konstanta warna dari class
+                                    Icon(Icons.info_outline_rounded, color: accentHeaderColor.withOpacity(0.85), size: 22),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: RichText(
@@ -507,7 +493,7 @@ class InputUserScreen extends GetView<InputUserController> {
                                           ),
                                           children: <TextSpan>[
                                             const TextSpan(text: "Petunjuk: Isi semua pertanyaan dengan data yang benar. Pertanyaan dengan tanda "),
-                                            TextSpan(text: '*', style: TextStyle(color: mandatoryAsteriskColor, fontWeight: FontWeight.bold, fontSize: 14)), // Menggunakan konstanta warna dari class
+                                            TextSpan(text: '*', style: TextStyle(color: mandatoryAsteriskColor, fontWeight: FontWeight.bold, fontSize: 14)),
                                             const TextSpan(text: " wajib diisi."),
                                           ],
                                         ),
@@ -521,11 +507,10 @@ class InputUserScreen extends GetView<InputUserController> {
                         ),
                       );
                     }
-                    // Bagian Form
                     final section = form.sections[index - 1];
-                    final sectionIndex = index - 1; // Untuk penomoran Roman
+                    final sectionIndex = index - 1;
                     String displaySectionTitle = section.title.trim().isEmpty
-                        ? 'Bagian ${_toRoman(sectionIndex + 1)}' // Menggunakan method _toRoman
+                        ? 'Bagian ${_toRoman(sectionIndex + 1)}'
                         : '${_toRoman(sectionIndex + 1)}: ${section.title.trim()}';
 
                     return Obx(() {
@@ -556,7 +541,7 @@ class InputUserScreen extends GetView<InputUserController> {
                                       style: Get.textTheme.titleLarge
                                           ?.copyWith(
                                           fontWeight: FontWeight.w600,
-                                          color: titleTextColor, // Menggunakan konstanta warna dari class
+                                          color: titleTextColor,
                                           fontSize: 18),
                                     ),
                                   ),
@@ -569,13 +554,13 @@ class InputUserScreen extends GetView<InputUserController> {
                                           color: Colors.green.shade600,
                                           size: 20),
                                     ),
-                                  if (controller.loadedForm.value!.sections.length > 1) // Hanya tampilkan jika lebih dari 1 section
+                                  if (controller.loadedForm.value!.sections.length > 1)
                                     IconButton(
                                       icon: Icon(
                                         isExpanded
                                             ? Icons.expand_less_rounded
                                             : Icons.expand_more_rounded,
-                                        color: accentHeaderColor, // Menggunakan konstanta warna dari class
+                                        color: accentHeaderColor,
                                       ),
                                       iconSize: 28,
                                       padding: EdgeInsets.zero,
@@ -591,7 +576,7 @@ class InputUserScreen extends GetView<InputUserController> {
                                 Text(
                                   section.description!,
                                   style: Get.textTheme.bodySmall?.copyWith(
-                                    color: subtitleTextColor, // Menggunakan konstanta warna dari class
+                                    color: subtitleTextColor,
                                     fontSize: 13,
                                     height: 1.4,
                                     fontStyle: FontStyle.italic,
@@ -610,12 +595,11 @@ class InputUserScreen extends GetView<InputUserController> {
                                   Text(section.description!,
                                       style: Get.textTheme.bodySmall
                                           ?.copyWith(
-                                          color: subtitleTextColor, // Menggunakan konstanta warna dari class
+                                          color: subtitleTextColor,
                                           fontSize: 13,
                                           height: 1.4)),
                                   const SizedBox(height: 16),
                                 ],
-                                // Memanggil method untuk membangun pertanyaan di dalam section
                                 ..._buildQuestionsForSection(context, section, this),
                               ],
                             ],
@@ -625,10 +609,9 @@ class InputUserScreen extends GetView<InputUserController> {
                     });
                   },
                 ),
-                // Overlay loading saat submit
                 Obx(() {
                   if (controller.isLoading.value &&
-                      controller.loadedForm.value != null) { // Hanya tampilkan jika form sudah dimuat
+                      controller.loadedForm.value != null) {
                     return Container(
                       color: Colors.black.withOpacity(0.3),
                       child: const Center(
@@ -803,6 +786,20 @@ class InputUserScreen extends GetView<InputUserController> {
     );
   }
 
+  // Helper method untuk mendapatkan teks display operator perbandingan
+  String _getComparisonOperatorDisplayText(String? operatorShortString) {
+    if (operatorShortString == null) return "";
+    switch (operatorShortString) {
+      case 'lessThan': return 'kurang dari';
+      case 'lessThanOrEqual': return 'kurang dari atau sama dengan';
+      case 'equal': return 'sama dengan';
+      case 'notEqual': return 'tidak sama dengan';
+      case 'greaterThan': return 'lebih dari';
+      case 'greaterThanOrEqual': return 'lebih dari atau sama dengan';
+      default: return operatorShortString; // fallback
+    }
+  }
+
 
   Widget _buildQuestionInput(BuildContext context, FormQuestion question,
       {int? repeatIndex, required String keyPrefix}) {
@@ -941,12 +938,10 @@ class InputUserScreen extends GetView<InputUserController> {
                 !RegExp(r'^\d{16}$').hasMatch(effectiveValueString)) {
               return 'NIK untuk $questionLabel harus 16 digit angka.';
             }
-            // START MODIFICATION
-            if (rule.predefinedRule == 'noKK' && // Asumsikan 'kk' adalah predefinedRule untuk No. KK
+            if (rule.predefinedRule == 'noKK' &&
                 !RegExp(r'^\d{16}$').hasMatch(effectiveValueString)) {
               return 'No. KK untuk $questionLabel harus 16 digit angka.';
             }
-            // END MODIFICATION
             if (rule.predefinedRule == 'email' &&
                 !GetUtils.isEmail(effectiveValueString)) {
               return 'Format email untuk $questionLabel tidak valid.';
@@ -957,6 +952,7 @@ class InputUserScreen extends GetView<InputUserController> {
             }
           }
 
+          // Validasi untuk Tipe Pertanyaan Angka
           if (currentQuestionState.type == QuestionType.number && val != null && val.toString().isNotEmpty) {
             num? numAnswer = num.tryParse(val.toString().replaceAll(',', '.'));
 
@@ -965,12 +961,94 @@ class InputUserScreen extends GetView<InputUserController> {
             }
 
             if (numAnswer != null) {
+              // Validasi Min/Max Value
               if (rule.minValue != null && numAnswer < rule.minValue!) {
                 return '$questionLabel minimal ${rule.minValue}.';
               }
               if (rule.maxValue != null && numAnswer > rule.maxValue!) {
                 return '$questionLabel maksimal ${rule.maxValue}.';
               }
+
+              // ---- AWAL IMPLEMENTASI VALIDASI PERBANDINGAN ----
+              if (rule.comparisonOperator != null &&
+                  rule.comparisonOperator != ComparisonOperatorType.none.toShortString() &&
+                  rule.compareToQuestionId != null &&
+                  rule.compareToQuestionId!.isNotEmpty) {
+
+                final String compareToQuestionId = rule.compareToQuestionId!;
+                final FormQuestion? targetQuestion = controller.findQuestionById(compareToQuestionId);
+
+                if (targetQuestion != null) {
+                  dynamic targetAnswerDynamic;
+                  // Cek apakah pertanyaan target berada dalam grup yang sama dan ada repeatIndex
+                  if (targetQuestion.belongsToGroupTag != null &&
+                      targetQuestion.belongsToGroupTag == currentQuestionState.belongsToGroupTag &&
+                      repeatIndex != null &&
+                      controller.repeatableGroupAnswers.containsKey(compareToQuestionId)) {
+                    targetAnswerDynamic = controller.repeatableGroupAnswers[compareToQuestionId]![repeatIndex];
+                  } else if (controller.userAnswers.containsKey(compareToQuestionId)) {
+                    // Ambil dari userAnswers jika bukan kasus di atas atau tidak ditemukan di repeatableGroupAnswers
+                    targetAnswerDynamic = controller.userAnswers[compareToQuestionId];
+                  }
+
+
+                  if (targetAnswerDynamic != null && targetAnswerDynamic.toString().isNotEmpty) {
+                    num? targetNumAnswer = num.tryParse(targetAnswerDynamic.toString().replaceAll(',', '.'));
+
+                    if (targetNumAnswer != null) {
+                      String operatorText = _getComparisonOperatorDisplayText(rule.comparisonOperator);
+                      String targetQuestionLabel = targetQuestion.code != null && targetQuestion.code!.isNotEmpty
+                          ? "${targetQuestion.questionText} (${targetQuestion.code})"
+                          : targetQuestion.questionText;
+
+                      bool comparisonResult = false;
+                      switch (rule.comparisonOperator) {
+                        case 'lessThan': // ComparisonOperatorType.lessThan.toShortString()
+                          comparisonResult = numAnswer < targetNumAnswer;
+                          if (!comparisonResult) return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (nilai dari: $targetQuestionLabel).';
+                          break;
+                        case 'lessThanOrEqual': // ComparisonOperatorType.lessThanOrEqual.toShortString()
+                          comparisonResult = numAnswer <= targetNumAnswer;
+                          if (!comparisonResult) return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (nilai dari: $targetQuestionLabel).';
+                          break;
+                        case 'equal': // ComparisonOperatorType.equal.toShortString()
+                          comparisonResult = numAnswer == targetNumAnswer;
+                          if (!comparisonResult) return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (nilai dari: $targetQuestionLabel).';
+                          break;
+                        case 'notEqual': // ComparisonOperatorType.notEqual.toShortString()
+                          comparisonResult = numAnswer != targetNumAnswer;
+                          if (!comparisonResult) return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (nilai dari: $targetQuestionLabel).';
+                          break;
+                        case 'greaterThan': // ComparisonOperatorType.greaterThan.toShortString()
+                          comparisonResult = numAnswer > targetNumAnswer;
+                          if (!comparisonResult) return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (nilai dari: $targetQuestionLabel).';
+                          break;
+                        case 'greaterThanOrEqual': // ComparisonOperatorType.greaterThanOrEqual.toShortString()
+                          comparisonResult = numAnswer >= targetNumAnswer;
+                          if (!comparisonResult) return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (nilai dari: $targetQuestionLabel).';
+                          break;
+                      }
+                    } else {
+                      // Nilai pertanyaan target tidak valid (bukan angka), mungkin tampilkan warning atau abaikan
+                      // Untuk saat ini, kita bisa memilih untuk mengabaikan jika nilai target tidak bisa di-parse,
+                      // karena validasi tipe data pertanyaan target seharusnya ditangani oleh validatornya sendiri.
+                      // Atau bisa juga: return 'Nilai pertanyaan "${targetQuestion.questionText}" yang dibandingkan bukan angka.';
+                    }
+                  } else {
+                    // Pertanyaan target belum diisi, mungkin tampilkan pesan agar user mengisinya terlebih dahulu
+                    // atau abaikan validasi perbandingan ini.
+                    // Untuk saat ini, validasi dilewati jika pertanyaan target kosong.
+                    // Bisa juga: return 'Isi dulu pertanyaan "${targetQuestion.questionText}" untuk perbandingan.';
+                  }
+                } else {
+                  // Seharusnya tidak terjadi jika konfigurasi benar
+                  print("Peringatan: Pertanyaan dengan ID ${compareToQuestionId} untuk perbandingan tidak ditemukan.");
+                }
+              }
+              // ---- AKHIR IMPLEMENTASI VALIDASI PERBANDINGAN ----
+
+
+              // Contoh validasi custom spesifik yang sudah ada sebelumnya
               if (currentQuestionState.code == "203" ||
                   currentQuestionState.code == "204") {
                 final artQuestion = controller.findQuestionByCode("112");
@@ -997,7 +1075,7 @@ class InputUserScreen extends GetView<InputUserController> {
             }
           }
         }
-        return null;
+        return null; // Tidak ada error
       }
 
 
@@ -1011,8 +1089,7 @@ class InputUserScreen extends GetView<InputUserController> {
             onChanged: onChangedCallback,
             validator: validatorFunction,
             autovalidateMode: AutovalidateMode.onUserInteraction,
-            // START MODIFICATION (Pastikan menggunakan 'noKK')
-            inputFormatters: (question.validation?.predefinedRule == 'nik' || question.validation?.predefinedRule == 'noKK') // Diubah dari 'kk' menjadi 'noKK'
+            inputFormatters: (question.validation?.predefinedRule == 'nik' || question.validation?.predefinedRule == 'noKK')
                 ? [
               FilteringTextInputFormatter.digitsOnly,
               LengthLimitingTextInputFormatter(16),
@@ -1020,10 +1097,9 @@ class InputUserScreen extends GetView<InputUserController> {
                 : (question.validation?.predefinedRule == 'numbersOnly')
                 ? [FilteringTextInputFormatter.digitsOnly]
                 : [],
-            keyboardType: (question.validation?.predefinedRule == 'nik' || question.validation?.predefinedRule == 'noKK' || question.validation?.predefinedRule == 'numbersOnly') // Diubah dari 'kk' menjadi 'noKK'
+            keyboardType: (question.validation?.predefinedRule == 'nik' || question.validation?.predefinedRule == 'noKK' || question.validation?.predefinedRule == 'numbersOnly')
                 ? TextInputType.number
                 : TextInputType.text,
-            // END MODIFICATION
           );
         case QuestionType.paragraph:
           return TextFormField(
@@ -1043,9 +1119,9 @@ class InputUserScreen extends GetView<InputUserController> {
             initialValue: initialValue != null ? initialValue.toString().replaceAll('.', ',') : '',
             decoration: _modernInputDecoration(context, hintText: "Masukkan angka"),
             keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: true),
-            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d,]'))],
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d,]'))], // Memperbolehkan koma untuk desimal
             onChanged: (value) {
-              onChangedCallback(value.replaceAll(',', '.'));
+              onChangedCallback(value.replaceAll(',', '.')); // Simpan dengan titik sebagai desimal
             },
             validator: validatorFunction,
             autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -1346,7 +1422,13 @@ class InputUserScreen extends GetView<InputUserController> {
           String? effectiveInitialValue = initialValue as String?;
           if (effectiveInitialValue != null &&
               !optionsToDisplay.contains(effectiveInitialValue) ) {
+            // Jika nilai awal tidak ada di opsi yang valid (misalnya karena parent berubah), reset
             effectiveInitialValue = null;
+            // Penting: panggil onChangedCallback agar state di controller juga terupdate menjadi null
+            // Namun, ini bisa menyebabkan loop jika build dipicu oleh onChanged.
+            // Solusi yang lebih baik adalah controller yang menangani reset ini ketika parent berubah.
+            // Untuk sekarang, kita hanya null-kan tampilan. Controller akan menyimpan nilai lama
+            // sampai user memilih yang baru.
           }
 
 
@@ -1380,19 +1462,21 @@ class InputUserScreen extends GetView<InputUserController> {
 
 
           return DropdownButtonFormField<String>(
-            key: dropdownKey,
+            key: dropdownKey, // Kunci yang dinamis berdasarkan opsi yang tersedia
             value: (optionsToDisplay.isEmpty && effectiveInitialValue != null) ? null : effectiveInitialValue,
             decoration: _modernInputDecoration(
                 context,
-                labelText: (optionsToDisplay.isEmpty)
-                    ? "Tidak ada opsi tersedia"
+                labelText: (optionsToDisplay.isEmpty && !isDependent) // Jika bukan dependent tapi kosong, itu error konfigurasi
+                    ? "Tidak ada opsi dikonfigurasi"
+                    : (optionsToDisplay.isEmpty && isDependent)
+                    ? "Tidak ada opsi untuk pilihan induk"
                     : "Pilih salah satu"),
             items: optionsToDisplay.map((option) {
               return DropdownMenuItem<String>(
                   value: option,
                   child: Text(option, style: const TextStyle(fontSize: 15), overflow: TextOverflow.ellipsis,));
             }).toList(),
-            onChanged: (optionsToDisplay.isEmpty)
+            onChanged: (optionsToDisplay.isEmpty) // Jangan biarkan onChanged jika tidak ada opsi
                 ? null
                 : (String? newValue) {
               if (newValue != null) {
@@ -1412,7 +1496,7 @@ class InputUserScreen extends GetView<InputUserController> {
             if (question.gridRowLabels.isEmpty) {
               if (rawInitialDataMap.entries.isNotEmpty) {
                 MapEntry<dynamic, dynamic> targetEntry = rawInitialDataMap.entries.first;
-                if (rawInitialDataMap.containsKey("")) {
+                if (rawInitialDataMap.containsKey("")) { // Prefer empty string key if exists
                   for (final MapEntry<dynamic, dynamic> entryInLoop in rawInitialDataMap.entries) {
                     if (entryInLoop.key == "") {
                       targetEntry = entryInLoop;
@@ -1426,7 +1510,7 @@ class InputUserScreen extends GetView<InputUserController> {
                     effectiveGridAnswers[""] = Map<String, Map<String, num?>>.fromEntries(
                         (rowDataMap as Map<dynamic, dynamic>).entries.map((colEntry) {
                           var subColMapData = colEntry.value;
-                          if (subColMapData is! Map) subColMapData = <String, dynamic>{};
+                          if (subColMapData is! Map) subColMapData = <String, dynamic>{}; // Ensure it's a map
                           return MapEntry(
                               colEntry.key.toString(),
                               Map<String, num?>.fromEntries(
@@ -1443,24 +1527,24 @@ class InputUserScreen extends GetView<InputUserController> {
                     );
                   } catch (e) {
                     print("Error casting single-row grid data for $fieldKeyId (dalam _buildQuestionInput): $e. rowDataMap: $rowDataMap");
-                    effectiveGridAnswers[""] = {};
+                    effectiveGridAnswers[""] = {}; // Fallback to empty
                   }
                 }
               }
-            } else {
+            } else { // Multi-row grid
               try {
                 effectiveGridAnswers = Map<String, Map<String, Map<String, num?>>>.fromEntries(
                     rawInitialDataMap.entries
-                        .where((rowEntry) => question.gridRowLabels.contains(rowEntry.key.toString()))
+                        .where((rowEntry) => question.gridRowLabels.contains(rowEntry.key.toString())) // Only include defined rows
                         .map((rowEntry) {
                       var colMapData = rowEntry.value;
-                      if (colMapData is! Map) colMapData = <String, dynamic>{};
+                      if (colMapData is! Map) colMapData = <String, dynamic>{}; // Ensure it's a map
                       return MapEntry(
                           rowEntry.key.toString(),
                           Map<String, Map<String, num?>>.fromEntries(
                               (colMapData as Map<dynamic, dynamic>).entries.map((colEntry) {
                                 var subColMapData = colEntry.value;
-                                if (subColMapData is! Map) subColMapData = <String, dynamic>{};
+                                if (subColMapData is! Map) subColMapData = <String, dynamic>{}; // Ensure it's a map
                                 return MapEntry(
                                     colEntry.key.toString(),
                                     Map<String, num?>.fromEntries(
@@ -1480,6 +1564,10 @@ class InputUserScreen extends GetView<InputUserController> {
                 );
               } catch (e) {
                 print("Error casting multi-row gridAnswers for $fieldKeyId: $e. InitialValue: $initialValue");
+                // Fallback: initialize with defined rows and empty maps to prevent errors
+                for (var rowLabel in question.gridRowLabels) {
+                  effectiveGridAnswers[rowLabel] = {};
+                }
               }
             }
           }
@@ -1489,7 +1577,7 @@ class InputUserScreen extends GetView<InputUserController> {
             return Text("Grid Numerik: Konfigurasi label 'Kolom' atau 'Sub-Kolom' belum lengkap.", style: TextStyle(color: Colors.red.shade700));
           }
 
-          List<String> superRowsToRender = question.gridRowLabels.isNotEmpty ? question.gridRowLabels : [""];
+          List<String> superRowsToRender = question.gridRowLabels.isNotEmpty ? question.gridRowLabels : [""]; // "" for single unnamed super-row
 
           return FormField<Map<String, Map<String, Map<String, num?>>>>(
               key: ValueKey("${fieldKeyId}_grid_formfield_${superRowsToRender.join('_')}_${question.gridColumnLabels.join('_')}_${question.gridSubColumnLabels.join('_')}_modified"),
@@ -1498,6 +1586,7 @@ class InputUserScreen extends GetView<InputUserController> {
               autovalidateMode: AutovalidateMode.onUserInteraction,
               builder: (FormFieldState<Map<String, Map<String, Map<String, num?>>>> field) {
                 num? getSafeCellValue(String superRowLabel, String originalGridColLabel, String originalGridSubColLabel) {
+                  // Ensure all keys exist before accessing
                   return field.value?[superRowLabel]?[originalGridColLabel]?[originalGridSubColLabel];
                 }
 
@@ -1508,76 +1597,78 @@ class InputUserScreen extends GetView<InputUserController> {
                       scrollDirection: Axis.horizontal,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: superRowsToRender.map((uiSuperRowLabel) {
+                        children: superRowsToRender.map((uiSuperRowLabel) { // uiSuperRowLabel is the "" or actual label
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4.0),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (uiSuperRowLabel.isNotEmpty && question.gridRowLabels.isNotEmpty)
+                                if (uiSuperRowLabel.isNotEmpty && question.gridRowLabels.isNotEmpty) // Display super-row label if not empty
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 6.0, left: 2.0, top: 8.0),
                                     child: Text(uiSuperRowLabel, style: Get.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: titleTextColor)),
                                   ),
                                 Table(
                                   border: TableBorder.all(color: Colors.grey.shade300, width: 0.7),
-                                  defaultColumnWidth: const MinColumnWidth(IntrinsicColumnWidth(), FixedColumnWidth(85)),
+                                  defaultColumnWidth: const MinColumnWidth(IntrinsicColumnWidth(), FixedColumnWidth(85)), // Min width to prevent squishing
                                   children: [
-                                    TableRow(
+                                    TableRow( // Header Row for SubColumns
                                       decoration: BoxDecoration(color: Colors.grey.shade100),
                                       children: [
-                                        const TableCell(child: Padding(padding: EdgeInsets.all(6.0), child: Text(" ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)))),
+                                        const TableCell(child: Padding(padding: EdgeInsets.all(6.0), child: Text(" ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)))), // Empty top-left cell
                                         ...question.gridSubColumnLabels.map((subColLabel) => TableCell(
                                           verticalAlignment: TableCellVerticalAlignment.middle,
                                           child: Padding(
-                                            // MODIFIED: Increased horizontal padding for subcolumn headers
-                                              padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 20.0),
+                                              padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 20.0), // Increased padding
                                               child: Text(subColLabel, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
                                         )).toList(),
                                       ],
                                     ),
+                                    // Data Rows (one for each originalGridColLabel)
                                     ...question.gridColumnLabels.map((originalGridColLabel) {
                                       return TableRow(
                                         children: [
-                                          TableCell(
+                                          TableCell( // Row Header (originalGridColLabel)
                                               verticalAlignment: TableCellVerticalAlignment.middle,
                                               child: Padding(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0), // Increased padding
                                                   child: Text(originalGridColLabel, style: const TextStyle(fontSize: 12)))),
+                                          // Data Cells (TextFormFields)
                                           ...question.gridSubColumnLabels.map((originalGridSubColLabel) {
+                                            // Safely get the cell value for display
                                             num? cellValue = getSafeCellValue(uiSuperRowLabel, originalGridColLabel, originalGridSubColLabel);
                                             String cellKeyIdGrid = "${fieldKeyId}_grid_${uiSuperRowLabel}_${originalGridColLabel}_${originalGridSubColLabel}";
 
                                             return TableCell(
                                               verticalAlignment: TableCellVerticalAlignment.middle,
                                               child: Padding(
-                                                // MODIFIED: Increased padding around the TextFormField
-                                                padding: const EdgeInsets.all(2.0),
+                                                padding: const EdgeInsets.all(2.0), // Padding around TextFormField
                                                 child: TextFormField(
-                                                  key: ValueKey(cellKeyIdGrid + (cellValue?.toString() ?? "")),
+                                                  key: ValueKey(cellKeyIdGrid + (cellValue?.toString() ?? "")), // Key includes value for rebuild
                                                   initialValue: cellValue?.toString().replaceAll('.', ',') ?? '',
                                                   textAlign: TextAlign.center,
                                                   style: const TextStyle(fontSize: 13),
                                                   decoration: InputDecoration(
                                                     border: InputBorder.none,
-                                                    // MODIFIED: Increased contentPadding for the TextFormField
-                                                    contentPadding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                                                    contentPadding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0), // Padding inside TextFormField
                                                     isDense: true,
                                                     fillColor: Colors.white,
                                                     filled: true,
-                                                    errorStyle: const TextStyle(height: 0, fontSize: 0),
+                                                    errorStyle: const TextStyle(height: 0, fontSize: 0), // Hide default error to prevent layout jump
                                                   ),
                                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d,]'))],
                                                   onChanged: (value) {
+                                                    // Update controller state
                                                     controller.updateGridAnswer(
                                                         question.id,
                                                         repeatIndex,
-                                                        uiSuperRowLabel,
+                                                        uiSuperRowLabel, // Pass the correct superRowLabel
                                                         originalGridColLabel,
                                                         originalGridSubColLabel,
-                                                        value.replaceAll(',', '.'));
+                                                        value.replaceAll(',', '.')); // Store with '.'
 
+                                                    // Get the updated grid state from the controller
                                                     var currentGridAnswerState;
                                                     if (repeatIndex != null) {
                                                       currentGridAnswerState = controller.repeatableGroupAnswers[question.id]?[repeatIndex];
@@ -1585,25 +1676,28 @@ class InputUserScreen extends GetView<InputUserController> {
                                                       currentGridAnswerState = controller.userAnswers[question.id];
                                                     }
 
+                                                    // Update FormField state
                                                     if (currentGridAnswerState is Map<String, Map<String, Map<String, num?>>>) {
                                                       field.didChange(Map<String, Map<String, Map<String, num?>>>.from(currentGridAnswerState));
                                                     } else if (currentGridAnswerState is Map) {
+                                                      // Attempt conversion if it's a map but not the exact type (e.g. from Firestore)
                                                       try {
                                                         Map<String, Map<String, Map<String, num?>>> convertedMap = controller.getGridMapForValidation(currentGridAnswerState);
                                                         field.didChange(convertedMap);
                                                       } catch (e) {
                                                         print("Error converting grid state for FormField (onChanged): $e");
-                                                        field.didChange({});
+                                                        field.didChange({}); // Fallback
                                                       }
                                                     } else {
-                                                      field.didChange({});
+                                                      field.didChange({}); // Fallback if not a map
                                                     }
                                                   },
                                                   validator: (cellValueString) {
+                                                    // Basic validation: ensure it's a number if not empty
                                                     if (cellValueString != null &&
                                                         cellValueString.isNotEmpty &&
                                                         num.tryParse(cellValueString.replaceAll(',', '.')) == null) {
-                                                      return 'X';
+                                                      return 'X'; // Minimal error indicator, main validation by FormField
                                                     }
                                                     return null;
                                                   },
@@ -1625,7 +1719,7 @@ class InputUserScreen extends GetView<InputUserController> {
                     ),
                     if (field.hasError && field.errorText != null && field.errorText!.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(top: 8.0, left: 0.0),
+                        padding: const EdgeInsets.only(top: 8.0, left: 0.0), // Display error below the table
                         child: Text(
                           field.errorText!,
                           style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
@@ -1646,15 +1740,15 @@ class InputUserScreen extends GetView<InputUserController> {
     if (repeatIndex != null && question.belongsToGroupTag != null) {
       final groupTag = question.belongsToGroupTag!;
       final totalRepeatCount = controller.repeatableGroupCounts[groupTag] ?? 0;
-      return "[Data ${question.code != null && question.code!.isNotEmpty ? question.code : ''} ke-${repeatIndex + 1} dari $totalRepeatCount] ${question.questionText}";
+      // return "[Data ${question.code != null && question.code!.isNotEmpty ? question.code : ''} ke-${repeatIndex + 1} dari $totalRepeatCount] ${question.questionText}";
+      // Disederhanakan agar tidak terlalu panjang di pesan error
+      return "${question.questionText} (data ke-${repeatIndex + 1})";
     }
     return question.questionText;
   }
-} // Penutup Class InputUserScreen
+}
 
 
-// **** AWAL PENAMBAHAN KEMBALI EXTENSION METHOD ****
-// Extension method di controller untuk konversi grid jika perlu
 extension GridMapConversion on InputUserController {
   Map<String, Map<String, Map<String, num?>>> getGridMapForValidation(dynamic currentGridData) {
     if (currentGridData is Map<String, Map<String, Map<String, num?>>>) {
@@ -1663,19 +1757,19 @@ extension GridMapConversion on InputUserController {
     if (currentGridData is Map) {
       try {
         return Map<String, Map<String, Map<String, num?>>>.fromEntries(
-            (currentGridData as Map<dynamic, dynamic>).entries.map((rowEntry) { // rowEntry.key adalah superRowLabel
-              var colMap = rowEntry.value; // colMap berisi Map<originalColLabel, Map<originalSubColLabel, value>>
+            (currentGridData as Map<dynamic, dynamic>).entries.map((rowEntry) {
+              var colMap = rowEntry.value;
               if (colMap is! Map) colMap = <String, dynamic>{};
               return MapEntry(
                   rowEntry.key.toString(),
                   Map<String, Map<String, num?>>.fromEntries(
-                      (colMap as Map<dynamic, dynamic>).entries.map((colEntry) { // colEntry.key adalah originalColLabel
-                        var subColMap = colEntry.value; // subColMap berisi Map<originalSubColLabel, value>
+                      (colMap as Map<dynamic, dynamic>).entries.map((colEntry) {
+                        var subColMap = colEntry.value;
                         if (subColMap is! Map) subColMap = <String, dynamic>{};
                         return MapEntry(
                             colEntry.key.toString(),
                             Map<String, num?>.fromEntries(
-                                (subColMap as Map<dynamic, dynamic>).entries.map((subColEntry) { // subColEntry.key adalah originalSubColLabel
+                                (subColMap as Map<dynamic, dynamic>).entries.map((subColEntry) {
                                   num? cellValueNum;
                                   if (subColEntry.value == null) {
                                     cellValueNum = null;
@@ -1698,10 +1792,9 @@ extension GridMapConversion on InputUserController {
         );
       } catch (e) {
         print("Error in getGridMapForValidation: $e. Data: $currentGridData");
-        return <String, Map<String, Map<String, num?>>>{}; // Fallback
+        return <String, Map<String, Map<String, num?>>>{};
       }
     }
-    return <String, Map<String, Map<String, num?>>>{}; // Fallback if not a map at all
+    return <String, Map<String, Map<String, num?>>>{};
   }
 }
-// **** AKHIR PENAMBAHAN KEMBALI EXTENSION METHOD ****

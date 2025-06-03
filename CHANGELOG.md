@@ -4,6 +4,27 @@ This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+
+---
+
+## [0.29.0] - 2025-06-03
+> Contributed by [Lutfi Indra Nur Praditya]
+
+> Enhanced number-type validation with dynamic comparison logic and improved display of comparison rules.
+
+### 🎉 Added
+-   **Helper `_getComparisonOperatorDisplayText`:**
+  - Added in `InputUserScreen` to convert shorthand operators (e.g., `"lessThan"`) into user-friendly text (e.g., `"less than"`), similar to `admin_form_builder_page`.
+
+### 🛠️ Changed
+-   **Number Question Validation (`validatorFunction`):**
+  - Checks if `comparisonOperator` and `compareToQuestionId` are valid before proceeding.
+  - Retrieves the target question using `controller.findQuestionById()`.
+  - Fetches the target answer from:
+    - `repeatableGroupAnswers` if inside the same repeating group.
+    - `userAnswers` if outside.
+  - Applies dynamic comparison logic via `switch` based on the operator.
+
 ---
 
 ## [0.28.3] - 2025-06-03
