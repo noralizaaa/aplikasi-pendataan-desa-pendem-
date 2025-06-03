@@ -3,6 +3,31 @@
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+---
+
+## [0.28.3] - 2025-06-03
+> Contributed by [Lutfi Indra Nur Praditya]
+
+> Navigation and section handling for cleaner jumps and better user control.
+
+### 🎉 Added
+-   **Auto-Expand Section:**
+  - Automatically expands the section if the form contains only one.
+
+### 🛠️ Changed
+-   **Jump Logic (`_performJump`):**
+  - No longer modifies `expandedSectionId` automatically.
+  - Section expansion now only happens via user toggle or validation errors on submit.
+-   **Jump Target Validation:**
+  - Ensures `effectiveNextVisibleQId` is valid; defaults to end of form if not.
+-   **Form Cleanup on Jump:**
+  - Clears answers and hides questions after `currentQuestionId` before jumping.
+
+### 🐛 Fixed
+-   **Section Expansion Bug:**
+  - Prevented unintended section changes during automated jumps.
+
 ---
 
 ## [0.28.2] - 2025-06-03
