@@ -6,7 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart';
-import './input_user_model.dart';
+import './input_user_model.dart'; // Pastikan path ini benar
 
 class InputUserController extends GetxController {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -41,9 +41,9 @@ class InputUserController extends GetxController {
 
   void toggleSectionExpansion(String sectionId) {
     if (expandedSectionId.value == sectionId) {
-      expandedSectionId.value = '';
+      expandedSectionId.value = ''; // Tutup jika sudah terbuka
     } else {
-      expandedSectionId.value = sectionId;
+      expandedSectionId.value = sectionId; // Buka jika tertutup
     }
   }
 
@@ -71,18 +71,15 @@ class InputUserController extends GetxController {
         final count = repeatableGroupCounts[groupTag] ?? 0;
         if (repeatableGroupAnswers.containsKey(question.id)) {
           for (int i = 0; i < count; i++) {
-            final int currentActiveRepeatIndex = activeRepeatIndexForGroup[groupTag] ?? 0;
-            if (i == currentActiveRepeatIndex) {
-              hasMainAnswer = repeatableGroupAnswers[question.id]!.containsKey(i) &&
-                  !_isAnswerEmpty(
-                      repeatableGroupAnswers[question.id]![i], question.type);
+            hasMainAnswer = repeatableGroupAnswers[question.id]!.containsKey(i) &&
+                !_isAnswerEmpty(
+                    repeatableGroupAnswers[question.id]![i], question.type);
 
-              if (question.hasOtherOption && repeatableGroupAnswers[question.id]![i] == _kOtherOptionValue) {
-                hasOtherTextForSelectedOther = repeatableGroupOtherAnswers[question.id]?[i]?.isNotEmpty ?? false;
-                if (hasMainAnswer && hasOtherTextForSelectedOther) return true;
-              } else if (hasMainAnswer) {
-                return true;
-              }
+            if (question.hasOtherOption && repeatableGroupAnswers[question.id]![i] == _kOtherOptionValue) {
+              hasOtherTextForSelectedOther = repeatableGroupOtherAnswers[question.id]?[i]?.isNotEmpty ?? false;
+              if (hasMainAnswer && hasOtherTextForSelectedOther) return true;
+            } else if (hasMainAnswer) {
+              return true;
             }
           }
         }
@@ -148,6 +145,7 @@ class InputUserController extends GetxController {
     loadedSubmission.value = null;
     _allQuestionIdsInOrder.clear();
     activeRepeatIndexForGroup.clear();
+    // expandedSectionId.value = ''; // Reset expanded section ID saat memuat form baru
 
     if (formId.value.isEmpty) {
       errorMessage.value = "ID Form kosong, tidak dapat melanjutkan.";
@@ -171,6 +169,19 @@ class InputUserController extends GetxController {
               _allQuestionIdsInOrder.add(question.id);
             }
           }
+          if (loadedForm.value!.sections.isNotEmpty) {
+            if (loadedForm.value!.sections.length == 1) {
+              expandedSectionId.value = loadedForm.value!.sections.first.id; // Otomatis expand jika hanya 1 section
+            } else {
+              // Default expand section pertama jika ada lebih dari 1 section dan belum ada submission ID
+              // atau jika submission ID ada tapi kita ingin tetap default ke section pertama.
+              // Jika ingin mempertahankan section terakhir yang diedit, perlu logika tambahan.
+              expandedSectionId.value = loadedForm.value!.sections.first.id;
+            }
+          } else {
+            expandedSectionId.value = ''; // Tidak ada section untuk di-expand
+          }
+
         } else {
           errorMessage.value =
           "Gagal memproses struktur form dari Firestore.";
@@ -243,50 +254,58 @@ class InputUserController extends GetxController {
     questionVisibility.clear();
     activeRepeatIndexForGroup.clear();
 
+    for (var qId in _allQuestionIdsInOrder) {
+      final question = findQuestionById(qId);
+      if (question == null) continue;
+
+      if (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty) {
+        userAnswers[question.id] = _getDefaultAnswerForQuestionType(question.type);
+        if (question.hasOtherOption) {
+          userOtherAnswers[question.id] = '';
+        }
+      }
+      else if (question.belongsToGroupTag != null && question.belongsToGroupTag!.isNotEmpty) {
+        if (!repeatableGroupAnswers.containsKey(question.id)) {
+          repeatableGroupAnswers[question.id] = RxMap<int, dynamic>();
+        }
+        if (question.hasOtherOption && !repeatableGroupOtherAnswers.containsKey(question.id)) {
+          repeatableGroupOtherAnswers[question.id] = RxMap<int, String>();
+        }
+      }
+    }
+
+
     if (isEditMode.value && loadedSubmission.value != null) {
       _populateAnswersFromSubmission();
     } else {
       for (var qId in _allQuestionIdsInOrder) {
         final question = findQuestionById(qId);
         if (question == null) continue;
-
-        if (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty) {
-          if (!userAnswers.containsKey(question.id)) {
-            userAnswers[question.id] = _getDefaultAnswerForQuestionType(question.type);
-          }
-        }
         if (question.isRepeatableGroupController && question.controlledGroupTag != null) {
-          if (!repeatableGroupCounts.containsKey(question.controlledGroupTag!)) {
-            dynamic controllerAnswer = userAnswers[question.id];
-            int count = 0;
-            if (controllerAnswer is String) count = int.tryParse(controllerAnswer) ?? 0;
-            else if (controllerAnswer is num) count = controllerAnswer.toInt();
-            repeatableGroupCounts[question.controlledGroupTag!] = count;
-            if (count > 0) {
-              activeRepeatIndexForGroup.putIfAbsent(question.controlledGroupTag!, () => 0);
-            } else {
-              activeRepeatIndexForGroup.remove(question.controlledGroupTag!);
-            }
+          dynamic controllerAnswer = userAnswers[question.id];
+          int count = 0;
+          if (controllerAnswer is String && controllerAnswer.isNotEmpty) count = int.tryParse(controllerAnswer) ?? 0;
+          else if (controllerAnswer is num) count = controllerAnswer.toInt();
+
+          repeatableGroupCounts[question.controlledGroupTag!] = count;
+          if (count > 0) {
+            activeRepeatIndexForGroup.putIfAbsent(question.controlledGroupTag!, () => 0);
           }
-        }
-        if (question.belongsToGroupTag != null && question.belongsToGroupTag!.isNotEmpty) {
-          if (!repeatableGroupAnswers.containsKey(question.id)) {
-            repeatableGroupAnswers[question.id] = RxMap<int, dynamic>();
-          }
-          if (question.hasOtherOption) {
-            if (!repeatableGroupOtherAnswers.containsKey(question.id)) {
-              repeatableGroupOtherAnswers[question.id] = RxMap<int, String>();
-            }
-          }
+          _adjustRepeatableGroupAnswers(question.controlledGroupTag!, count);
         }
       }
-      repeatableGroupCounts.forEach((groupTag, count) {
-        _adjustRepeatableGroupAnswers(groupTag, count);
-      });
     }
+
+    userAnswers.refresh();
+    userOtherAnswers.refresh();
+    repeatableGroupAnswers.refresh();
+    repeatableGroupOtherAnswers.refresh();
+    repeatableGroupCounts.refresh();
     activeRepeatIndexForGroup.refresh();
+
     _initializeAndEvaluateInitialVisibility();
   }
+
 
   Future<void> fetchFormStructure() async {
     if (formId.value.isEmpty) {
@@ -305,6 +324,7 @@ class InputUserController extends GetxController {
     errorMessage.value = '';
     loadedForm.value = null;
     _allQuestionIdsInOrder.clear();
+    // expandedSectionId.value = ''; // Reset saat struktur form dimuat ulang
     try {
       final docSnapshot =
       await _db.collection('adminForms').doc(formId.value).get();
@@ -317,7 +337,18 @@ class InputUserController extends GetxController {
               _allQuestionIdsInOrder.add(question.id);
             }
           }
+          if (loadedForm.value!.sections.isNotEmpty) {
+            if (loadedForm.value!.sections.length == 1) {
+              expandedSectionId.value = loadedForm.value!.sections.first.id;
+            } else {
+              expandedSectionId.value = loadedForm.value!.sections.first.id;
+            }
+          } else {
+            expandedSectionId.value = '';
+          }
           _initializeStatesBasedOnMode();
+        } else {
+          errorMessage.value = "Gagal memproses struktur form dari Firestore.";
         }
       } else {
         errorMessage.value =
@@ -325,6 +356,7 @@ class InputUserController extends GetxController {
         loadedForm.value = null;
       }
     } catch (e, s) {
+      print("Error saat fetchFormStructure: $e\n$s");
       errorMessage.value = "Gagal memuat form: ${e.toString()}";
       loadedForm.value = null;
       Get.snackbar('Error Memuat', errorMessage.value,
@@ -339,9 +371,6 @@ class InputUserController extends GetxController {
   void _populateAnswersFromSubmission() {
     if (loadedSubmission.value == null || loadedForm.value == null) return;
 
-    Map<String, int> tempGroupCounts = {};
-    activeRepeatIndexForGroup.clear();
-
     for (var qId in _allQuestionIdsInOrder) {
       final question = findQuestionById(qId);
       if (question == null) continue;
@@ -350,23 +379,18 @@ class InputUserController extends GetxController {
         if (question.hasOtherOption) {
           userOtherAnswers[question.id] = '';
         }
-      } else if (question.belongsToGroupTag != null && question.belongsToGroupTag!.isNotEmpty) {
-        if (!repeatableGroupAnswers.containsKey(question.id)) {
-          repeatableGroupAnswers[question.id] = RxMap<int, dynamic>();
-        }
-        if (question.hasOtherOption && !repeatableGroupOtherAnswers.containsKey(question.id)) {
-          repeatableGroupOtherAnswers[question.id] = RxMap<int, String>();
-        }
       }
     }
+
+    Map<String, int> tempGroupCounts = {};
 
     for (var savedAnswer in loadedSubmission.value!.answers) {
       String originalQuestionId = savedAnswer.questionId;
       bool isRepeatableMemberInstance = false;
       int? potentialRepeatIndex;
 
-      if (savedAnswer.questionId.contains('_')) {
-        final parts = savedAnswer.questionId.split('_');
+      final parts = savedAnswer.questionId.split('_');
+      if (parts.length > 1) {
         potentialRepeatIndex = int.tryParse(parts.last);
         if (potentialRepeatIndex != null) {
           originalQuestionId = parts.sublist(0, parts.length - 1).join('_');
@@ -380,53 +404,34 @@ class InputUserController extends GetxController {
       dynamic mappedMainAnswer;
       String? otherText;
 
-      // MODIFIED: Pass questionDef to _mapAnswerToCorrectType
-      if (questionDef.hasOtherOption && savedAnswer.answer is String) {
-        bool isPredefinedOption = questionDef.options.contains(savedAnswer.answer as String);
-        if (questionDef.type == QuestionType.multipleChoice) {
+      if (questionDef.hasOtherOption) {
+        if (savedAnswer.answer is String) {
+          bool isPredefinedOption = questionDef.options.contains(savedAnswer.answer as String);
           if (!isPredefinedOption && (savedAnswer.answer as String).isNotEmpty) {
             mappedMainAnswer = _kOtherOptionValue;
             otherText = savedAnswer.answer as String;
           } else {
             mappedMainAnswer = _mapAnswerToCorrectType(savedAnswer.answer, questionDef);
           }
-        } else if (questionDef.type == QuestionType.checkboxes && savedAnswer.answer is List) {
+        } else if (savedAnswer.answer is List && questionDef.type == QuestionType.checkboxes) {
           List<String> tempCheckboxAnswers = [];
-          bool otherFound = false;
-          for(var item in (savedAnswer.answer as List)){
-            if(questionDef.options.contains(item.toString())){
+          List<String> otherTextsFound = [];
+          for (var item in (savedAnswer.answer as List)) {
+            if (questionDef.options.contains(item.toString())) {
               tempCheckboxAnswers.add(item.toString());
             } else if (item.toString().isNotEmpty) {
-              if(!otherFound){
-                tempCheckboxAnswers.add(_kOtherOptionValue);
-                otherText = item.toString(); // This will be the 'other' text
-                otherFound = true;
-              } else {
-                print("Warning: Multiple non-predefined options found for checkbox ${questionDef.id}, using first as 'Other'.");
-              }
+              otherTextsFound.add(item.toString());
             }
+          }
+          if (otherTextsFound.isNotEmpty) {
+            tempCheckboxAnswers.add(_kOtherOptionValue);
+            otherText = otherTextsFound.join(', ');
           }
           mappedMainAnswer = tempCheckboxAnswers;
         } else {
           mappedMainAnswer = _mapAnswerToCorrectType(savedAnswer.answer, questionDef);
         }
-      } else if (questionDef.hasOtherOption && questionDef.type == QuestionType.checkboxes && savedAnswer.answer is List) {
-        List<String> tempCheckboxAnswers = [];
-        bool otherFound = false;
-        for(var item in (savedAnswer.answer as List)){
-          if(questionDef.options.contains(item.toString())){
-            tempCheckboxAnswers.add(item.toString());
-          } else if (item.toString().isNotEmpty) {
-            if(!otherFound){
-              tempCheckboxAnswers.add(_kOtherOptionValue);
-              otherText = item.toString();
-              otherFound = true;
-            }
-          }
-        }
-        mappedMainAnswer = tempCheckboxAnswers;
-      }
-      else {
+      } else {
         mappedMainAnswer = _mapAnswerToCorrectType(savedAnswer.answer, questionDef);
       }
 
@@ -435,10 +440,9 @@ class InputUserController extends GetxController {
         if (otherText != null) {
           userOtherAnswers[originalQuestionId] = otherText;
         }
-
         if (questionDef.isRepeatableGroupController && questionDef.controlledGroupTag != null) {
           int count = 0;
-          if (mappedMainAnswer is String) count = int.tryParse(mappedMainAnswer) ?? 0;
+          if (mappedMainAnswer is String && mappedMainAnswer.isNotEmpty) count = int.tryParse(mappedMainAnswer) ?? 0;
           else if (mappedMainAnswer is num) count = mappedMainAnswer.toInt();
           tempGroupCounts[questionDef.controlledGroupTag!] = count;
         }
@@ -452,36 +456,15 @@ class InputUserController extends GetxController {
       } else {
         activeRepeatIndexForGroup.remove(tag);
       }
-    });
-
-    repeatableGroupCounts.forEach((groupTag, count) {
-      _adjustRepeatableGroupAnswers(groupTag, count);
-      if (questionShouldBeVisible(groupTag)) {
-        activeRepeatIndexForGroup.putIfAbsent(groupTag, () => 0);
-      }
-      loadedForm.value?.sections.forEach((section) {
-        section.questions.forEach((qInGroup) {
-          if (qInGroup.belongsToGroupTag == groupTag && qInGroup.hasOtherOption) {
-            if (!repeatableGroupOtherAnswers.containsKey(qInGroup.id)) {
-              repeatableGroupOtherAnswers[qInGroup.id] = RxMap<int, String>();
-            }
-            final otherAnswerMap = repeatableGroupOtherAnswers[qInGroup.id]!;
-            for (int i = 0; i < count; i++) {
-              if (!otherAnswerMap.containsKey(i)) {
-                otherAnswerMap[i] = '';
-              }
-            }
-          }
-        });
-      });
+      _adjustRepeatableGroupAnswers(tag, count);
     });
 
     for (var savedAnswer in loadedSubmission.value!.answers) {
       String originalQuestionId = savedAnswer.questionId;
       int? repeatIndex;
 
-      if (savedAnswer.questionId.contains('_')) {
-        final parts = savedAnswer.questionId.split('_');
+      final parts = savedAnswer.questionId.split('_');
+      if (parts.length > 1) {
         final potentialIndex = int.tryParse(parts.last);
         if (potentialIndex != null) {
           originalQuestionId = parts.sublist(0, parts.length - 1).join('_');
@@ -495,60 +478,51 @@ class InputUserController extends GetxController {
       }
 
       if (repeatableGroupAnswers.containsKey(originalQuestionId) &&
-          (repeatableGroupAnswers[originalQuestionId]?.length ?? 0) > repeatIndex) {
+          repeatIndex < (repeatableGroupCounts[questionDef.belongsToGroupTag!] ?? 0) ) {
 
         dynamic mappedMainAnswerRepeat;
         String? otherTextRepeat;
 
-        // MODIFIED: Pass questionDef to _mapAnswerToCorrectType
-        if (questionDef.hasOtherOption && savedAnswer.answer is String) {
-          bool isPredefinedOption = questionDef.options.contains(savedAnswer.answer as String);
-          if (questionDef.type == QuestionType.multipleChoice) {
+        if (questionDef.hasOtherOption) {
+          if (savedAnswer.answer is String) {
+            bool isPredefinedOption = questionDef.options.contains(savedAnswer.answer as String);
             if (!isPredefinedOption && (savedAnswer.answer as String).isNotEmpty) {
               mappedMainAnswerRepeat = _kOtherOptionValue;
               otherTextRepeat = savedAnswer.answer as String;
             } else {
               mappedMainAnswerRepeat = _mapAnswerToCorrectType(savedAnswer.answer, questionDef);
             }
-          }  else { // For other types like text, paragraph if they somehow have hasOtherOption
-            mappedMainAnswerRepeat = _mapAnswerToCorrectType(savedAnswer.answer, questionDef);
-          }
-        } else if (questionDef.hasOtherOption && questionDef.type == QuestionType.checkboxes && savedAnswer.answer is List) {
-          List<String> tempCheckboxAnswers = [];
-          bool otherFound = false;
-          for(var item in (savedAnswer.answer as List)){
-            if(questionDef.options.contains(item.toString())){
-              tempCheckboxAnswers.add(item.toString());
-            } else if (item.toString().isNotEmpty) {
-              if(!otherFound){
-                tempCheckboxAnswers.add(_kOtherOptionValue);
-                otherTextRepeat = item.toString();
-                otherFound = true;
+          } else if (savedAnswer.answer is List && questionDef.type == QuestionType.checkboxes) {
+            List<String> tempCheckboxAnswers = [];
+            List<String> otherTextsFound = [];
+            for (var item in (savedAnswer.answer as List)) {
+              if (questionDef.options.contains(item.toString())) {
+                tempCheckboxAnswers.add(item.toString());
+              } else if (item.toString().isNotEmpty){
+                otherTextsFound.add(item.toString());
               }
             }
+            if(otherTextsFound.isNotEmpty){
+              tempCheckboxAnswers.add(_kOtherOptionValue);
+              otherTextRepeat = otherTextsFound.join(', ');
+            }
+            mappedMainAnswerRepeat = tempCheckboxAnswers;
+          } else {
+            mappedMainAnswerRepeat = _mapAnswerToCorrectType(savedAnswer.answer, questionDef);
           }
-          mappedMainAnswerRepeat = tempCheckboxAnswers;
-        }
-        else {
+        } else {
           mappedMainAnswerRepeat = _mapAnswerToCorrectType(savedAnswer.answer, questionDef);
         }
 
         repeatableGroupAnswers[originalQuestionId]![repeatIndex] = mappedMainAnswerRepeat;
         if (otherTextRepeat != null && repeatableGroupOtherAnswers.containsKey(originalQuestionId)) {
-          if (!repeatableGroupOtherAnswers[originalQuestionId]!.containsKey(repeatIndex)) {
+          if(!repeatableGroupOtherAnswers[originalQuestionId]!.containsKey(repeatIndex)){
             repeatableGroupOtherAnswers[originalQuestionId]![repeatIndex] = '';
           }
           repeatableGroupOtherAnswers[originalQuestionId]![repeatIndex] = otherTextRepeat;
         }
       }
     }
-
-    userAnswers.refresh();
-    userOtherAnswers.refresh();
-    repeatableGroupAnswers.refresh();
-    repeatableGroupOtherAnswers.refresh();
-    repeatableGroupCounts.refresh();
-    activeRepeatIndexForGroup.refresh();
   }
 
   bool questionShouldBeVisible(String groupTag) {
@@ -561,7 +535,6 @@ class InputUserController extends GetxController {
     return true;
   }
 
-  // MODIFIED: Signature changed to accept FormQuestion questionDef
   dynamic _mapAnswerToCorrectType(dynamic rawAnswer, FormQuestion questionDef) {
     if (rawAnswer == null) {
       return _getDefaultAnswerForQuestionType(questionDef.type);
@@ -573,11 +546,11 @@ class InputUserController extends GetxController {
         }
         return <String>[];
       case QuestionType.number:
-        if (rawAnswer is num) return rawAnswer.toString();
-        if (rawAnswer is String) return rawAnswer; // Already a string, might be "1,23"
-        // If it's not num or string, try to parse. If fails, return empty string or keep as is.
-        return (num.tryParse(rawAnswer.toString().replaceAll(',', '.')) ?? '')
-            .toString();
+        if (rawAnswer is num) return rawAnswer.toString().replaceAll('.', ',');
+        if (rawAnswer is String) {
+          return rawAnswer;
+        }
+        return (num.tryParse(rawAnswer.toString().replaceAll(',', '.'))?.toString().replaceAll('.', ',') ?? '');
       case QuestionType.date:
         if (rawAnswer is Timestamp) {
           return DateFormat('dd/MM/yyyy').format(rawAnswer.toDate());
@@ -590,18 +563,18 @@ class InputUserController extends GetxController {
             try {
               return DateFormat('dd/MM/yyyy').format(DateTime.parse(rawAnswer));
             } catch (e) {
-              // Fallback for unparseable strings
+              print("Peringatan: Gagal mem-parse string tanggal '$rawAnswer' di _mapAnswerToCorrectType.");
+              return rawAnswer;
             }
           }
         }
-        return rawAnswer.toString(); // Fallback
+        return rawAnswer.toString();
       case QuestionType.gridNumeric:
         if (rawAnswer is Map) {
           try {
             return Map<String, Map<String, Map<String, num?>>>.fromEntries(
-                (rawAnswer).entries.map((rowEntry) {
+                (rawAnswer as Map<dynamic,dynamic>).entries.map((rowEntry) {
                   String effectiveRowKey = rowEntry.key.toString();
-                  // CORE FIX: Convert "default_row" back to "" for single grids
                   if ((questionDef.gridRowLabels.isEmpty) && effectiveRowKey == "default_row") {
                     effectiveRowKey = "";
                   }
@@ -610,15 +583,15 @@ class InputUserController extends GetxController {
                   if (colMap is! Map) colMap = <String, dynamic>{};
 
                   return MapEntry(
-                      effectiveRowKey, // Use the potentially modified key
+                      effectiveRowKey,
                       Map<String, Map<String, num?>>.fromEntries(
-                          (colMap as Map).entries.map((colEntry) {
+                          (colMap as Map<dynamic,dynamic>).entries.map((colEntry) {
                             var subColMap = colEntry.value;
                             if (subColMap is! Map) subColMap = <String, dynamic>{};
                             return MapEntry(
                                 colEntry.key.toString(),
                                 Map<String, num?>.fromEntries(
-                                    (subColMap as Map).entries.map((subColEntry) {
+                                    (subColMap as Map<dynamic,dynamic>).entries.map((subColEntry) {
                                       num? valNum;
                                       if (subColEntry.value == null) {
                                         valNum = null;
@@ -641,7 +614,7 @@ class InputUserController extends GetxController {
       case QuestionType.dropdown:
       case QuestionType.multipleChoice:
         if (rawAnswer is String) return rawAnswer;
-        return rawAnswer?.toString();
+        return rawAnswer?.toString() ?? _getDefaultAnswerForQuestionType(questionDef.type);
       default:
         return rawAnswer.toString();
     }
@@ -649,7 +622,7 @@ class InputUserController extends GetxController {
 
 
   void _initializeAndEvaluateInitialVisibility() {
-    if (_allQuestionIdsInOrder.isEmpty) {
+    if (_allQuestionIdsInOrder.isEmpty || loadedForm.value == null) {
       questionVisibility.clear();
       questionVisibility.refresh();
       return;
@@ -659,26 +632,42 @@ class InputUserController extends GetxController {
       questionVisibility[qId] = false;
     }
 
-    String? firstVisibleCandidateId = _allQuestionIdsInOrder.first;
-    final firstQuestion = findQuestionById(firstVisibleCandidateId);
+    String? firstQuestionIdInForm = _allQuestionIdsInOrder.firstOrNull;
+    if (firstQuestionIdInForm != null) {
+      final firstQuestion = findQuestionById(firstQuestionIdInForm);
+      if (firstQuestion != null) {
+        questionVisibility[firstQuestionIdInForm] = true;
 
-    if (firstQuestion != null) {
-      questionVisibility[firstQuestion.id] = true;
-      // MODIFIED: Pass questionDef to _mapAnswerToCorrectType if used here, or ensure default value logic is sound.
-      // For initial evaluation, userAnswers might not be fully populated from submission yet if this is called too early.
-      // However, it seems userAnswers is populated by _populateAnswersFromSubmission or default values before this.
-      evaluateAndExecuteJumps(
-          firstQuestion.id, userAnswers[firstQuestion.id] ?? _getDefaultAnswerForQuestionType(firstQuestion.type));
-    }
+        if (firstQuestion.belongsToGroupTag != null &&
+            (repeatableGroupCounts[firstQuestion.belongsToGroupTag!] ?? 0) > 0) {
+          activeRepeatIndexForGroup.putIfAbsent(firstQuestion.belongsToGroupTag!, () => 0);
+        }
 
-    if (firstQuestion != null &&
-        questionVisibility[firstQuestion.id] != true &&
-        !(firstQuestion.unconditionalJumpTarget != null &&
-            firstQuestion.unconditionalJumpTarget!.isNotEmpty)) {
-      questionVisibility[firstQuestion.id] = true;
+        dynamic firstAnswer = _getAnswerForEvaluation(firstQuestion);
+        evaluateAndExecuteJumps(firstQuestionIdInForm, firstAnswer);
+      }
     }
     questionVisibility.refresh();
+    activeRepeatIndexForGroup.refresh();
   }
+
+  dynamic _getAnswerForEvaluation(FormQuestion question, {int? specificRepeatIndex}) {
+    if (question.belongsToGroupTag != null && question.belongsToGroupTag!.isNotEmpty) {
+      final groupTag = question.belongsToGroupTag!;
+      final int indexToUse = specificRepeatIndex ?? activeRepeatIndexForGroup[groupTag] ?? 0;
+      final count = repeatableGroupCounts[groupTag] ?? 0;
+
+      // Pastikan index valid sebelum mengakses
+      if (indexToUse >= 0 && indexToUse < count &&
+          repeatableGroupAnswers.containsKey(question.id) &&
+          repeatableGroupAnswers[question.id]!.containsKey(indexToUse)) {
+        return repeatableGroupAnswers[question.id]![indexToUse];
+      }
+      return _getDefaultAnswerForQuestionType(question.type);
+    }
+    return userAnswers[question.id] ?? _getDefaultAnswerForQuestionType(question.type);
+  }
+
 
   FormQuestion? findQuestionById(String questionId) {
     if (loadedForm.value == null) return null;
@@ -700,47 +689,41 @@ class InputUserController extends GetxController {
     return null;
   }
 
-  dynamic getAnswerByQuestionId(String questionId) {
-    return userAnswers[questionId];
-  }
-
   String? getOtherAnswer(String questionId, {int? repeatIndex}) {
-    if (repeatIndex != null) {
-      return repeatableGroupOtherAnswers[questionId]?[repeatIndex];
-    } else {
+    if (repeatIndex != null && repeatableGroupOtherAnswers.containsKey(questionId)) {
+      return repeatableGroupOtherAnswers[questionId]![repeatIndex];
+    } else if (userOtherAnswers.containsKey(questionId)){
       return userOtherAnswers[questionId];
     }
+    return null;
   }
 
   void updateOtherAnswer(String questionId, String value, {int? repeatIndex}) {
-    if (repeatIndex != null) {
+    final question = findQuestionById(questionId);
+    if (question == null) return;
+
+    if (repeatIndex != null && question.belongsToGroupTag != null) {
       if (!repeatableGroupOtherAnswers.containsKey(questionId)) {
         repeatableGroupOtherAnswers[questionId] = RxMap<int, String>();
       }
-      if (!repeatableGroupOtherAnswers[questionId]!.containsKey(repeatIndex)){
-        final groupTag = findQuestionById(questionId)?.belongsToGroupTag;
-        if(groupTag != null){
-          final count = repeatableGroupCounts[groupTag] ?? 0;
-          if(repeatIndex < count){
-            repeatableGroupOtherAnswers[questionId]![repeatIndex] = '';
-          } else {
-            print("Warning: updateOtherAnswer for invalid repeatIndex $repeatIndex in QID $questionId");
-            return;
-          }
-        } else {
+      final groupTag = question.belongsToGroupTag!;
+      final count = repeatableGroupCounts[groupTag] ?? 0;
+      if (repeatIndex < count) {
+        if(!repeatableGroupOtherAnswers[questionId]!.containsKey(repeatIndex)){
           repeatableGroupOtherAnswers[questionId]![repeatIndex] = '';
         }
+        repeatableGroupOtherAnswers[questionId]![repeatIndex] = value;
+      } else {
+        print("Peringatan: updateOtherAnswer untuk repeatIndex $repeatIndex (QID: $questionId) di luar batas count $count.");
+        return;
       }
-      repeatableGroupOtherAnswers[questionId]![repeatIndex] = value;
-      repeatableGroupOtherAnswers.refresh();
     } else {
       userOtherAnswers[questionId] = value;
-      userOtherAnswers.refresh();
     }
   }
 
-  String? _getSectionIdForQuestion(String questionId) {
-    if (loadedForm.value == null) return null;
+  String? _getSectionIdForQuestion(String? questionId) {
+    if (loadedForm.value == null || questionId == null) return null;
     for (var section in loadedForm.value!.sections) {
       if (section.questions.any((q) => q.id == questionId)) {
         return section.id;
@@ -749,8 +732,8 @@ class InputUserController extends GetxController {
     return null;
   }
 
-  String? _getFirstQuestionIdOfSection(String sectionId) {
-    if (loadedForm.value == null) return null;
+  String? _getFirstQuestionIdOfSection(String? sectionId) { // sectionId bisa null
+    if (loadedForm.value == null || sectionId == null) return null;
     final section =
     loadedForm.value!.sections.firstWhereOrNull((s) => s.id == sectionId);
     return section?.questions.isNotEmpty == true
@@ -763,49 +746,52 @@ class InputUserController extends GetxController {
     bool changed = false;
     for (var qId in _allQuestionIdsInOrder) {
       final qChild = findQuestionById(qId);
-      if (qChild == null) continue;
+      if (qChild == null || qChild.dependentOptions?.parentQuestionId != parentQuestionId) continue;
 
-      if (qChild.dependentOptions?.parentQuestionId == parentQuestionId) {
+      if (questionVisibility[qChild.id] == true || calledFromJumpClear) {
         dynamic defaultValue = _getDefaultAnswerForQuestionType(qChild.type);
-        if (userAnswers.containsKey(qChild.id) &&
-            userAnswers[qChild.id] != defaultValue &&
-            (questionVisibility[qChild.id] == true || calledFromJumpClear)) {
-          userAnswers[qChild.id] = defaultValue;
-          if (qChild.hasOtherOption) userOtherAnswers[qChild.id] = '';
-          changed = true;
-          _resetDependentChildrenAnswers(qChild.id, calledFromJumpClear: calledFromJumpClear);
-        }
-        if (repeatableGroupAnswers.containsKey(qChild.id) &&
-            (questionVisibility[qChild.id] == true || calledFromJumpClear)) {
-          if (!(findQuestionById(parentQuestionId)?.isRepeatableGroupController ?? false) ||
-              findQuestionById(parentQuestionId)?.controlledGroupTag != qChild.belongsToGroupTag) {
-            final groupTag = qChild.belongsToGroupTag;
-            if (groupTag != null) {
-              final count = repeatableGroupCounts[groupTag] ?? 0;
-              for (int i = 0; i < count; i++) {
-                if (repeatableGroupAnswers[qChild.id]!.containsKey(i) &&
-                    repeatableGroupAnswers[qChild.id]![i] != defaultValue) {
-                  repeatableGroupAnswers[qChild.id]![i] = defaultValue;
-                  if (qChild.hasOtherOption && repeatableGroupOtherAnswers.containsKey(qChild.id)) {
-                    if (repeatableGroupOtherAnswers[qChild.id]!.containsKey(i)){
-                      repeatableGroupOtherAnswers[qChild.id]![i] = '';
-                    }
-                  }
-                  changed = true;
+
+        if (qChild.belongsToGroupTag == null || qChild.belongsToGroupTag!.isEmpty) {
+          if (userAnswers[qChild.id] != defaultValue) {
+            userAnswers[qChild.id] = defaultValue;
+            if (qChild.hasOtherOption) userOtherAnswers[qChild.id] = '';
+            changed = true;
+            _resetDependentChildrenAnswers(qChild.id, calledFromJumpClear: true);
+          }
+        } else {
+          final groupTag = qChild.belongsToGroupTag!;
+          final parentQuestion = findQuestionById(parentQuestionId);
+          final count = repeatableGroupCounts[groupTag] ?? 0;
+
+          for (int i = 0; i < count; i++) {
+            bool shouldResetThisInstance = false;
+            if (parentQuestion?.belongsToGroupTag == qChild.belongsToGroupTag) {
+              shouldResetThisInstance = true;
+            } else if (parentQuestion?.belongsToGroupTag == null) {
+              shouldResetThisInstance = true;
+            }
+            else if (parentQuestion?.isRepeatableGroupController == true && parentQuestion?.controlledGroupTag == qChild.belongsToGroupTag) {
+              shouldResetThisInstance = true;
+            }
+
+            if (shouldResetThisInstance &&
+                repeatableGroupAnswers.containsKey(qChild.id) && // Pastikan key ada
+                repeatableGroupAnswers[qChild.id]!.containsKey(i) && // Pastikan index ada
+                repeatableGroupAnswers[qChild.id]![i] != defaultValue) {
+              repeatableGroupAnswers[qChild.id]![i] = defaultValue;
+              if (qChild.hasOtherOption && repeatableGroupOtherAnswers.containsKey(qChild.id)) {
+                if (repeatableGroupOtherAnswers[qChild.id]!.containsKey(i)){
+                  repeatableGroupOtherAnswers[qChild.id]![i] = '';
                 }
               }
+              changed = true;
             }
           }
         }
       }
     }
-    if (changed) {
-      userAnswers.refresh();
-      userOtherAnswers.refresh();
-      repeatableGroupAnswers.refresh();
-      repeatableGroupOtherAnswers.refresh();
-    }
   }
+
 
   void _clearAnswersForSkippedQuestions(List<String> skippedQuestionIds) {
     if (skippedQuestionIds.isEmpty) return;
@@ -815,73 +801,81 @@ class InputUserController extends GetxController {
       if (question == null) continue;
       dynamic defaultValue = _getDefaultAnswerForQuestionType(question.type);
 
-      if (userAnswers.containsKey(qId) && userAnswers[qId] != defaultValue) {
-        userAnswers[qId] = defaultValue;
-        changed = true;
-      }
-      if (userOtherAnswers.containsKey(qId) && userOtherAnswers[qId]!.isNotEmpty) {
-        userOtherAnswers[qId] = '';
-        changed = true;
-      }
-
-      if (repeatableGroupAnswers.containsKey(qId)) {
-        final groupTag = question.belongsToGroupTag;
-        if (groupTag != null) {
-          final count = repeatableGroupCounts[groupTag] ?? 0;
+      if (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty) {
+        if (userAnswers.containsKey(qId) && userAnswers[qId] != defaultValue) {
+          userAnswers[qId] = defaultValue;
+          changed = true;
+        }
+        if (question.hasOtherOption && userOtherAnswers.containsKey(qId) && userOtherAnswers[qId]!.isNotEmpty) {
+          userOtherAnswers[qId] = '';
+          changed = true;
+        }
+        if (question.isRepeatableGroupController && question.controlledGroupTag != null) {
+          final groupTag = question.controlledGroupTag!;
+          if ((repeatableGroupCounts[groupTag] ?? 0) > 0 || (userAnswers[qId]?.toString() ?? '0') != '0') {
+            userAnswers[qId] = '0';
+            repeatableGroupCounts[groupTag] = 0;
+            _adjustRepeatableGroupAnswers(groupTag, 0);
+            changed = true;
+          }
+        }
+      } else {
+        final groupTag = question.belongsToGroupTag!;
+        final count = repeatableGroupCounts[groupTag] ?? 0; // Gunakan count saat ini
+        if (repeatableGroupAnswers.containsKey(qId)) {
           final answerMap = repeatableGroupAnswers[qId]!;
-          final otherAnswerMap = repeatableGroupOtherAnswers[qId];
           for (int i = 0; i < count; i++) {
             if (answerMap.containsKey(i) && answerMap[i] != defaultValue) {
               answerMap[i] = defaultValue;
               changed = true;
             }
-            if (otherAnswerMap != null && otherAnswerMap.containsKey(i) && otherAnswerMap[i]!.isNotEmpty) {
-              otherAnswerMap[i] = '';
-              changed = true;
+            if (question.hasOtherOption && repeatableGroupOtherAnswers.containsKey(qId)) {
+              final otherAnswerMap = repeatableGroupOtherAnswers[qId]!;
+              if (otherAnswerMap.containsKey(i) && otherAnswerMap[i]!.isNotEmpty) {
+                otherAnswerMap[i] = '';
+                changed = true;
+              }
             }
           }
         }
       }
-      if (question.isRepeatableGroupController && question.controlledGroupTag != null) {
-        final groupTag = question.controlledGroupTag!;
-        if ((repeatableGroupCounts[groupTag] ?? 0) > 0) {
-          repeatableGroupCounts[groupTag] = 0;
-          _adjustRepeatableGroupAnswers(groupTag, 0);
-          changed = true;
-        }
-      }
       _resetDependentChildrenAnswers(qId, calledFromJumpClear: true);
-    }
-    if (changed) {
-      userAnswers.refresh();
-      userOtherAnswers.refresh();
-      repeatableGroupAnswers.refresh();
-      repeatableGroupOtherAnswers.refresh();
-      repeatableGroupCounts.refresh();
-      activeRepeatIndexForGroup.refresh();
     }
   }
 
   void evaluateAndExecuteJumps(String currentQuestionId, dynamic answerValue) {
     final question = findQuestionById(currentQuestionId);
-    if (question == null ||
-        loadedForm.value == null ||
-        (questionVisibility[currentQuestionId] != true &&
-            !isLoading.value &&
-            !isEditMode.value )) {
+    if (question == null || loadedForm.value == null) {
+      return;
+    }
+    bool canEvaluate = isLoading.value || isEditMode.value || (questionVisibility[currentQuestionId] == true) ;
+    if (!canEvaluate && !isLoading.value) { // Ditambah !isLoading.value agar evaluasi awal tetap jalan
+      // print("Evaluasi lompat diabaikan untuk $currentQuestionId karena tidak terlihat dan tidak sedang loading.");
       return;
     }
 
     String? jumpToTargetCompositeValue;
+    dynamic effectiveAnswerForJump = answerValue;
+
+    if (question.hasOtherOption && answerValue == _kOtherOptionValue) {
+      int? currentRepeatIndexForEval;
+      if (question.belongsToGroupTag != null && question.belongsToGroupTag!.isNotEmpty) {
+        final groupTag = question.belongsToGroupTag!;
+        currentRepeatIndexForEval = activeRepeatIndexForGroup[groupTag] ?? 0;
+        // Pastikan index valid
+        if (currentRepeatIndexForEval >= (repeatableGroupCounts[groupTag] ?? 0)) {
+          currentRepeatIndexForEval = null; // Anggap tidak ada other text jika index tidak valid
+        }
+      }
+      effectiveAnswerForJump = getOtherAnswer(currentQuestionId, repeatIndex: currentRepeatIndexForEval) ?? "";
+    }
+
 
     if (question.unconditionalJumpTarget != null &&
         question.unconditionalJumpTarget!.isNotEmpty) {
       jumpToTargetCompositeValue = question.unconditionalJumpTarget;
     } else if (question.conditionalJumps.isNotEmpty) {
-      String currentAnswerString = answerValue?.toString() ?? "";
-      if (question.hasOtherOption && answerValue == _kOtherOptionValue) {
-        currentAnswerString = getOtherAnswer(currentQuestionId) ?? "";
-      }
+      String currentAnswerString = effectiveAnswerForJump?.toString() ?? "";
       for (var jumpRule in question.conditionalJumps) {
         if (jumpRule.conditionValue == currentAnswerString) {
           if (jumpRule.jumpToQuestionId == 'END_OF_FORM') {
@@ -911,31 +905,36 @@ class InputUserController extends GetxController {
           currentIndex + 1 < _allQuestionIdsInOrder.length) {
         String nextQuestionInSequenceId =
         _allQuestionIdsInOrder[currentIndex + 1];
+
+        final nextQDef = findQuestionById(nextQuestionInSequenceId);
+        if (nextQDef == null) return;
+
         if (questionVisibility[nextQuestionInSequenceId] != true) {
           questionVisibility[nextQuestionInSequenceId] = true;
-          final nextQDef = findQuestionById(nextQuestionInSequenceId);
-          if (nextQDef?.belongsToGroupTag != null && (repeatableGroupCounts[nextQDef!.belongsToGroupTag!] ?? 0) > 0) {
-            activeRepeatIndexForGroup.putIfAbsent(nextQDef.belongsToGroupTag!, () => 0);
-            activeRepeatIndexForGroup.refresh();
-          }
           questionVisibility.refresh();
-          evaluateAndExecuteJumps(nextQuestionInSequenceId,
-              userAnswers[nextQuestionInSequenceId] ?? (nextQDef != null ? _getDefaultAnswerForQuestionType(nextQDef.type) : ''));
         }
+
+        if (nextQDef.belongsToGroupTag != null && (repeatableGroupCounts[nextQDef.belongsToGroupTag!] ?? 0) > 0) {
+          activeRepeatIndexForGroup.putIfAbsent(nextQDef.belongsToGroupTag!, () => 0);
+          activeRepeatIndexForGroup.refresh();
+        }
+
+        dynamic nextAnswer = _getAnswerForEvaluation(nextQDef);
+        evaluateAndExecuteJumps(nextQuestionInSequenceId, nextAnswer);
       }
     }
   }
 
   void _performJump(String currentQuestionId, String targetCompositeValue) {
     if (loadedForm.value == null) return;
-    final currentIndexInOrder =
-    _allQuestionIdsInOrder.indexOf(currentQuestionId);
+    final currentIndexInOrder = _allQuestionIdsInOrder.indexOf(currentQuestionId);
     if (currentIndexInOrder == -1) {
+      print("Peringatan: _performJump dipanggil untuk currentQuestionId '$currentQuestionId' yang tidak ada dalam _allQuestionIdsInOrder.");
       return;
     }
 
+    bool visibilityChanged = false;
     String? effectiveNextVisibleQId;
-    List<String> idsToHideAndClear = [];
 
     List<String> parts = targetCompositeValue.split('_');
     String type = parts.first;
@@ -944,28 +943,15 @@ class InputUserController extends GetxController {
     if (type == 'question' && parts.length > 1) {
       targetEntityId = parts.sublist(1).join('_');
       effectiveNextVisibleQId = targetEntityId;
-    } else if (type == 'section' &&
-        parts.length > 2 &&
-        parts[1] == 'start') {
+    } else if (type == 'section' && parts.length > 2 && parts[1] == 'start') {
       targetEntityId = parts.sublist(2).join('_');
       effectiveNextVisibleQId = _getFirstQuestionIdOfSection(targetEntityId);
     } else if (targetCompositeValue == 'end_of_current_section') {
       final currentSectionId = _getSectionIdForQuestion(currentQuestionId);
       if (currentSectionId != null) {
-        int currentSecIdx = loadedForm.value!.sections
-            .indexWhere((s) => s.id == currentSectionId);
-        bool afterCurrentInSec = false;
-        for (var qInSection
-        in loadedForm.value!.sections[currentSecIdx].questions) {
-          if (qInSection.id == currentQuestionId) {
-            afterCurrentInSec = true;
-            continue;
-          }
-          if (afterCurrentInSec) idsToHideAndClear.add(qInSection.id);
-        }
-        if (currentSecIdx + 1 < loadedForm.value!.sections.length) {
-          effectiveNextVisibleQId = _getFirstQuestionIdOfSection(
-              loadedForm.value!.sections[currentSecIdx + 1].id);
+        int currentSecIdx = loadedForm.value!.sections.indexWhere((s) => s.id == currentSectionId);
+        if (currentSecIdx != -1 && currentSecIdx + 1 < loadedForm.value!.sections.length) {
+          effectiveNextVisibleQId = _getFirstQuestionIdOfSection(loadedForm.value!.sections[currentSecIdx + 1].id);
         } else {
           effectiveNextVisibleQId = null;
         }
@@ -976,92 +962,84 @@ class InputUserController extends GetxController {
       effectiveNextVisibleQId = null;
     }
 
-    int targetIndex = _allQuestionIdsInOrder.length;
+    if (effectiveNextVisibleQId != null && !_allQuestionIdsInOrder.contains(effectiveNextVisibleQId)) {
+      print("Peringatan: Target lompatan '$effectiveNextVisibleQId' tidak ditemukan dalam daftar pertanyaan (_allQuestionIdsInOrder). Membatalkan lompatan spesifik, dianggap lompat ke akhir.");
+      effectiveNextVisibleQId = null;
+    }
+
+    List<String> idsToActuallyHideAndClear = [];
+    for (int i = currentIndexInOrder + 1; i < _allQuestionIdsInOrder.length; i++) {
+      String qIdToProcess = _allQuestionIdsInOrder[i];
+      if (qIdToProcess == effectiveNextVisibleQId) continue;
+
+      idsToActuallyHideAndClear.add(qIdToProcess);
+      if (questionVisibility[qIdToProcess] != false) {
+        questionVisibility[qIdToProcess] = false;
+        visibilityChanged = true;
+      }
+    }
+
+    if (idsToActuallyHideAndClear.isNotEmpty) {
+      _clearAnswersForSkippedQuestions(idsToActuallyHideAndClear);
+    }
+
     if (effectiveNextVisibleQId != null) {
-      targetIndex = _allQuestionIdsInOrder.indexOf(effectiveNextVisibleQId);
-      if (targetIndex == -1) {
+      final targetQuestionDef = findQuestionById(effectiveNextVisibleQId);
+      if (targetQuestionDef != null) {
+        if (questionVisibility[effectiveNextVisibleQId] != true) {
+          questionVisibility[effectiveNextVisibleQId] = true;
+          visibilityChanged = true;
+        }
+        if (targetQuestionDef.belongsToGroupTag != null &&
+            (repeatableGroupCounts[targetQuestionDef.belongsToGroupTag!] ?? 0) > 0) {
+          activeRepeatIndexForGroup.putIfAbsent(targetQuestionDef.belongsToGroupTag!, () => 0);
+        }
+      } else {
+        print("Peringatan: Definisi pertanyaan untuk target lompatan '$effectiveNextVisibleQId' tidak ditemukan. Lompatan dibatalkan.");
         effectiveNextVisibleQId = null;
-        targetIndex = _allQuestionIdsInOrder.length;
       }
     }
 
-    for (int i = currentIndexInOrder + 1; i < targetIndex; i++) {
-      if (_allQuestionIdsInOrder[i] != effectiveNextVisibleQId) {
-        idsToHideAndClear.add(_allQuestionIdsInOrder[i]);
-      }
-    }
-    if (effectiveNextVisibleQId != null && targetIndex < currentIndexInOrder) {
-      for (int i = targetIndex + 1; i < currentIndexInOrder; i++) {
-        idsToHideAndClear.add(_allQuestionIdsInOrder[i]);
-      }
-    }
-
-    bool visibilityChanged = false;
-    for (String qId in _allQuestionIdsInOrder) {
-      if (qId == effectiveNextVisibleQId) {
-        if (questionVisibility[qId] != true) {
-          questionVisibility[qId] = true;
-          final qDef = findQuestionById(qId);
-          if (qDef?.belongsToGroupTag != null && (repeatableGroupCounts[qDef!.belongsToGroupTag!] ?? 0) > 0) {
-            activeRepeatIndexForGroup[qDef.belongsToGroupTag!] = 0;
-            activeRepeatIndexForGroup.refresh();
-          }
-          visibilityChanged = true;
-        }
-      } else if (qId != currentQuestionId && questionVisibility[qId] != false) {
-        if (idsToHideAndClear.contains(qId) ||
-            (effectiveNextVisibleQId == null && _allQuestionIdsInOrder.indexOf(qId) > currentIndexInOrder) ||
-            (effectiveNextVisibleQId != null &&
-                _allQuestionIdsInOrder.indexOf(qId) > targetIndex && targetIndex < _allQuestionIdsInOrder.length)
-        ) {
-          if (questionVisibility[qId] != false) {
-            questionVisibility[qId] = false;
-            visibilityChanged = true;
-          }
-        }
-      }
-    }
-
-    Set<String> uniqueIdsToClear = Set.from(idsToHideAndClear);
-    if(effectiveNextVisibleQId == null){
-      for(int i = currentIndexInOrder + 1; i < _allQuestionIdsInOrder.length; i++){
-        uniqueIdsToClear.add(_allQuestionIdsInOrder[i]);
-        if (questionVisibility[_allQuestionIdsInOrder[i]] != false) {
-          questionVisibility[_allQuestionIdsInOrder[i]] = false;
-          visibilityChanged = true;
-        }
-      }
-    }
-
-    if (uniqueIdsToClear.isNotEmpty) {
-      _clearAnswersForSkippedQuestions(uniqueIdsToClear.toList());
-    }
     if (visibilityChanged) {
       questionVisibility.refresh();
     }
+    activeRepeatIndexForGroup.refresh();
 
-    if (effectiveNextVisibleQId != null && questionVisibility[effectiveNextVisibleQId] == true) {
+    // Logika untuk expand section dari target lompatan (jika ada target dan berbeda section)
+    final targetSectionIdActual = _getSectionIdForQuestion(effectiveNextVisibleQId);
+    if (targetSectionIdActual != null &&
+        expandedSectionId.value != targetSectionIdActual &&
+        (loadedForm.value?.sections.length ?? 0) > 1) {
+      // Hanya ubah expandedSectionId jika:
+      // 1. Ada target pertanyaan yang jelas (effectiveNextVisibleQId tidak null -> implisit dari targetSectionIdActual tidak null).
+      // 2. Section target berbeda dari section yang sedang expand.
+      // 3. Ada lebih dari satu section di dalam form.
+      expandedSectionId.value = targetSectionIdActual;
+    }
+
+
+    if (effectiveNextVisibleQId != null && (questionVisibility[effectiveNextVisibleQId] == true)) {
       final targetQuestionDef = findQuestionById(effectiveNextVisibleQId);
-      dynamic targetAnswer = userAnswers[effectiveNextVisibleQId] ??
-          (targetQuestionDef != null ? _getDefaultAnswerForQuestionType(targetQuestionDef.type) : '');
+      dynamic targetAnswer = _getAnswerForEvaluation(targetQuestionDef!);
       evaluateAndExecuteJumps(effectiveNextVisibleQId, targetAnswer);
     }
   }
 
   void updateUserAnswer(String questionId, dynamic value) {
+    final question = findQuestionById(questionId);
+    if (question == null) return;
+
     dynamic oldValue = userAnswers[questionId];
     userAnswers[questionId] = value;
-    final question = findQuestionById(questionId);
 
-    if (question != null && question.hasOtherOption && value != _kOtherOptionValue && oldValue == _kOtherOptionValue) {
+    if (question.hasOtherOption && value != _kOtherOptionValue && oldValue == _kOtherOptionValue) {
       updateOtherAnswer(questionId, '');
     }
 
-    if (question != null && question.isRepeatableGroupController && question.controlledGroupTag != null) {
+    if (question.isRepeatableGroupController && question.controlledGroupTag != null) {
       int count = 0;
-      if (value is String) {
-        count =
-            int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+      if (value is String && value.isNotEmpty) {
+        count = int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
       } else if (value is num) {
         count = value.toInt();
       }
@@ -1078,63 +1056,83 @@ class InputUserController extends GetxController {
       if (question.code == "204") {
         final artQuestion = findQuestionByCode("112");
         if (artQuestion != null) {
-          final artCountValueDynamic = getAnswerByQuestionId(artQuestion.id);
-          num? artCount = (artCountValueDynamic is num)
-              ? artCountValueDynamic
-              : num.tryParse(artCountValueDynamic
-              .toString()
-              .replaceAll(RegExp(r'[^0-9.]'), '')
-              .replaceAll(',', '.'));
+          final artCountValueDynamic = _getAnswerForEvaluation(artQuestion);
+          num? artCount = (artCountValueDynamic is String && artCountValueDynamic.isNotEmpty)
+              ? num.tryParse(artCountValueDynamic.replaceAll(',', '.'))
+              : (artCountValueDynamic is num ? artCountValueDynamic : null);
           if (artCount != null && count > artCount) {
             count = artCount.toInt();
             Get.snackbar("Info Validasi",
-                "Jumlah pekerja tidak boleh melebihi ${artQuestion.questionText} ($artCount). Dibatasi menjadi $count.",
-                snackPosition: SnackPosition.BOTTOM,
-                duration: const Duration(seconds: 4));
+                "Jumlah ${question.questionText} tidak boleh melebihi ${artQuestion.questionText} ($artCount). Dibatasi menjadi $count.",
+                snackPosition: SnackPosition.BOTTOM, duration: const Duration(seconds: 4));
           }
         }
       }
 
-      if ((repeatableGroupCounts[question.controlledGroupTag!] ?? 0) != count) {
+      if ((repeatableGroupCounts[question.controlledGroupTag!] ?? 0) != count || (userAnswers[questionId]?.toString() ?? '0') != count.toString()) {
+        userAnswers[questionId] = count.toString();
         repeatableGroupCounts[question.controlledGroupTag!] = count;
         _adjustRepeatableGroupAnswers(question.controlledGroupTag!, count);
+        activeRepeatIndexForGroup.refresh();
       }
-      userAnswers[questionId] = count.toString();
     }
 
     if (oldValue != value) {
       bool isParent = loadedForm.value?.sections.any((s) =>
           s.questions.any((qChild) =>
-          qChild.dependentOptions?.parentQuestionId == questionId)) ??
-          false;
-      if (isParent) _resetDependentChildrenAnswers(questionId);
+          qChild.dependentOptions?.parentQuestionId == questionId)) ?? false;
+      if (isParent) {
+        _resetDependentChildrenAnswers(questionId);
+      }
     }
-    if (question != null) evaluateAndExecuteJumps(questionId, value);
-    userAnswers.refresh();
+
+    evaluateAndExecuteJumps(questionId, userAnswers[questionId]); // Gunakan jawaban yang baru diupdate dari userAnswers
   }
 
   void updateRepeatableGroupAnswer(String questionId, int repeatIndex, dynamic value) {
+    final question = findQuestionById(questionId);
+    if (question == null || question.belongsToGroupTag == null) return;
+
+    final groupTag = question.belongsToGroupTag!;
+    final count = repeatableGroupCounts[groupTag] ?? 0;
+
+    if (repeatIndex >= count) {
+      print("Peringatan: updateRepeatableGroupAnswer untuk index $repeatIndex di luar batas count $count (QID: $questionId).");
+      return;
+    }
+
     if (!repeatableGroupAnswers.containsKey(questionId)) {
       repeatableGroupAnswers[questionId] = RxMap<int, dynamic>();
     }
-    if (repeatableGroupAnswers[questionId]!.length <= repeatIndex) {
-      for(int i = repeatableGroupAnswers[questionId]!.length; i <= repeatIndex; i++){
-        final qDef = findQuestionById(questionId);
-        repeatableGroupAnswers[questionId]![i] = qDef != null ? _getDefaultAnswerForQuestionType(qDef.type) : '';
-      }
+    if (!repeatableGroupAnswers[questionId]!.containsKey(repeatIndex)){
+      repeatableGroupAnswers[questionId]![repeatIndex] = _getDefaultAnswerForQuestionType(question.type);
     }
+
     dynamic oldValue = repeatableGroupAnswers[questionId]![repeatIndex];
     repeatableGroupAnswers[questionId]![repeatIndex] = value;
 
-    final question = findQuestionById(questionId);
-    if (question != null && question.hasOtherOption && value != _kOtherOptionValue && oldValue == _kOtherOptionValue) {
+    if (question.hasOtherOption && value != _kOtherOptionValue && oldValue == _kOtherOptionValue) {
       updateOtherAnswer(questionId, '', repeatIndex: repeatIndex);
     }
-    repeatableGroupAnswers.refresh();
+
+    if (oldValue != value) {
+      bool isParent = loadedForm.value?.sections.any((s) =>
+          s.questions.any((qChild) =>
+          qChild.dependentOptions?.parentQuestionId == questionId)) ?? false;
+      if (isParent) {
+        _resetDependentChildrenAnswers(questionId); // Perlu dipastikan ini handle kasus parent di group
+      }
+    }
+
+    // Gunakan _getAnswerForEvaluation untuk mendapatkan jawaban yang benar untuk evaluasi lompat
+    dynamic answerForEval = _getAnswerForEvaluation(question, specificRepeatIndex: repeatIndex);
+    evaluateAndExecuteJumps(questionId, answerForEval);
   }
+
 
   void _adjustRepeatableGroupAnswers(String groupTag, int newCount) {
     if (loadedForm.value == null) return;
+
     for (var section in loadedForm.value!.sections) {
       for (var qInGroup in section.questions) {
         if (qInGroup.belongsToGroupTag == groupTag) {
@@ -1148,6 +1146,7 @@ class InputUserController extends GetxController {
               answerMap[i] = _getDefaultAnswerForQuestionType(qInGroup.type);
             }
           }
+
           if (qInGroup.hasOtherOption) {
             if (!repeatableGroupOtherAnswers.containsKey(qInGroup.id)) {
               repeatableGroupOtherAnswers[qInGroup.id] = RxMap<int, String>();
@@ -1163,26 +1162,29 @@ class InputUserController extends GetxController {
         }
       }
     }
+
     if (newCount == 0) {
       activeRepeatIndexForGroup.remove(groupTag);
     } else {
-      activeRepeatIndexForGroup.putIfAbsent(groupTag, () => 0);
-      if (activeRepeatIndexForGroup[groupTag]! >= newCount) {
-        activeRepeatIndexForGroup[groupTag] = newCount - 1;
+      if (!activeRepeatIndexForGroup.containsKey(groupTag) || activeRepeatIndexForGroup[groupTag]! >= newCount) {
+        activeRepeatIndexForGroup[groupTag] = (newCount > 0) ? 0 : -1;
+        if(newCount > 0 && activeRepeatIndexForGroup[groupTag]! >= newCount) activeRepeatIndexForGroup[groupTag] = newCount -1;
+      }
+      if (newCount == 0 && activeRepeatIndexForGroup.containsKey(groupTag)) {
+        activeRepeatIndexForGroup.remove(groupTag);
       }
     }
-    activeRepeatIndexForGroup.refresh();
-    repeatableGroupAnswers.refresh();
-    repeatableGroupOtherAnswers.refresh();
   }
 
+
   void goToNextRepeatableItem(String groupTag) {
-    if (repeatableGroupCounts.containsKey(groupTag) && activeRepeatIndexForGroup.containsKey(groupTag)) {
+    if (repeatableGroupCounts.containsKey(groupTag) &&
+        activeRepeatIndexForGroup.containsKey(groupTag) &&
+        repeatableGroupCounts[groupTag]! > 0) { // Pastikan grup tidak kosong
       int currentIdx = activeRepeatIndexForGroup[groupTag]!;
       int maxIdx = repeatableGroupCounts[groupTag]! - 1;
       if (currentIdx < maxIdx) {
         activeRepeatIndexForGroup[groupTag] = currentIdx + 1;
-        activeRepeatIndexForGroup.refresh();
       }
     }
   }
@@ -1192,7 +1194,6 @@ class InputUserController extends GetxController {
       int currentIdx = activeRepeatIndexForGroup[groupTag]!;
       if (currentIdx > 0) {
         activeRepeatIndexForGroup[groupTag] = currentIdx - 1;
-        activeRepeatIndexForGroup.refresh();
       }
     }
   }
@@ -1227,17 +1228,10 @@ class InputUserController extends GetxController {
                               Map<String, num?>.fromEntries(
                                   (subColMap as Map<dynamic, dynamic>).entries.map((subColEntry) {
                                     num? cellValueNum;
-                                    if (subColEntry.value == null) {
-                                      cellValueNum = null;
-                                    } else if (subColEntry.value is num) {
-                                      cellValueNum = subColEntry.value as num;
-                                    } else {
-                                      cellValueNum = num.tryParse(subColEntry.value.toString().replaceAll(',', '.'));
-                                    }
-                                    return MapEntry(
-                                        subColEntry.key.toString(),
-                                        cellValueNum
-                                    );
+                                    if (subColEntry.value == null) {cellValueNum = null;}
+                                    else if (subColEntry.value is num) {cellValueNum = subColEntry.value as num;}
+                                    else {cellValueNum = num.tryParse(subColEntry.value.toString().replaceAll(',', '.'));}
+                                    return MapEntry(subColEntry.key.toString(),cellValueNum);
                                   })
                               )
                           );
@@ -1264,95 +1258,96 @@ class InputUserController extends GetxController {
 
       Map<String, Map<String, Map<String, num?>>> gridAnswers =
       getGridMap(repeatableGroupAnswers[questionId]![repeatIndex]);
-      gridAnswers
-          .putIfAbsent(rowLabel, () => {})
-          .putIfAbsent(colLabel, () => {})[subColLabel] = numericValue;
+
+      gridAnswers.putIfAbsent(rowLabel, () => {}).putIfAbsent(colLabel, () => {})[subColLabel] = numericValue;
       repeatableGroupAnswers[questionId]![repeatIndex] = gridAnswers;
     } else {
-      if (!userAnswers.containsKey(questionId)) {
+      if (!userAnswers.containsKey(questionId) || userAnswers[questionId] == null || userAnswers[questionId] is! Map ) {
         userAnswers[questionId] = <String, Map<String, Map<String, num?>>>{};
       }
       Map<String, Map<String, Map<String, num?>>> gridAnswers =
       getGridMap(userAnswers[questionId]);
-      gridAnswers
-          .putIfAbsent(rowLabel, () => {})
-          .putIfAbsent(colLabel, () => {})[subColLabel] = numericValue;
+
+      gridAnswers.putIfAbsent(rowLabel, () => {}).putIfAbsent(colLabel, () => {})[subColLabel] = numericValue;
       userAnswers[questionId] = gridAnswers;
     }
-    // No need to call refresh explicitly for userAnswers or repeatableGroupAnswers if using RxMaps correctly.
-    // However, if the nested maps are not Rx, then a refresh might be needed for the top-level RxMap.
-    // For safety or if issues persist:
-    // if (repeatIndex != null) repeatableGroupAnswers.refresh(); else userAnswers.refresh();
   }
 
-  // Lokasi: di dalam class InputUserController extends GetxController { ... }
 
   String? _performLocalValidation(
       FormQuestion question, dynamic answer, String questionDisplayName, {int? repeatIndex}) {
-    // Abaikan validasi jika pertanyaan tidak terlihat
     if (questionVisibility[question.id] != true) {
       return null;
     }
 
     bool isEmpty = _isAnswerEmpty(answer, question.type);
+    String? otherText;
 
-    // Validasi khusus untuk opsi 'Lainnya' jika dipilih dan wajib diisi
-    if (question.isRequired && question.hasOtherOption && answer == _kOtherOptionValue) {
-      String? otherText;
+    if (question.hasOtherOption) {
       if (repeatIndex != null) {
         otherText = repeatableGroupOtherAnswers[question.id]?[repeatIndex];
       } else {
         otherText = userOtherAnswers[question.id];
       }
-      if (otherText == null || otherText.trim().isEmpty) {
-        return 'Isian "Lainnya" pada "$questionDisplayName" wajib diisi.';
+      if (answer == _kOtherOptionValue && (otherText == null || otherText.trim().isEmpty)) {
+        if (question.isRequired) return 'Isian "Lainnya" pada "$questionDisplayName" wajib diisi.';
+        isEmpty = true;
       }
-      isEmpty = false; // Jika 'Lainnya' diisi, anggap tidak kosong
+      else if (answer == _kOtherOptionValue && (otherText != null && otherText.trim().isNotEmpty)) {
+        isEmpty = false;
+      }
     }
 
-    // Validasi untuk pertanyaan wajib yang kosong
     if (question.isRequired && isEmpty) {
       return 'Pertanyaan "$questionDisplayName" wajib diisi.';
     }
 
-    final ValidationRule? rule = question.validation;
-    // Lanjutkan validasi hanya jika ada aturan dan jawaban tidak kosong (atau memang kosong tapi tidak wajib)
-    if (rule == null || isEmpty) {
+    if (isEmpty && !question.isRequired) {
       return null;
     }
 
-    // Validasi berdasarkan tipe string (panjang, regex, format khusus)
-    if (answer is String && answer.isNotEmpty) {
-      String effectiveValueString = answer.trim();
+    final ValidationRule? rule = question.validation;
+    if (rule == null) {
+      return null;
+    }
 
-      if (rule.minLength != null && effectiveValueString.length < rule.minLength!) {
+    String effectiveStringValue = "";
+    if (answer == _kOtherOptionValue && otherText != null) {
+      effectiveStringValue = otherText.trim();
+    } else if (answer is String) {
+      effectiveStringValue = answer.trim();
+    }
+
+    if (effectiveStringValue.isNotEmpty || (answer is String && answer.isNotEmpty && question.type != QuestionType.number)) {
+      if (rule.minLength != null && effectiveStringValue.length < rule.minLength!) {
         return 'Jawaban "$questionDisplayName" minimal ${rule.minLength} karakter.';
       }
-      if (rule.maxLength != null && effectiveValueString.length > rule.maxLength!) {
+      if (rule.maxLength != null && effectiveStringValue.length > rule.maxLength!) {
         return 'Jawaban "$questionDisplayName" maksimal ${rule.maxLength} karakter.';
       }
-      if (rule.regex != null && rule.regex!.isNotEmpty && !RegExp(rule.regex!).hasMatch(effectiveValueString)) {
-        return 'Format "$questionDisplayName" tidak sesuai.';
+      if (rule.regex != null && rule.regex!.isNotEmpty && !RegExp(rule.regex!).hasMatch(effectiveStringValue)) {
+        return 'Format "$questionDisplayName" tidak sesuai (${rule.regex}).';
       }
-
-      // Validasi predefined rules
-      if (rule.predefinedRule == 'nik' && !RegExp(r'^\d{16}$').hasMatch(effectiveValueString)) {
+      if (rule.predefinedRule == 'nik' && !RegExp(r'^\d{16}$').hasMatch(effectiveStringValue)) {
         return 'NIK untuk "$questionDisplayName" harus 16 digit angka.';
       }
-      if (rule.predefinedRule == 'email' && !GetUtils.isEmail(effectiveValueString)) {
+      if (rule.predefinedRule == 'noKK' && !RegExp(r'^\d{16}$').hasMatch(effectiveStringValue)) {
+        return 'No. KK untuk "$questionDisplayName" harus 16 digit angka.';
+      }
+      if (rule.predefinedRule == 'email' && !GetUtils.isEmail(effectiveStringValue)) {
         return 'Format email untuk "$questionDisplayName" tidak valid.';
       }
-      if (rule.predefinedRule == 'numbersOnly' && !GetUtils.isNumericOnly(effectiveValueString.replaceAll(',', '').replaceAll('.', ''))) {
+      if (rule.predefinedRule == 'numbersOnly' && !GetUtils.isNumericOnly(effectiveStringValue.replaceAll(',', '').replaceAll('.', ''))) {
         return '"$questionDisplayName" hanya boleh angka.';
       }
     }
 
-    // Validasi khusus untuk tipe Number (nilai min/max)
     if (question.type == QuestionType.number && answer != null && answer.toString().isNotEmpty) {
       num? numAnswer = num.tryParse(answer.toString().replaceAll(',', '.'));
-      if (numAnswer == null) {
+      if (numAnswer == null && answer.toString().isNotEmpty) { // Pastikan string tidak kosong sebelum error angka
         return '"$questionDisplayName" harus berupa angka.';
       }
+      if(numAnswer == null) return null; // Jika memang kosong dan tidak wajib, lolos
 
       if (rule.minValue != null && numAnswer < rule.minValue!) {
         return '"$questionDisplayName" minimal ${rule.minValue}.';
@@ -1361,7 +1356,6 @@ class InputUserController extends GetxController {
         return '"$questionDisplayName" maksimal ${rule.maxValue}.';
       }
 
-      // Validasi silang dengan pertanyaan lain (misalnya, jumlah pekerja vs ART)
       if (question.code == "203" || question.code == "204") {
         final artQuestion = findQuestionByCode("112");
         if (artQuestion != null) {
@@ -1369,205 +1363,115 @@ class InputUserController extends GetxController {
           if (repeatIndex != null && artQuestion.belongsToGroupTag == question.belongsToGroupTag) {
             artCountValueDynamic = repeatableGroupAnswers[artQuestion.id]?[repeatIndex];
           } else {
-            artCountValueDynamic = getAnswerByQuestionId(artQuestion.id);
+            artCountValueDynamic = userAnswers[artQuestion.id];
           }
-          num? artCount = (artCountValueDynamic is String)
-              ? num.tryParse(artCountValueDynamic.replaceAll(',', '.'))
-              : (artCountValueDynamic is num ? artCountValueDynamic : null);
+
+          num? artCount;
+          if (artCountValueDynamic is String && artCountValueDynamic.isNotEmpty) {
+            artCount = num.tryParse(artCountValueDynamic.replaceAll(',', '.'));
+          } else if (artCountValueDynamic is num) {
+            artCount = artCountValueDynamic;
+          }
 
           if (artCount != null && numAnswer > artCount) {
-            return '$questionDisplayName ($numAnswer) tidak boleh melebihi ${artQuestion.questionText} ($artCount).';
+            return '$questionDisplayName (${numAnswer.toInt()}) tidak boleh melebihi ${artQuestion.questionText} (${artCount.toInt()}).';
           }
         }
       }
     }
-    return null; // Validasi lolos, tidak ada pesan error
+    return null;
   }
 
   Future<bool> submitForm() async {
-    // Validasi awal: pastikan form dan pengguna valid
     if (loadedForm.value == null || _auth.currentUser == null) {
       Get.snackbar('Error', 'Form atau pengguna tidak valid.',
           snackPosition: SnackPosition.BOTTOM);
       return false;
     }
 
-    isLoading.value = true; // Aktifkan indikator loading
-
-    // Picu validasi bawaan FormField untuk menampilkan error langsung di kolom input
-    bool formKeyValidationPassed = formKey.currentState!.validate();
+    isLoading.value = true;
+    formKey.currentState?.save();
+    bool formKeyValidationPassed = formKey.currentState?.validate() ?? true;
 
     String? firstInvalidSectionIdToFocus;
-    bool allValidationsPassed = true;
-    List<String> validationErrors = []; // Daftar pesan error yang akan ditampilkan ke pengguna
+    bool allCustomValidationsPassed = true;
+    List<String> validationErrors = [];
 
-    // Iterasi melalui setiap pertanyaan untuk validasi kustom
     for (var section in loadedForm.value!.sections) {
       for (var question in section.questions) {
-        // Lewati pertanyaan yang tidak terlihat
         if (questionVisibility[question.id] != true) {
           continue;
         }
 
         dynamic answerToValidate;
         String questionDisplayName = question.questionText;
-        int? repeatIndexForValidation;
 
-        // Tentukan jawaban dan nama tampilan pertanyaan berdasarkan apakah itu bagian dari grup berulang
         if (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty) {
           answerToValidate = userAnswers[question.id];
+          String? localValidationError = _performLocalValidation(
+              question, answerToValidate, questionDisplayName, repeatIndex: null);
+          if (localValidationError != null) {
+            allCustomValidationsPassed = false;
+            if (!validationErrors.contains(localValidationError)) {
+              validationErrors.add(localValidationError);
+            }
+            if (firstInvalidSectionIdToFocus == null) {
+              firstInvalidSectionIdToFocus = section.id;
+            }
+          }
         } else {
           final groupTag = question.belongsToGroupTag!;
           final count = repeatableGroupCounts[groupTag] ?? 0;
-          final int currentActiveRepeatIndex = activeRepeatIndexForGroup[groupTag] ?? 0;
+          for (int i = 0; i < count; i++) {
+            answerToValidate = repeatableGroupAnswers[question.id]?[i];
+            String displayNameForGroupItem = "[Data ke-${i + 1}] ${question.questionText}";
 
-          if (currentActiveRepeatIndex < count) {
-            answerToValidate = repeatableGroupAnswers[question.id]?[currentActiveRepeatIndex];
-            questionDisplayName = "[Data ke-${currentActiveRepeatIndex + 1}] ${question.questionText}";
-            repeatIndexForValidation = currentActiveRepeatIndex;
-          } else {
-            continue; // Lewati jika tidak ada instance aktif untuk grup berulang
-          }
-        }
-
-        // Jalankan validasi lokal dan kumpulkan pesan error
-        String? localValidationError = _performLocalValidation(
-            question, answerToValidate, questionDisplayName, repeatIndex: repeatIndexForValidation);
-        if (localValidationError != null) {
-          allValidationsPassed = false;
-          validationErrors.add(localValidationError);
-          // Catat section pertama yang memiliki error untuk fokus
-          if (firstInvalidSectionIdToFocus == null) {
-            firstInvalidSectionIdToFocus = section.id;
-          }
-        }
-      }
-    }
-
-    // Gabungkan hasil validasi formKey dengan validasi kustom.
-    // Jika FormKey gagal, set `allValidationsPassed` ke false.
-    if (!formKeyValidationPassed) {
-      allValidationsPassed = false;
-
-      // Tambahkan pesan error dari FormField bawaan yang mungkin belum tercakup
-      // oleh `_performLocalValidation` (misal: hanya validasi `required` yang sederhana).
-      // Kita iterasi lagi untuk mencari field yang kosong dan wajib, serta tambahkan ke daftar error.
-      if (validationErrors.isEmpty || true) { // Gunakan `true` untuk selalu memeriksa dan melengkapi pesan
-        SearchFormKeyErrorLoop:
-        for (var section_ in loadedForm.value!.sections) {
-          for (var q_ in section_.questions) {
-            // Lewati pertanyaan yang tidak terlihat
-            if (questionVisibility[q_.id] != true) {
-              continue;
-            }
-
-            dynamic ans_;
-            if (q_.belongsToGroupTag == null || q_.belongsToGroupTag!.isEmpty) {
-              ans_ = userAnswers[q_.id];
-            } else {
-              final groupTag_ = q_.belongsToGroupTag!;
-              final count_ = repeatableGroupCounts[groupTag_] ?? 0;
-              final int activeIdx_ = activeRepeatIndexForGroup[groupTag_] ?? 0;
-              if (activeIdx_ < count_) {
-                ans_ = repeatableGroupAnswers[q_.id]?[activeIdx_];
-              } else {
-                continue;
+            String? localValidationError = _performLocalValidation(
+                question, answerToValidate, displayNameForGroupItem, repeatIndex: i);
+            if (localValidationError != null) {
+              allCustomValidationsPassed = false;
+              if (!validationErrors.contains(localValidationError)) {
+                validationErrors.add(localValidationError);
               }
-            }
-
-            bool isOtherSelectedAndEmpty = false;
-            if (q_.hasOtherOption && (ans_ == _kOtherOptionValue || (ans_ is List && ans_.contains(_kOtherOptionValue)))) {
-              String? otherTextVal;
-              if (q_.belongsToGroupTag != null && q_.belongsToGroupTag!.isNotEmpty) {
-                final groupTag_ = q_.belongsToGroupTag!;
-                final activeIdx_ = activeRepeatIndexForGroup[groupTag_] ?? 0;
-                if (activeIdx_ < (repeatableGroupCounts[groupTag_] ?? 0)) {
-                  otherTextVal = repeatableGroupOtherAnswers[q_.id]?[activeIdx_];
-                }
-              } else {
-                otherTextVal = userOtherAnswers[q_.id];
-              }
-              if (otherTextVal == null || otherTextVal.trim().isEmpty) {
-                isOtherSelectedAndEmpty = true;
-              }
-            }
-
-            // Jika pertanyaan wajib dan kosong (termasuk kasus 'Lainnya' yang kosong)
-            if (q_.isRequired && (_isAnswerEmpty(ans_, q_.type) && !isOtherSelectedAndEmpty || isOtherSelectedAndEmpty)) {
-              String questionDisplayName = q_.questionText;
-              if (q_.belongsToGroupTag != null && q_.belongsToGroupTag!.isNotEmpty) {
-                final activeIdx_ = activeRepeatIndexForGroup[q_.belongsToGroupTag!] ?? 0;
-                if (activeIdx_ < (repeatableGroupCounts[q_.belongsToGroupTag!] ?? 0)) {
-                  questionDisplayName = "[Data ke-${activeIdx_ + 1}] ${q_.questionText}";
-                }
-              }
-
-              // Tambahkan pesan spesifik ke daftar error, agar muncul di notifikasi tunggal
-              if (isOtherSelectedAndEmpty) {
-                validationErrors.add('Isian "Lainnya" pada "$questionDisplayName" wajib diisi.');
-              } else {
-                validationErrors.add('Pertanyaan "$questionDisplayName" wajib diisi.');
-              }
-
-              // Set section pertama dengan error untuk fokus
               if (firstInvalidSectionIdToFocus == null) {
-                firstInvalidSectionIdToFocus = section_.id;
+                firstInvalidSectionIdToFocus = section.id;
               }
-              // Jangan `break SearchFormKeyErrorLoop` agar semua error FormField terkumpul
             }
           }
         }
       }
     }
 
-
-    // Jika ada kegagalan validasi, tampilkan notifikasi dan hentikan proses
-    if (!allValidationsPassed) {
+    if (!formKeyValidationPassed || !allCustomValidationsPassed) {
       isLoading.value = false;
+      if (firstInvalidSectionIdToFocus != null && expandedSectionId.value != firstInvalidSectionIdToFocus) {
+        if ((loadedForm.value?.sections.length ?? 0) > 1) {
+          expandedSectionId.value = firstInvalidSectionIdToFocus;
+        }
+      }
 
-      // Hapus duplikasi pesan error dan gabungkan untuk notifikasi akhir
       final uniqueErrors = validationErrors.toSet().toList();
-      String notificationMessage = 'Beberapa isian tidak valid atau kosong:\n' + uniqueErrors.join('\n');
+      String notificationMessage = uniqueErrors.join('\n');
+      if (uniqueErrors.isEmpty && !formKeyValidationPassed) {
+        notificationMessage = "Beberapa pertanyaan wajib belum diisi atau formatnya salah. Silakan periksa kembali.";
+      }
+
 
       Get.snackbar(
-        'Validasi Form Gagal', // Judul Snackbar
-        '', // Pesan utama kosong karena akan menggunakan messageText
+        'Validasi Form Gagal',
+        '',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.orange.shade700,
         colorText: Colors.white,
-        duration: const Duration(seconds: 8), // Durasi lebih lama agar pengguna punya waktu membaca/scroll
-        isDismissible: true, // Izinkan dismissal
-        maxWidth: Get.width * 0.9, // Sesuaikan lebar snackbar
-        margin: const EdgeInsets.all(10), // Tambahkan margin
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Padding konten
-        borderRadius: 8, // Border radius snackbar
-
-        // MODIFIKASI UTAMA: Gunakan messageText dengan SingleChildScrollView
+        duration: const Duration(seconds: 6),
+        isDismissible: true,
         messageText: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: Get.height * 0.3, // Batasi tinggi maksimum snackbar agar tidak memenuhi seluruh layar
-          ),
+          constraints: BoxConstraints(maxHeight: Get.height * 0.25),
           child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Beberapa isian tidak valid atau kosong:',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  uniqueErrors.join('\n'), // Gabungkan semua pesan dengan baris baru
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(
+              notificationMessage.isNotEmpty ? notificationMessage : "Terjadi kesalahan validasi. Harap periksa semua isian.",
+              style: const TextStyle(color: Colors.white, fontSize: 14),
             ),
           ),
         ),
@@ -1575,8 +1479,6 @@ class InputUserController extends GetxController {
       return false;
     }
 
-    // --- Proses Pengumpulan dan Pengiriman Data (jika semua validasi lolos) ---
-    // (Bagian ini tidak ada perubahan fungsional dari kode sebelumnya)
     List<QuestionAnswer> answersToSubmit = [];
     loadedForm.value!.sections.forEach((section) {
       section.questions.forEach((question) {
@@ -1584,18 +1486,14 @@ class InputUserController extends GetxController {
           if (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty) {
             dynamic answer = userAnswers[question.id];
             String? otherText = userOtherAnswers[question.id];
+            dynamic finalAnswer = (question.hasOtherOption && answer == _kOtherOptionValue) ? (otherText ?? '') : answer;
 
-            if (question.hasOtherOption && answer == _kOtherOptionValue) {
-              answer = otherText ?? '';
-            }
-            // Tambahkan jawaban hanya jika tidak kosong ATAU pertanyaan tidak wajib
-            if (!_isAnswerEmpty(answer, question.type) || !question.isRequired) {
+            if (!_isAnswerEmpty(finalAnswer, question.type) || !question.isRequired) {
               answersToSubmit.add(QuestionAnswer(
                   questionId: question.id,
                   questionCode: question.code ?? '',
                   questionText: question.questionText,
-                  answer: _prepareAnswerForFirestore(
-                      answer, question.type, question.hasOtherOption, otherText),
+                  answer: _prepareAnswerForFirestore(finalAnswer, question.type),
                   questionType: question.type.toShortString()));
             }
           } else {
@@ -1604,19 +1502,14 @@ class InputUserController extends GetxController {
             for (int i = 0; i < count; i++) {
               dynamic answer = repeatableGroupAnswers[question.id]?[i];
               String? otherText = repeatableGroupOtherAnswers[question.id]?[i];
+              dynamic finalAnswer = (question.hasOtherOption && answer == _kOtherOptionValue) ? (otherText ?? '') : answer;
 
-              if (question.hasOtherOption && answer == _kOtherOptionValue) {
-                answer = otherText ?? '';
-              }
-
-              // Tambahkan jawaban hanya jika tidak kosong ATAU pertanyaan tidak wajib
-              if (!_isAnswerEmpty(answer, question.type) || !question.isRequired) {
+              if (!_isAnswerEmpty(finalAnswer, question.type) || !question.isRequired) {
                 answersToSubmit.add(QuestionAnswer(
                     questionId: "${question.id}_$i",
                     questionCode: "${question.code ?? ''}_${i + 1}",
                     questionText: "[Data ke-${i + 1}] ${question.questionText}",
-                    answer: _prepareAnswerForFirestore(answer,
-                        question.type, question.hasOtherOption, otherText),
+                    answer: _prepareAnswerForFirestore(finalAnswer, question.type),
                     questionType: question.type.toShortString()));
               }
             }
@@ -1630,10 +1523,9 @@ class InputUserController extends GetxController {
       formId: loadedForm.value!.id,
       formTitle: loadedForm.value!.title,
       userId: _auth.currentUser!.uid,
-      userName:
-      _auth.currentUser!.displayName ?? _auth.currentUser!.email ?? 'Anonim',
+      userName: _auth.currentUser!.displayName ?? _auth.currentUser!.email ?? 'Anonim',
       submittedAt: (isEditMode.value && loadedSubmission.value?.submittedAt != null)
-          ? loadedSubmission.value!.submittedAt
+          ? loadedSubmission.value!.submittedAt!
           : Timestamp.now(),
       answers: answersToSubmit,
     );
@@ -1645,31 +1537,21 @@ class InputUserController extends GetxController {
 
     try {
       if (isEditMode.value) {
-        await _db
-            .collection('formSubmissions')
-            .doc(submissionId.value)
-            .set(firestoreData, SetOptions(merge: true));
+        await _db.collection('formSubmissions').doc(submissionId.value).set(firestoreData, SetOptions(merge: true));
         Get.snackbar('Berhasil', 'Perubahan berhasil disimpan!',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green.shade600,
-            colorText: Colors.white);
+            snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
       } else {
         await _db.collection('formSubmissions').add(firestoreData);
         Get.snackbar('Berhasil', 'Form berhasil dikirim!',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green.shade600,
-            colorText: Colors.white);
+            snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
       }
       isLoading.value = false;
-      return true; // Submit berhasil
+      return true;
     } catch (e) {
       Get.snackbar('Error Simpan/Kirim', 'Gagal menyimpan data: ${e.toString()}',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.shade400,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 5));
+          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade400, colorText: Colors.white, duration: const Duration(seconds: 5));
       isLoading.value = false;
-      return false; // Submit gagal karena error
+      return false;
     }
   }
 
@@ -1691,92 +1573,64 @@ class InputUserController extends GetxController {
     return false;
   }
 
-  dynamic _prepareAnswerForFirestore(dynamic answer, QuestionType type, bool hasOtherOption, String? otherText) {
-    if (hasOtherOption) {
-      if (type == QuestionType.multipleChoice ) {
-        // 'answer' sudah merupakan otherText jika _kOtherOptionValue dipilih.
-        // Tidak ada perlakuan khusus lagi di sini.
-      }
-      if (type == QuestionType.checkboxes && answer is List) {
-        List<dynamic> preparedList = [];
-        bool otherValueSubmittedInThisList = false; // Track if otherText has been added for this specific answer list
-        for (var item in answer) {
-          if (item == _kOtherOptionValue) {
-            // This should ideally not happen if 'answer' was resolved correctly before calling this.
-            // If it does, and otherText is available and not yet added, add it.
-            if (otherText != null && otherText.isNotEmpty && !otherValueSubmittedInThisList) {
-              preparedList.add(otherText);
-              otherValueSubmittedInThisList = true;
+  dynamic _prepareAnswerForFirestore(dynamic answer, QuestionType type) {
+    if (answer == null && (type == QuestionType.number || type == QuestionType.date || type == QuestionType.gridNumeric)) {
+      return null;
+    }
+    if (answer == null) {
+      return (type == QuestionType.checkboxes) ? <String>[] : "";
+    }
+
+    switch (type) {
+      case QuestionType.number:
+        if (answer is String) {
+          if (answer.trim().isEmpty) return null;
+          return num.tryParse(answer.replaceAll(',', '.'));
+        }
+        if (answer is num) return answer;
+        return null;
+      case QuestionType.date:
+        if (answer is String) {
+          if (answer.trim().isEmpty) return null;
+          try {
+            final date = DateFormat('dd/MM/yyyy').parseStrict(answer);
+            return Timestamp.fromDate(date);
+          } catch (e) {
+            try {
+              final date = DateTime.parse(answer);
+              return Timestamp.fromDate(date);
+            } catch (e2) {
+              print("Peringatan: Gagal mem-parse string tanggal '$answer' untuk Firestore. Menyimpan string mentah.");
+              return answer;
             }
-          } else {
-            preparedList.add(item);
           }
         }
-        // If the original 'answer' list *only* contained _kOtherOptionValue and otherText was used,
-        // but then otherText was cleared, the list might be empty.
-        // Or if 'answer' was directly the resolved otherText (now empty), this is handled below.
-        return preparedList.isEmpty && (answer as List).contains(_kOtherOptionValue) && (otherText == null || otherText.isEmpty)
-            ? [] // If only "other" was checked and text is empty, submit empty list
-            : preparedList;
-      }
-    }
-
-    if (type == QuestionType.number) {
-      if (answer is String) {
-        if (answer.trim().isEmpty) return null; // Store empty number as null
-        return num.tryParse(answer.replaceAll(',', '.'));
-      }
-      if (answer is num) return answer;
-    }
-    if (answer is Map && type == QuestionType.gridNumeric) {
-      Map<String, dynamic> firestoreGrid = {};
-      (answer).forEach((rowKey, colMap) {
-        // For single grids, rowKey will be "", which is converted to "default_row"
-        String effectiveRowKey =
-        rowKey.toString().isEmpty ? "default_row" : rowKey.toString();
-
-        if (colMap is Map) {
-          Map<String, dynamic> currentCols = {};
-          (colMap).forEach((colKey, subColMap) {
-            if (subColMap is Map) {
+        if (answer is DateTime) return Timestamp.fromDate(answer);
+        if (answer is Timestamp) return answer;
+        return null;
+      case QuestionType.gridNumeric:
+        if (answer is Map<String, Map<String, Map<String, num?>>>) {
+          Map<String, dynamic> firestoreGrid = {};
+          answer.forEach((rowKey, colMap) {
+            String effectiveRowKey = rowKey.toString().isEmpty ? "default_row" : rowKey.toString();
+            Map<String, dynamic> currentCols = {};
+            colMap.forEach((colKey, subColMap) {
               Map<String, num?> currentSubCols = {};
-              (subColMap).forEach((subColKey, cellValue) {
-                if (cellValue is String) {
-                  if (cellValue.trim().isEmpty) {
-                    currentSubCols[subColKey.toString()] = null; // Store empty cell as null
-                  } else {
-                    currentSubCols[subColKey.toString()] =
-                        num.tryParse(cellValue.replaceAll(',', '.'));
-                  }
-                } else if (cellValue is num?) {
-                  currentSubCols[subColKey.toString()] = cellValue;
-                } else {
-                  currentSubCols[subColKey.toString()] = null; // Default to null for safety
-                }
+              subColMap.forEach((subColKey, cellValue) {
+                currentSubCols[subColKey.toString()] = cellValue;
               });
               currentCols[colKey.toString()] = currentSubCols;
-            }
+            });
+            firestoreGrid[effectiveRowKey] = currentCols;
           });
-          firestoreGrid[effectiveRowKey] = currentCols;
+          return firestoreGrid;
         }
-      });
-      return firestoreGrid;
+        return {};
+      case QuestionType.checkboxes:
+        if (answer is List) return List<String>.from(answer.map((e) => e.toString()));
+        return <String>[];
+      default:
+        return answer.toString();
     }
-    if (type == QuestionType.date && answer is String) {
-      if (answer.trim().isEmpty) return null; // Store empty date as null
-      try {
-        final date = DateFormat('dd/MM/yyyy').parseStrict(answer);
-        return Timestamp.fromDate(date);
-      } catch (e) {
-        try {
-          final date = DateTime.parse(answer);
-          return Timestamp.fromDate(date);
-        } catch (e2) {
-          print("Warning: Could not parse date string '$answer' for Firestore. Saving as string.");
-          return answer;
-        }
-      }
-    }
-    return answer;
   }
 }
