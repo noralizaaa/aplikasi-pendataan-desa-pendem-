@@ -68,9 +68,9 @@ class LoginScreen extends GetView<LoginController> {
       keyboardType: TextInputType.emailAddress,
       style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
-        hintText: 'Username',
+        hintText: 'Email',
         hintStyle: TextStyle(color: textFieldDefaultColor.withOpacity(0.7)),
-        labelText: 'Username',
+        labelText: 'Email',
         labelStyle: const TextStyle(color: textFieldDefaultColor),
         filled: true,
         fillColor: textFieldFillColor,

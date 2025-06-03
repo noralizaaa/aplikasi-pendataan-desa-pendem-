@@ -1,5 +1,6 @@
 // File: input_user_screen.dart
 
+import 'package:aplikasi_pendataan_desa/presentation/user/ListSubmissionForm/list_submission_form_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Untuk TextInputFormatter
 import 'package:get/get.dart';
@@ -205,396 +206,443 @@ class InputUserScreen extends GetView<InputUserController> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: pageBackgroundColor,
-      appBar: AppBar(
-        elevation: 3.0,
-        shadowColor: Colors.black.withOpacity(0.4),
-        iconTheme: const IconThemeData(color: Colors.white),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                accentHeaderColor,
-                primaryHeaderColor,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              stops: [0.3, 0.9],
+    return WillPopScope(
+      onWillPop: () async {
+        // Variabel untuk menyimpan keputusan pengguna dari dialog.
+        // Default ke 'false' (jangan keluar) jika dialog ditutup tanpa pilihan eksplisit
+        // (meskipun barrierDismissible: false seharusnya mencegah ini).
+        bool allowPop = false;
+
+        await Get.defaultDialog<void>( // Menggunakan <void> karena kita handle keputusan via `allowPop`
+          title: "Konfirmasi Keluar",
+          titleStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          middleText: "Apakah Anda yakin ingin keluar dari Form ini?\nData yang belum diisi atau disimpan akan hilang.",
+          middleTextStyle: const TextStyle(fontSize: 15),
+          textConfirm: "Ya, Keluar",
+          textCancel: "Batal",
+          confirmTextColor: Colors.white,
+          buttonColor: accentHeaderColor, // Menggunakan konstanta warna dari class Anda
+          cancelTextColor: Colors.grey.shade700,
+          onConfirm: () {
+            allowPop = true; // Pengguna setuju untuk keluar (pop)
+            if (Get.isDialogOpen ?? false) {
+              Get.back(); // Tutup dialog ini saja
+            }
+          },
+          onCancel: () {
+            allowPop = false; // Pengguna membatalkan (jangan pop)
+          },
+          radius: 10,
+          barrierDismissible: false, // Sangat disarankan agar pengguna membuat pilihan eksplisit
+        );
+
+        // Kembalikan keputusan yang telah di-set.
+        // Jika allowPop adalah true, halaman akan di-pop.
+        // Jika allowPop adalah false, Anda akan tetap di halaman form.
+        print("WillPopScope is returning: $allowPop"); // Untuk debugging
+        return allowPop;
+      },
+      child: Scaffold(
+        backgroundColor: pageBackgroundColor, // Menggunakan konstanta dari class
+        appBar: AppBar(
+          elevation: 3.0,
+          shadowColor: Colors.black.withOpacity(0.4),
+          iconTheme: const IconThemeData(color: Colors.white),
+          centerTitle: true,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  accentHeaderColor,
+                  primaryHeaderColor,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                stops: [0.3, 0.9],
+              ),
+            ),
+          ),
+          title: Obx(() => Text(
+            controller.loadedForm.value?.title ?? 'Mengisi Form',
+            style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                letterSpacing: 0.5),
+            overflow: TextOverflow.ellipsis,
+          )),
+          actions: [
+            Obx(() {
+              if (controller.isLoading.value &&
+                  controller.loadedForm.value == null) {
+                return const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 18.0),
+                    child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2.5)));
+              }
+
+              bool isEditing = controller.isEditMode.value;
+              String buttonText = isEditing ? "SIMPAN" : "KIRIM";
+              IconData buttonIcon = isEditing ? Icons.save_alt_rounded : Icons.send_rounded;
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: TextButton.icon(
+                  icon: Icon(buttonIcon, color: Colors.white, size: 20),
+                  label: Text(
+                    buttonText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        side: BorderSide(color: Colors.white.withOpacity(0.5), width: 0.5)
+                    ),
+                  ),
+                  onPressed: controller.isLoading.value
+                      ? null
+                      : () {
+                    Get.defaultDialog( // Ini adalah dialog konfirmasi untuk tombol KIRIM/SIMPAN
+                      title: "Konfirmasi",
+                      titleStyle: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w600),
+                      middleText:
+                      "Anda yakin ingin ${isEditing ? 'menyimpan perubahan' : 'mengirim jawaban'} form ini?",
+                      middleTextStyle: const TextStyle(fontSize: 15),
+                      textConfirm: isEditing ? "Ya, Simpan" : "Ya, Kirim",
+                      textCancel: "Batal", // Tombol batal di sini hanya akan menutup dialog ini
+                      confirmTextColor: Colors.white,
+                      buttonColor: accentHeaderColor,
+                      cancelTextColor: Colors.grey.shade700,
+                      onConfirm: () async {
+                        // --- Logika Tombol Kirim/Simpan ---
+                        String? formIdForNavigation;
+                        try {
+                          formIdForNavigation = controller.loadedForm.value?.id;
+                        } catch (e) {
+                          Get.snackbar("Error Internal","Controller error saat mengambil formId.", snackPosition: SnackPosition.BOTTOM);
+                          if (Get.isDialogOpen ?? false) Get.back(closeOverlays: true);
+                          return;
+                        }
+
+                        // Tutup dialog konfirmasi KIRIM ini dulu
+                        if (Get.isDialogOpen ?? false) {
+                          Get.back(); // Tutup dialog konfirmasi ini. <--- PERUBAHAN: Hapus closeOverlays: true
+                        }
+
+                        bool submissionSuccessful = false;
+                        try {
+                          submissionSuccessful = await controller.submitForm();
+                          if (submissionSuccessful) { // Hanya navigasi jika submitForm mengembalikan true
+                            if (!controller.isEditMode.value && formIdForNavigation != null) {
+                              Get.offNamed(AppRoutes.LIST_SUBMISSION_FORM, arguments: formIdForNavigation);
+                            } else if (controller.isEditMode.value && formIdForNavigation != null) {
+                              Get.offNamed(AppRoutes.LIST_SUBMISSION_FORM, arguments: formIdForNavigation);
+                            }
+                          }
+                          // Jika submissionSuccessful false, controller sudah handle error dan UI tetap di page form
+                        } catch (e) {
+                          print("Error caught during submit confirmation: $e");
+                        }
+                        // --- Akhir Logika Tombol Kirim/Simpan ---
+                      },
+                      radius: 10,
+                    );
+                  },
+                ),
+              );
+            }),
+          ],
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(12),
             ),
           ),
         ),
-        title: Obx(() => Text(
-          controller.loadedForm.value?.title ?? 'Mengisi Form',
-          style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-              letterSpacing: 0.5),
-          overflow: TextOverflow.ellipsis,
-        )),
-        actions: [
-          Obx(() {
-            if (controller.isLoading.value &&
-                controller.loadedForm.value == null) {
-              return const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 18.0),
-                  child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2.5)));
-            }
+        body: Obx(() {
+          if (controller.isLoading.value &&
+              controller.loadedForm.value == null) {
+            return const Center(
+                child: CircularProgressIndicator(color: accentHeaderColor)); // Menggunakan konstanta warna dari class
+          }
+          if (controller.errorMessage.value.isNotEmpty &&
+              controller.loadedForm.value == null) {
+            final currentErrorMessage = controller.errorMessage.value;
+            bool isFatalArgumentError = currentErrorMessage
+                .contains("Argumen ID Form tidak ditemukan") ||
+                currentErrorMessage.contains("Tipe argumen ID Form tidak valid") ||
+                currentErrorMessage.contains("ID Form yang diterima kosong") ||
+                currentErrorMessage
+                    .contains("ID Form kosong atau tidak valid");
 
-            bool isEditing = controller.isEditMode.value;
-            String buttonText = isEditing ? "SIMPAN" : "KIRIM";
-            IconData buttonIcon = isEditing ? Icons.save_alt_rounded : Icons.send_rounded;
-
-            return Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: TextButton.icon(
-                icon: Icon(buttonIcon, color: Colors.white, size: 20),
-                label: Text(
-                  buttonText,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    letterSpacing: 0.5,
-                  ),
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline_rounded,
+                        color: Colors.red.shade400, size: 50),
+                    const SizedBox(height: 10),
+                    Text(currentErrorMessage,
+                        style: const TextStyle(color: Colors.red, fontSize: 16),
+                        textAlign: TextAlign.center),
+                    const SizedBox(height: 20),
+                    if (!isFatalArgumentError)
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text("Coba Lagi Memuat Form"),
+                        onPressed: () => controller.fetchFormAndPotentialSubmissionData(),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: accentHeaderColor, // Menggunakan konstanta warna dari class
+                            foregroundColor: Colors.white),
+                      )
+                    else
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: const Text("Kembali"),
+                        onPressed: () => Get.back(),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey.shade600,
+                            foregroundColor: Colors.white),
+                      ),
+                  ],
                 ),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                      side: BorderSide(color: Colors.white.withOpacity(0.5), width: 0.5)
-                  ),
-                ),
-                onPressed: controller.isLoading.value
-                    ? null
-                    : () {
-                  Get.defaultDialog(
-                    title: "Konfirmasi",
-                    titleStyle: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w600),
-                    middleText:
-                    "Anda yakin ingin ${isEditing ? 'menyimpan perubahan' : 'mengirim jawaban'} form ini?",
-                    middleTextStyle: const TextStyle(fontSize: 15),
-                    textConfirm: isEditing ? "Ya, Simpan" : "Ya, Kirim",
-                    textCancel: "Batal",
-                    confirmTextColor: Colors.white,
-                    buttonColor: accentHeaderColor,
-                    cancelTextColor: Colors.grey.shade700,
-                    onConfirm: () async {
-                      String? formIdForNavigation;
-                      try {
-                        formIdForNavigation =
-                            controller.loadedForm.value?.id;
-                      } catch (e) {
-                        Get.snackbar("Error Internal","Controller error saat mengambil formId.", snackPosition: SnackPosition.BOTTOM);
-                        if (Get.isDialogOpen ?? false) Get.back(closeOverlays: true);
-                        return;
-                      }
-
-                      if (Get.isDialogOpen ?? false) {
-                        Get.back(closeOverlays: true);
-                      }
-
-                      try {
-                        await controller.submitForm();
-                        if (!controller.isEditMode.value && formIdForNavigation != null) {
-                          Get.offNamed(AppRoutes.LIST_SUBMISSION_FORM, arguments: formIdForNavigation);
-                        } else if (controller.isEditMode.value && formIdForNavigation != null) {
-                          Get.offNamed(AppRoutes.LIST_SUBMISSION_FORM, arguments: formIdForNavigation);
-                        }
-                      } catch (e) {
-                        print("Error caught during submit confirmation: $e");
-                      }
-                    },
-                    radius: 10,
-                  );
-                },
               ),
             );
-          }),
-        ],
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(12),
-          ),
-        ),
-      ),
-      body: Obx(() {
-        if (controller.isLoading.value &&
-            controller.loadedForm.value == null) {
-          return const Center(
-              child: CircularProgressIndicator(color: accentHeaderColor));
-        }
-        if (controller.errorMessage.value.isNotEmpty &&
-            controller.loadedForm.value == null) {
-          final currentErrorMessage = controller.errorMessage.value;
-          bool isFatalArgumentError = currentErrorMessage
-              .contains("Argumen ID Form tidak ditemukan") ||
-              currentErrorMessage.contains("Tipe argumen ID Form tidak valid") ||
-              currentErrorMessage.contains("ID Form yang diterima kosong") ||
-              currentErrorMessage
-                  .contains("ID Form kosong atau tidak valid");
+          }
+          if (controller.loadedForm.value == null) {
+            return const Center(
+                child: Text("Form tidak tersedia atau gagal dimuat."));
+          }
 
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.error_outline_rounded,
-                      color: Colors.red.shade400, size: 50),
-                  const SizedBox(height: 10),
-                  Text(currentErrorMessage,
-                      style: const TextStyle(color: Colors.red, fontSize: 16),
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: 20),
-                  if (!isFatalArgumentError)
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text("Coba Lagi Memuat Form"),
-                      onPressed: () => controller.fetchFormAndPotentialSubmissionData(),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: accentHeaderColor,
-                          foregroundColor: Colors.white),
-                    )
-                  else
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text("Kembali"),
-                      onPressed: () => Get.back(),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey.shade600,
-                          foregroundColor: Colors.white),
-                    ),
-                ],
-              ),
-            ),
-          );
-        }
-        if (controller.loadedForm.value == null) {
-          return const Center(
-              child: Text("Form tidak tersedia atau gagal dimuat."));
-        }
+          final form = controller.loadedForm.value!;
 
-        final form = controller.loadedForm.value!;
-
-        return Form(
-          key: controller.formKey,
-          child: Stack(
-            children: [
-              ListView.builder(
-                padding: const EdgeInsets.fromLTRB(12.0, 12.0, 12.0, 70.0),
-                itemCount: form.sections.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return Card(
-                      elevation: 2.5,
-                      margin: const EdgeInsets.only(bottom: 24, left: 4, right: 4, top: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-                      color: cardBackgroundColor,
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.assignment_ind_outlined,
-                                  color: accentHeaderColor.withOpacity(0.9),
-                                  size: 38.0,
-                                ),
-                                const SizedBox(width: 16.0),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        form.title,
-                                        style: Get.textTheme.headlineSmall?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: accentHeaderColor,
-                                          fontSize: 21,
-                                        ),
-                                      ),
-                                      if (form.description.isNotEmpty) ...[
-                                        const SizedBox(height: 6.0),
+          return Form(
+            key: controller.formKey,
+            child: Stack(
+              children: [
+                ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(12.0, 12.0, 12.0, 70.0), // Padding untuk floating action button jika ada
+                  itemCount: form.sections.length + 1, // +1 untuk header form
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      // Header Form
+                      return Card(
+                        elevation: 2.5,
+                        margin: const EdgeInsets.only(bottom: 24, left: 4, right: 4, top: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+                        color: cardBackgroundColor, // Menggunakan konstanta warna dari class
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.assignment_ind_outlined,
+                                    color: accentHeaderColor.withOpacity(0.9), // Menggunakan konstanta warna dari class
+                                    size: 38.0,
+                                  ),
+                                  const SizedBox(width: 16.0),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
                                         Text(
-                                          form.description,
-                                          style: Get.textTheme.bodyMedium?.copyWith(
-                                            color: Colors.grey.shade700,
-                                            height: 1.45,
-                                            fontSize: 14.5,
+                                          form.title,
+                                          style: Get.textTheme.headlineSmall?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: accentHeaderColor, // Menggunakan konstanta warna dari class
+                                            fontSize: 21,
                                           ),
                                         ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20.0),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-                              decoration: BoxDecoration(
-                                  color: primaryHeaderColor.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(10.0),
-                                  border: Border.all(color: primaryHeaderColor.withOpacity(0.3), width: 0.8)
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.info_outline_rounded, color: accentHeaderColor.withOpacity(0.85), size: 22),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: RichText(
-                                      text: TextSpan(
-                                        style: TextStyle(
-                                          fontSize: 13.5,
-                                          color: Colors.orange.shade900.withOpacity(0.95),
-                                          height: 1.4,
-                                        ),
-                                        children: <TextSpan>[
-                                          const TextSpan(text: "Petunjuk: Isi semua pertanyaan dengan data yang benar. Pertanyaan dengan tanda "),
-                                          TextSpan(text: '*', style: TextStyle(color: mandatoryAsteriskColor, fontWeight: FontWeight.bold, fontSize: 14)),
-                                          const TextSpan(text: " wajib diisi."),
+                                        if (form.description.isNotEmpty) ...[
+                                          const SizedBox(height: 6.0),
+                                          Text(
+                                            form.description,
+                                            style: Get.textTheme.bodyMedium?.copyWith(
+                                              color: Colors.grey.shade700,
+                                              height: 1.45,
+                                              fontSize: 14.5,
+                                            ),
+                                          ),
                                         ],
-                                      ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-                  final section = form.sections[index - 1];
-                  final sectionIndex = index - 1;
-                  String displaySectionTitle = section.title.trim().isEmpty
-                      ? 'Bagian ${_toRoman(sectionIndex + 1)}'
-                      : '${_toRoman(sectionIndex + 1)}: ${section.title.trim()}';
-
-                  return Obx(() {
-                    final bool isExpanded =
-                        controller.expandedSectionId.value == section.id || controller.loadedForm.value!.sections.length == 1;
-                    final bool hasAnswers = controller.isEditMode.value &&
-                        controller.sectionHasAnswers(section.id);
-
-                    return Card(
-                      elevation: 1.8,
-                      margin: const EdgeInsets.only(
-                          bottom: 16, left: 4, right: 4),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0, vertical: 16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    displaySectionTitle,
-                                    style: Get.textTheme.titleLarge
-                                        ?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: titleTextColor,
-                                        fontSize: 18),
-                                  ),
+                              const SizedBox(height: 20.0),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                                decoration: BoxDecoration(
+                                    color: primaryHeaderColor.withOpacity(0.15), // Menggunakan konstanta warna dari class
+                                    borderRadius: BorderRadius.circular(10.0),
+                                    border: Border.all(color: primaryHeaderColor.withOpacity(0.3), width: 0.8) // Menggunakan konstanta warna dari class
                                 ),
-                                if (hasAnswers && !isExpanded)
-                                  Padding(
-                                    padding:
-                                    const EdgeInsets.only(left: 8.0),
-                                    child: Icon(
-                                        Icons.check_circle_outline_rounded,
-                                        color: Colors.green.shade600,
-                                        size: 20),
-                                  ),
-                                if (controller.loadedForm.value!.sections.length > 1)
-                                  IconButton(
-                                    icon: Icon(
-                                      isExpanded
-                                          ? Icons.expand_less_rounded
-                                          : Icons.expand_more_rounded,
-                                      color: accentHeaderColor,
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.info_outline_rounded, color: accentHeaderColor.withOpacity(0.85), size: 22), // Menggunakan konstanta warna dari class
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: RichText(
+                                        text: TextSpan(
+                                          style: TextStyle(
+                                            fontSize: 13.5,
+                                            color: Colors.orange.shade900.withOpacity(0.95),
+                                            height: 1.4,
+                                          ),
+                                          children: <TextSpan>[
+                                            const TextSpan(text: "Petunjuk: Isi semua pertanyaan dengan data yang benar. Pertanyaan dengan tanda "),
+                                            TextSpan(text: '*', style: TextStyle(color: mandatoryAsteriskColor, fontWeight: FontWeight.bold, fontSize: 14)), // Menggunakan konstanta warna dari class
+                                            const TextSpan(text: " wajib diisi."),
+                                          ],
+                                        ),
+                                      ),
                                     ),
-                                    iconSize: 28,
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    onPressed: () => controller.toggleSectionExpansion(section.id),
-                                  ),
-                              ],
-                            ),
-                            if (section.description != null &&
-                                section.description!.isNotEmpty &&
-                                !isExpanded) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                section.description!,
-                                style: Get.textTheme.bodySmall?.copyWith(
-                                  color: subtitleTextColor,
-                                  fontSize: 13,
-                                  height: 1.4,
-                                  fontStyle: FontStyle.italic,
+                                  ],
                                 ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
-                            if (isExpanded) ...[
-                              Divider(
-                                  height: 24,
-                                  thickness: 0.7,
-                                  color: Colors.grey.shade300),
-                              if (section.description != null &&
-                                  section.description!.isNotEmpty) ...[
-                                Text(section.description!,
-                                    style: Get.textTheme.bodySmall
-                                        ?.copyWith(
-                                        color: subtitleTextColor,
-                                        fontSize: 13,
-                                        height: 1.4)),
-                                const SizedBox(height: 16),
-                              ],
-                              ..._buildQuestionsForSection(context, section, this),
-                            ],
-                          ],
+                          ),
                         ),
-                      ),
+                      );
+                    }
+                    // Bagian Form
+                    final section = form.sections[index - 1];
+                    final sectionIndex = index - 1; // Untuk penomoran Roman
+                    String displaySectionTitle = section.title.trim().isEmpty
+                        ? 'Bagian ${_toRoman(sectionIndex + 1)}' // Menggunakan method _toRoman
+                        : '${_toRoman(sectionIndex + 1)}: ${section.title.trim()}';
+
+                    return Obx(() {
+                      final bool isExpanded =
+                          controller.expandedSectionId.value == section.id || controller.loadedForm.value!.sections.length == 1;
+                      final bool hasAnswers = controller.isEditMode.value &&
+                          controller.sectionHasAnswers(section.id);
+
+                      return Card(
+                        elevation: 1.8,
+                        margin: const EdgeInsets.only(
+                            bottom: 16, left: 4, right: 4),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0, vertical: 16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      displaySectionTitle,
+                                      style: Get.textTheme.titleLarge
+                                          ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: titleTextColor, // Menggunakan konstanta warna dari class
+                                          fontSize: 18),
+                                    ),
+                                  ),
+                                  if (hasAnswers && !isExpanded)
+                                    Padding(
+                                      padding:
+                                      const EdgeInsets.only(left: 8.0),
+                                      child: Icon(
+                                          Icons.check_circle_outline_rounded,
+                                          color: Colors.green.shade600,
+                                          size: 20),
+                                    ),
+                                  if (controller.loadedForm.value!.sections.length > 1) // Hanya tampilkan jika lebih dari 1 section
+                                    IconButton(
+                                      icon: Icon(
+                                        isExpanded
+                                            ? Icons.expand_less_rounded
+                                            : Icons.expand_more_rounded,
+                                        color: accentHeaderColor, // Menggunakan konstanta warna dari class
+                                      ),
+                                      iconSize: 28,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () => controller.toggleSectionExpansion(section.id),
+                                    ),
+                                ],
+                              ),
+                              if (section.description != null &&
+                                  section.description!.isNotEmpty &&
+                                  !isExpanded) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  section.description!,
+                                  style: Get.textTheme.bodySmall?.copyWith(
+                                    color: subtitleTextColor, // Menggunakan konstanta warna dari class
+                                    fontSize: 13,
+                                    height: 1.4,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                              if (isExpanded) ...[
+                                Divider(
+                                    height: 24,
+                                    thickness: 0.7,
+                                    color: Colors.grey.shade300),
+                                if (section.description != null &&
+                                    section.description!.isNotEmpty) ...[
+                                  Text(section.description!,
+                                      style: Get.textTheme.bodySmall
+                                          ?.copyWith(
+                                          color: subtitleTextColor, // Menggunakan konstanta warna dari class
+                                          fontSize: 13,
+                                          height: 1.4)),
+                                  const SizedBox(height: 16),
+                                ],
+                                // Memanggil method untuk membangun pertanyaan di dalam section
+                                ..._buildQuestionsForSection(context, section, this),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    });
+                  },
+                ),
+                // Overlay loading saat submit
+                Obx(() {
+                  if (controller.isLoading.value &&
+                      controller.loadedForm.value != null) { // Hanya tampilkan jika form sudah dimuat
+                    return Container(
+                      color: Colors.black.withOpacity(0.3),
+                      child: const Center(
+                          child:
+                          CircularProgressIndicator(color: Colors.white)),
                     );
-                  });
-                },
-              ),
-              Obx(() {
-                if (controller.isLoading.value &&
-                    controller.loadedForm.value != null) {
-                  return Container(
-                    color: Colors.black.withOpacity(0.3),
-                    child: const Center(
-                        child:
-                        CircularProgressIndicator(color: Colors.white)),
-                  );
-                }
-                return const SizedBox.shrink();
-              }),
-            ],
-          ),
-        );
-      }),
+                  }
+                  return const SizedBox.shrink();
+                }),
+              ],
+            ),
+          );
+        }),
+      ),
     );
   }
 

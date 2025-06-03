@@ -1285,12 +1285,18 @@ class InputUserController extends GetxController {
     // if (repeatIndex != null) repeatableGroupAnswers.refresh(); else userAnswers.refresh();
   }
 
+  // Lokasi: di dalam class InputUserController extends GetxController { ... }
 
-  bool _performLocalValidation(FormQuestion question, dynamic answer, String questionDisplayName, {int? repeatIndex}) {
-    if (questionVisibility[question.id] != true) return true;
+  String? _performLocalValidation(
+      FormQuestion question, dynamic answer, String questionDisplayName, {int? repeatIndex}) {
+    // Abaikan validasi jika pertanyaan tidak terlihat
+    if (questionVisibility[question.id] != true) {
+      return null;
+    }
 
     bool isEmpty = _isAnswerEmpty(answer, question.type);
 
+    // Validasi khusus untuk opsi 'Lainnya' jika dipilih dan wajib diisi
     if (question.isRequired && question.hasOtherOption && answer == _kOtherOptionValue) {
       String? otherText;
       if (repeatIndex != null) {
@@ -1299,111 +1305,63 @@ class InputUserController extends GetxController {
         otherText = userOtherAnswers[question.id];
       }
       if (otherText == null || otherText.trim().isEmpty) {
-        Get.snackbar('Validasi Gagal',
-            'Isian "Lainnya" untuk "$questionDisplayName" wajib diisi.',
-            snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white);
-        return false;
+        return 'Isian "Lainnya" pada "$questionDisplayName" wajib diisi.';
       }
-      isEmpty = false;
+      isEmpty = false; // Jika 'Lainnya' diisi, anggap tidak kosong
     }
 
+    // Validasi untuk pertanyaan wajib yang kosong
     if (question.isRequired && isEmpty) {
-      Get.snackbar('Validasi Gagal',
-          'Pertanyaan "$questionDisplayName" wajib diisi.',
-          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white, duration: const Duration(seconds: 3));
-      return false;
+      return 'Pertanyaan "$questionDisplayName" wajib diisi.';
     }
-    final ValidationRule? rule = question.validation;
-    if (rule == null || isEmpty) return true;
 
+    final ValidationRule? rule = question.validation;
+    // Lanjutkan validasi hanya jika ada aturan dan jawaban tidak kosong (atau memang kosong tapi tidak wajib)
+    if (rule == null || isEmpty) {
+      return null;
+    }
+
+    // Validasi berdasarkan tipe string (panjang, regex, format khusus)
     if (answer is String && answer.isNotEmpty) {
       String effectiveValueString = answer.trim();
-      if (rule.minLength != null &&
-          effectiveValueString.length < rule.minLength!) {
-        Get.snackbar('Validasi Gagal',
-            'Jawaban "$questionDisplayName" minimal ${rule.minLength} karakter.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.orange.shade700,
-            colorText: Colors.white);
-        return false;
+
+      if (rule.minLength != null && effectiveValueString.length < rule.minLength!) {
+        return 'Jawaban "$questionDisplayName" minimal ${rule.minLength} karakter.';
       }
-      if (rule.maxLength != null &&
-          effectiveValueString.length > rule.maxLength!) {
-        Get.snackbar('Validasi Gagal',
-            'Jawaban "$questionDisplayName" maksimal ${rule.maxLength} karakter.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.orange.shade700,
-            colorText: Colors.white);
-        return false;
+      if (rule.maxLength != null && effectiveValueString.length > rule.maxLength!) {
+        return 'Jawaban "$questionDisplayName" maksimal ${rule.maxLength} karakter.';
       }
-      if (rule.regex != null &&
-          rule.regex!.isNotEmpty &&
-          !RegExp(rule.regex!).hasMatch(effectiveValueString)) {
-        Get.snackbar(
-            'Validasi Gagal', 'Format "$questionDisplayName" tidak sesuai.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.orange.shade700,
-            colorText: Colors.white);
-        return false;
-      }
-      if (rule.predefinedRule == 'nik' &&
-          !RegExp(r'^\d{16}$').hasMatch(effectiveValueString)) {
-        Get.snackbar(
-            'Validasi Gagal', 'NIK untuk "$questionDisplayName" harus 16 digit angka.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.orange.shade700,
-            colorText: Colors.white);
-        return false;
-      }
-      if (rule.predefinedRule == 'email' &&
-          !GetUtils.isEmail(effectiveValueString)) {
-        Get.snackbar(
-            'Validasi Gagal', 'Format email untuk "$questionDisplayName" tidak valid.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.orange.shade700,
-            colorText: Colors.white);
-        return false;
-      }
-      if (rule.predefinedRule == 'numbersOnly' &&
-          !GetUtils.isNumericOnly(
-              effectiveValueString.replaceAll(',', '').replaceAll('.', ''))) {
-        Get.snackbar(
-            'Validasi Gagal', '"$questionDisplayName" hanya boleh angka.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.orange.shade700,
-            colorText: Colors.white);
-        return false;
-      }
-    }
-    if (question.type == QuestionType.number &&
-        answer != null &&
-        answer.toString().isNotEmpty) {
-      num? numAnswer = num.tryParse(answer.toString().replaceAll(',', '.'));
-      if (numAnswer == null) {
-        Get.snackbar(
-            'Validasi Gagal', '"$questionDisplayName" harus berupa angka.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.orange.shade700,
-            colorText: Colors.white);
-        return false;
-      }
-      if (rule.minValue != null && numAnswer < rule.minValue!) {
-        Get.snackbar(
-            'Validasi Gagal', '"$questionDisplayName" minimal ${rule.minValue}.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.orange.shade700,
-            colorText: Colors.white);
-        return false;
-      }
-      if (rule.maxValue != null && numAnswer > rule.maxValue!) {
-        Get.snackbar(
-            'Validasi Gagal', '"$questionDisplayName" maksimal ${rule.maxValue}.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.orange.shade700,
-            colorText: Colors.white);
-        return false;
+      if (rule.regex != null && rule.regex!.isNotEmpty && !RegExp(rule.regex!).hasMatch(effectiveValueString)) {
+        return 'Format "$questionDisplayName" tidak sesuai.';
       }
 
+      // Validasi predefined rules
+      if (rule.predefinedRule == 'nik' && !RegExp(r'^\d{16}$').hasMatch(effectiveValueString)) {
+        return 'NIK untuk "$questionDisplayName" harus 16 digit angka.';
+      }
+      if (rule.predefinedRule == 'email' && !GetUtils.isEmail(effectiveValueString)) {
+        return 'Format email untuk "$questionDisplayName" tidak valid.';
+      }
+      if (rule.predefinedRule == 'numbersOnly' && !GetUtils.isNumericOnly(effectiveValueString.replaceAll(',', '').replaceAll('.', ''))) {
+        return '"$questionDisplayName" hanya boleh angka.';
+      }
+    }
+
+    // Validasi khusus untuk tipe Number (nilai min/max)
+    if (question.type == QuestionType.number && answer != null && answer.toString().isNotEmpty) {
+      num? numAnswer = num.tryParse(answer.toString().replaceAll(',', '.'));
+      if (numAnswer == null) {
+        return '"$questionDisplayName" harus berupa angka.';
+      }
+
+      if (rule.minValue != null && numAnswer < rule.minValue!) {
+        return '"$questionDisplayName" minimal ${rule.minValue}.';
+      }
+      if (rule.maxValue != null && numAnswer > rule.maxValue!) {
+        return '"$questionDisplayName" maksimal ${rule.maxValue}.';
+      }
+
+      // Validasi silang dengan pertanyaan lain (misalnya, jumlah pekerja vs ART)
       if (question.code == "203" || question.code == "204") {
         final artQuestion = findQuestionByCode("112");
         if (artQuestion != null) {
@@ -1418,100 +1376,208 @@ class InputUserController extends GetxController {
               : (artCountValueDynamic is num ? artCountValueDynamic : null);
 
           if (artCount != null && numAnswer > artCount) {
-            Get.snackbar("Validasi Gagal",
-                "$questionDisplayName ($numAnswer) tidak boleh > ${artQuestion.questionText} ($artCount).",
-                snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: Colors.orange.shade700,
-                colorText: Colors.white);
-            return false;
+            return '$questionDisplayName ($numAnswer) tidak boleh melebihi ${artQuestion.questionText} ($artCount).';
           }
         }
       }
     }
-    return true;
+    return null; // Validasi lolos, tidak ada pesan error
   }
 
-  Future<void> submitForm() async {
+  Future<bool> submitForm() async {
+    // Validasi awal: pastikan form dan pengguna valid
     if (loadedForm.value == null || _auth.currentUser == null) {
-      Get.snackbar('Error', 'Form atau pengguna tidak valid.', snackPosition: SnackPosition.BOTTOM);
-      return;
+      Get.snackbar('Error', 'Form atau pengguna tidak valid.',
+          snackPosition: SnackPosition.BOTTOM);
+      return false;
     }
 
-    if (!formKey.currentState!.validate()) {
-      Get.snackbar('Validasi Form Gagal',
-          'Harap periksa kembali isian Anda pada kolom yang ditandai error.',
-          snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.orange.shade700, colorText: Colors.white, duration: const Duration(seconds: 4));
-      String firstInvalidSectionId = "";
-      for (var section in loadedForm.value!.sections) {
-        for (var q in section.questions) {
-          if (questionVisibility[q.id] == true) {
-            dynamic answer;
-            String displayName = q.questionText;
-            int? currentRepeatIdx;
+    isLoading.value = true; // Aktifkan indikator loading
 
-            if (q.belongsToGroupTag != null && q.belongsToGroupTag!.isNotEmpty) {
-              final groupTag = q.belongsToGroupTag!;
-              currentRepeatIdx = activeRepeatIndexForGroup[groupTag] ?? 0;
-              answer = repeatableGroupAnswers[q.id]?[currentRepeatIdx];
-              displayName = "[Data ke-${currentRepeatIdx + 1}] ${q.questionText}";
-            } else {
-              answer = userAnswers[q.id];
-            }
+    // Picu validasi bawaan FormField untuk menampilkan error langsung di kolom input
+    bool formKeyValidationPassed = formKey.currentState!.validate();
 
-            if (!_performLocalValidation(q, answer, displayName, repeatIndex: currentRepeatIdx)) {
-              firstInvalidSectionId = section.id;
-              break;
-            }
-          }
-        }
-        if (firstInvalidSectionId.isNotEmpty) break;
-      }
-      if (firstInvalidSectionId.isNotEmpty && expandedSectionId.value != firstInvalidSectionId) {
-        toggleSectionExpansion(firstInvalidSectionId);
-      }
-      return;
-    }
+    String? firstInvalidSectionIdToFocus;
+    bool allValidationsPassed = true;
+    List<String> validationErrors = []; // Daftar pesan error yang akan ditampilkan ke pengguna
 
-    bool allCustomValidationPassed = true;
-    String firstInvalidSectionIdForCustom = "";
-
+    // Iterasi melalui setiap pertanyaan untuk validasi kustom
     for (var section in loadedForm.value!.sections) {
       for (var question in section.questions) {
-        if (questionVisibility[question.id] != true) continue;
+        // Lewati pertanyaan yang tidak terlihat
+        if (questionVisibility[question.id] != true) {
+          continue;
+        }
 
+        dynamic answerToValidate;
+        String questionDisplayName = question.questionText;
+        int? repeatIndexForValidation;
+
+        // Tentukan jawaban dan nama tampilan pertanyaan berdasarkan apakah itu bagian dari grup berulang
         if (question.belongsToGroupTag == null || question.belongsToGroupTag!.isEmpty) {
-          if (!_performLocalValidation(question, userAnswers[question.id], question.questionText)) {
-            allCustomValidationPassed = false;
-            firstInvalidSectionIdForCustom = section.id;
-            break;
-          }
+          answerToValidate = userAnswers[question.id];
         } else {
           final groupTag = question.belongsToGroupTag!;
           final count = repeatableGroupCounts[groupTag] ?? 0;
           final int currentActiveRepeatIndex = activeRepeatIndexForGroup[groupTag] ?? 0;
+
           if (currentActiveRepeatIndex < count) {
-            if (!_performLocalValidation(question, repeatableGroupAnswers[question.id]?[currentActiveRepeatIndex], "[Data ke-${currentActiveRepeatIndex + 1}] ${question.questionText}", repeatIndex: currentActiveRepeatIndex)) {
-              allCustomValidationPassed = false;
-              firstInvalidSectionIdForCustom = section.id;
-              break;
+            answerToValidate = repeatableGroupAnswers[question.id]?[currentActiveRepeatIndex];
+            questionDisplayName = "[Data ke-${currentActiveRepeatIndex + 1}] ${question.questionText}";
+            repeatIndexForValidation = currentActiveRepeatIndex;
+          } else {
+            continue; // Lewati jika tidak ada instance aktif untuk grup berulang
+          }
+        }
+
+        // Jalankan validasi lokal dan kumpulkan pesan error
+        String? localValidationError = _performLocalValidation(
+            question, answerToValidate, questionDisplayName, repeatIndex: repeatIndexForValidation);
+        if (localValidationError != null) {
+          allValidationsPassed = false;
+          validationErrors.add(localValidationError);
+          // Catat section pertama yang memiliki error untuk fokus
+          if (firstInvalidSectionIdToFocus == null) {
+            firstInvalidSectionIdToFocus = section.id;
+          }
+        }
+      }
+    }
+
+    // Gabungkan hasil validasi formKey dengan validasi kustom.
+    // Jika FormKey gagal, set `allValidationsPassed` ke false.
+    if (!formKeyValidationPassed) {
+      allValidationsPassed = false;
+
+      // Tambahkan pesan error dari FormField bawaan yang mungkin belum tercakup
+      // oleh `_performLocalValidation` (misal: hanya validasi `required` yang sederhana).
+      // Kita iterasi lagi untuk mencari field yang kosong dan wajib, serta tambahkan ke daftar error.
+      if (validationErrors.isEmpty || true) { // Gunakan `true` untuk selalu memeriksa dan melengkapi pesan
+        SearchFormKeyErrorLoop:
+        for (var section_ in loadedForm.value!.sections) {
+          for (var q_ in section_.questions) {
+            // Lewati pertanyaan yang tidak terlihat
+            if (questionVisibility[q_.id] != true) {
+              continue;
+            }
+
+            dynamic ans_;
+            if (q_.belongsToGroupTag == null || q_.belongsToGroupTag!.isEmpty) {
+              ans_ = userAnswers[q_.id];
+            } else {
+              final groupTag_ = q_.belongsToGroupTag!;
+              final count_ = repeatableGroupCounts[groupTag_] ?? 0;
+              final int activeIdx_ = activeRepeatIndexForGroup[groupTag_] ?? 0;
+              if (activeIdx_ < count_) {
+                ans_ = repeatableGroupAnswers[q_.id]?[activeIdx_];
+              } else {
+                continue;
+              }
+            }
+
+            bool isOtherSelectedAndEmpty = false;
+            if (q_.hasOtherOption && (ans_ == _kOtherOptionValue || (ans_ is List && ans_.contains(_kOtherOptionValue)))) {
+              String? otherTextVal;
+              if (q_.belongsToGroupTag != null && q_.belongsToGroupTag!.isNotEmpty) {
+                final groupTag_ = q_.belongsToGroupTag!;
+                final activeIdx_ = activeRepeatIndexForGroup[groupTag_] ?? 0;
+                if (activeIdx_ < (repeatableGroupCounts[groupTag_] ?? 0)) {
+                  otherTextVal = repeatableGroupOtherAnswers[q_.id]?[activeIdx_];
+                }
+              } else {
+                otherTextVal = userOtherAnswers[q_.id];
+              }
+              if (otherTextVal == null || otherTextVal.trim().isEmpty) {
+                isOtherSelectedAndEmpty = true;
+              }
+            }
+
+            // Jika pertanyaan wajib dan kosong (termasuk kasus 'Lainnya' yang kosong)
+            if (q_.isRequired && (_isAnswerEmpty(ans_, q_.type) && !isOtherSelectedAndEmpty || isOtherSelectedAndEmpty)) {
+              String questionDisplayName = q_.questionText;
+              if (q_.belongsToGroupTag != null && q_.belongsToGroupTag!.isNotEmpty) {
+                final activeIdx_ = activeRepeatIndexForGroup[q_.belongsToGroupTag!] ?? 0;
+                if (activeIdx_ < (repeatableGroupCounts[q_.belongsToGroupTag!] ?? 0)) {
+                  questionDisplayName = "[Data ke-${activeIdx_ + 1}] ${q_.questionText}";
+                }
+              }
+
+              // Tambahkan pesan spesifik ke daftar error, agar muncul di notifikasi tunggal
+              if (isOtherSelectedAndEmpty) {
+                validationErrors.add('Isian "Lainnya" pada "$questionDisplayName" wajib diisi.');
+              } else {
+                validationErrors.add('Pertanyaan "$questionDisplayName" wajib diisi.');
+              }
+
+              // Set section pertama dengan error untuk fokus
+              if (firstInvalidSectionIdToFocus == null) {
+                firstInvalidSectionIdToFocus = section_.id;
+              }
+              // Jangan `break SearchFormKeyErrorLoop` agar semua error FormField terkumpul
             }
           }
         }
-        if (!allCustomValidationPassed) break;
       }
-      if (!allCustomValidationPassed) break;
     }
 
-    if (!allCustomValidationPassed) {
-      if (firstInvalidSectionIdForCustom.isNotEmpty && expandedSectionId.value != firstInvalidSectionIdForCustom) {
-        toggleSectionExpansion(firstInvalidSectionIdForCustom);
-      }
-      return;
+
+    // Jika ada kegagalan validasi, tampilkan notifikasi dan hentikan proses
+    if (!allValidationsPassed) {
+      isLoading.value = false;
+
+      // Hapus duplikasi pesan error dan gabungkan untuk notifikasi akhir
+      final uniqueErrors = validationErrors.toSet().toList();
+      String notificationMessage = 'Beberapa isian tidak valid atau kosong:\n' + uniqueErrors.join('\n');
+
+      Get.snackbar(
+        'Validasi Form Gagal', // Judul Snackbar
+        '', // Pesan utama kosong karena akan menggunakan messageText
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.shade700,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 8), // Durasi lebih lama agar pengguna punya waktu membaca/scroll
+        isDismissible: true, // Izinkan dismissal
+        maxWidth: Get.width * 0.9, // Sesuaikan lebar snackbar
+        margin: const EdgeInsets.all(10), // Tambahkan margin
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Padding konten
+        borderRadius: 8, // Border radius snackbar
+
+        // MODIFIKASI UTAMA: Gunakan messageText dengan SingleChildScrollView
+        messageText: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: Get.height * 0.3, // Batasi tinggi maksimum snackbar agar tidak memenuhi seluruh layar
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Beberapa isian tidak valid atau kosong:',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  uniqueErrors.join('\n'), // Gabungkan semua pesan dengan baris baru
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      return false;
     }
 
-    isLoading.value = true;
+    // --- Proses Pengumpulan dan Pengiriman Data (jika semua validasi lolos) ---
+    // (Bagian ini tidak ada perubahan fungsional dari kode sebelumnya)
     List<QuestionAnswer> answersToSubmit = [];
-
     loadedForm.value!.sections.forEach((section) {
       section.questions.forEach((question) {
         if (questionVisibility[question.id] == true) {
@@ -1522,12 +1588,14 @@ class InputUserController extends GetxController {
             if (question.hasOtherOption && answer == _kOtherOptionValue) {
               answer = otherText ?? '';
             }
+            // Tambahkan jawaban hanya jika tidak kosong ATAU pertanyaan tidak wajib
             if (!_isAnswerEmpty(answer, question.type) || !question.isRequired) {
               answersToSubmit.add(QuestionAnswer(
                   questionId: question.id,
                   questionCode: question.code ?? '',
                   questionText: question.questionText,
-                  answer: _prepareAnswerForFirestore(answer, question.type, question.hasOtherOption, otherText),
+                  answer: _prepareAnswerForFirestore(
+                      answer, question.type, question.hasOtherOption, otherText),
                   questionType: question.type.toShortString()));
             }
           } else {
@@ -1541,12 +1609,14 @@ class InputUserController extends GetxController {
                 answer = otherText ?? '';
               }
 
+              // Tambahkan jawaban hanya jika tidak kosong ATAU pertanyaan tidak wajib
               if (!_isAnswerEmpty(answer, question.type) || !question.isRequired) {
                 answersToSubmit.add(QuestionAnswer(
                     questionId: "${question.id}_$i",
                     questionCode: "${question.code ?? ''}_${i + 1}",
                     questionText: "[Data ke-${i + 1}] ${question.questionText}",
-                    answer: _prepareAnswerForFirestore(answer, question.type, question.hasOtherOption, otherText),
+                    answer: _prepareAnswerForFirestore(answer,
+                        question.type, question.hasOtherOption, otherText),
                     questionType: question.type.toShortString()));
               }
             }
@@ -1560,7 +1630,8 @@ class InputUserController extends GetxController {
       formId: loadedForm.value!.id,
       formTitle: loadedForm.value!.title,
       userId: _auth.currentUser!.uid,
-      userName: _auth.currentUser!.displayName ?? _auth.currentUser!.email ?? 'Anonim',
+      userName:
+      _auth.currentUser!.displayName ?? _auth.currentUser!.email ?? 'Anonim',
       submittedAt: (isEditMode.value && loadedSubmission.value?.submittedAt != null)
           ? loadedSubmission.value!.submittedAt
           : Timestamp.now(),
@@ -1574,17 +1645,31 @@ class InputUserController extends GetxController {
 
     try {
       if (isEditMode.value) {
-        await _db.collection('formSubmissions').doc(submissionId.value).set(firestoreData, SetOptions(merge: true));
-        Get.snackbar('Berhasil', 'Perubahan berhasil disimpan!', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
+        await _db
+            .collection('formSubmissions')
+            .doc(submissionId.value)
+            .set(firestoreData, SetOptions(merge: true));
+        Get.snackbar('Berhasil', 'Perubahan berhasil disimpan!',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.green.shade600,
+            colorText: Colors.white);
       } else {
         await _db.collection('formSubmissions').add(firestoreData);
-        Get.snackbar('Berhasil', 'Form berhasil dikirim!', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green.shade600, colorText: Colors.white);
+        Get.snackbar('Berhasil', 'Form berhasil dikirim!',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.green.shade600,
+            colorText: Colors.white);
       }
-    } catch (e) {
-      Get.snackbar('Error Simpan/Kirim', 'Gagal menyimpan data: ${e.toString()}', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade400, colorText: Colors.white, duration: const Duration(seconds: 5));
-      throw e;
-    } finally {
       isLoading.value = false;
+      return true; // Submit berhasil
+    } catch (e) {
+      Get.snackbar('Error Simpan/Kirim', 'Gagal menyimpan data: ${e.toString()}',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.shade400,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 5));
+      isLoading.value = false;
+      return false; // Submit gagal karena error
     }
   }
 

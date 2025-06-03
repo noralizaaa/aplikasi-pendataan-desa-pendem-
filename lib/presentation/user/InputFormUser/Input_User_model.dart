@@ -121,7 +121,7 @@ class FormSubmission {
       answers: allAnswers,
       location: data['location'] as GeoPoint?,
       updatedAt: data['updatedAt'] as Timestamp?, // Jika Anda pakai updatedAt
-      namaKepalaRumahTangga: extractedNamaKRT, // --- PASTIKAN DI-ASSIGN DI SINI ---
+      namaKepalaRumahTangga: extractedNamaKRT,
     );
   }
 }

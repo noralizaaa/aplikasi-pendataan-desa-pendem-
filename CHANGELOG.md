@@ -4,7 +4,16 @@ This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.28.1] - 2025-06-03
+> Contributed by [Bayu Ardiyansyah]
 
+### 🛠️ Changed
+- **Unified Validation Error Notifications**: All form validation error messages are now consolidated into a **single, scrollable snackbar notification**. This prevents "notification spam" when multiple fields fail validation, providing a cleaner user experience. The snackbar now displays a list of all problematic question IDs or names.
+- **Improved Dialog Handling on Form Submission**: The confirmation dialog that appears before submitting/saving a form now **closes immediately** when "Yes, Send/Save" is tapped. If validation fails, the user remains on the form screen (it doesn't "get back" to the previous page), allowing them to correct errors. Navigation to the list of submissions only occurs if the form submission is fully successful.
+
+### 🐛 Fixed
+- Resolved an issue where multiple individual snackbars would appear for each validation error, leading to a cluttered user interface.
+- Corrected the navigation flow to ensure the form screen is not automatically dismissed upon validation failure.
 
 ---
 
