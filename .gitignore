@@ -12,6 +12,9 @@
 .swiftpm/
 migrate_working_dir/
 
+build
+android/app/build
+
 *.json
 
 # IntelliJ related
