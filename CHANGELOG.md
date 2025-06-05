@@ -3,7 +3,45 @@
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
 
+## [0.29.3] - 2025-06-05
+> Contributed by [Bayu Ardiyansyah]
+
+> UI Display Fixes for Form Configuration and User Input, Application Icon Update, and Build and Dependency Adjustments.
+
+### 🛠️ Changed
+- **Application Icon:**
+  - Updated the application's launcher icon (`launcher_icon.png`) for various resolutions.
+- **Dependency Management:**
+  - Updated and refined library version constraints in `pubspec.yaml` to improve stability (e.g., changing versions from `any` to specific versions where relevant, or updating libraries).
+- **Build System & Android Configuration:**
+  - Made updates to Android build configurations (`build.gradle.kts` for project and app, `AndroidManifest.xml`, `gradle.properties`).
+  - Adjusted Proguard rules (`proguard-rules.pro`).
+- **Firebase Integration:**
+  - Updated Firebase project options configuration (`firebase_options.dart`).
+- **Other Enhancements:**
+  - Potential updates to controller logic (`admin_form_builder_controller.dart`) related to form creation and management.
+  - Possible minor adjustments to the main admin screen (`admin_screen.dart`) and the main application file (`main.dart`).
+
+### 🐛 Fixed
+- **Form Builder User Interface:**
+  - Addressed text truncation issue for the 'Opsi "Lainnya"' (Other Option) label next to the configuration switch in the question editor (`admin_form_builder_page.dart`). The label now wraps to multiple lines if necessary, ensuring full text visibility by modifying the `softWrap` and `overflow` properties of the `Text` widget.
+- **User Input Form User Interface:**
+  - Improved readability of long validation error messages in input fields (`input_user_screen.dart`). Error messages in `TextFormField`s now wrap correctly across multiple lines through updates to `_modernInputDecoration`, which includes explicit `errorMaxLines` and `errorStyle`.
+
+---
+
+## [0.29.2] - 2025-06-03
+> Created by Lutfi Indra Nur Praditya
+
+> Answer state initialization to support both new entries and edit mode with fallback to defaults.
+
+### 🛠️ Changed
+-   **Answer State Initialization (`_initializeStatesBasedOnMode`):**
+  - Resets all answer states to default (empty/null) based on the form definition.
+  - In edit mode, if submission data is loaded, `_populateAnswersFromSubmission()` is called to overwrite defaults with submitted answers.
+  - Questions without submitted answers retain their default values, as expected.
 
 ---
 

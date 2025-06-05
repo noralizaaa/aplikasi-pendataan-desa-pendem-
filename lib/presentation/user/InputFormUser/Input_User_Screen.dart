@@ -201,6 +201,7 @@ class InputUserScreen extends GetView<InputUserController> {
       filled: true,
       fillColor: cardBackgroundColor,
       suffixIcon: suffixIcon,
+      errorMaxLines: 8,
     );
   }
 

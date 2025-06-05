@@ -2,8 +2,8 @@ import 'dart:async'; // Untuk Timer
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart'; // Untuk Colors, Get.snackbar, WidgetsBinding, dll.
-import 'package:uid/uid.dart'; // Untuk ID unik lokal
+import 'package:flutter/material.dart'; // Untuk Colors, Get.snackbar, WidgetsBinding, dll. // Untuk ID unik lokal
+import 'package:uuid/uuid.dart';
 
 // PASTIKAN PATH INI BENAR dan admin_form_model.dart adalah versi LENGKAP TERBARU
 import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart';
@@ -14,6 +14,8 @@ class AdminFormBuilderController extends GetxController {
   final RxString formDescription = ''.obs;
   final RxList<FormSection> sections = <FormSection>[].obs;
   final RxBool isBusy = false.obs;
+
+  final Uuid _uuid = Uuid();
 
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
@@ -125,7 +127,7 @@ class AdminFormBuilderController extends GetxController {
   // --- MANAJEMEN BAGIAN (SECTION) ---
   void addSection() {
     final newSection = FormSection(
-      id: UId.getId(),
+      id: _uuid.v4(),
       title: '',
       questions: [],
       isRepeatable: false,
@@ -225,7 +227,7 @@ class AdminFormBuilderController extends GetxController {
       ValidationRule defaultValidation = ValidationRule.empty();
 
       final newQuestion = FormQuestion(
-        id: UId.getId(),
+        id: _uuid.v4(),
         code: suggestedCode,
         questionText: '',
         type: type,

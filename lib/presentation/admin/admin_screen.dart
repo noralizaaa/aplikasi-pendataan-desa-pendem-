@@ -310,7 +310,7 @@ class _DashboardContentOnly extends StatelessWidget {
                               final DateTime date = DateFormat('yyyy-MM-dd').parse(dateLabels[index]);
                               final String formattedDate = DateFormat('dd\nMMM', 'id_ID').format(date);
                               return SideTitleWidget(
-                                meta: meta,
+                                axisSide: meta.axisSide,
                                 space: 6.0,
                                 child: Text(
                                   formattedDate,
@@ -353,7 +353,7 @@ class _DashboardContentOnly extends StatelessWidget {
                               return const SizedBox.shrink();
                             }
                             return SideTitleWidget(
-                              meta: meta,
+                              axisSide: meta.axisSide,
                               space: 4.0,
                               child: Text(
                                 text,
@@ -418,7 +418,7 @@ class _DashboardContentOnly extends StatelessWidget {
                     lineTouchData: LineTouchData(
                       handleBuiltInTouches: true,
                       touchTooltipData: LineTouchTooltipData(
-                        tooltipBorderRadius: BorderRadius.circular(8.0),
+                        tooltipRoundedRadius: 8.0,
                         getTooltipColor: (LineBarSpot spot) => AdminScreen.accentHeaderColor,
                         getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
                           return touchedBarSpots.map((barSpot) {

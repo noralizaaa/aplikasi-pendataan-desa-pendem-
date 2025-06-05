@@ -766,6 +766,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                               style: TextStyle(fontSize: 14),
                               overflow: TextOverflow.ellipsis,
                               softWrap: false,
+                              maxLines: 3,
                             ),
                           ),
                           const SizedBox(width: 4),

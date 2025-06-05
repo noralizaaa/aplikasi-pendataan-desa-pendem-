@@ -11,8 +11,7 @@
     <application
         android:label="SensusKu"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon"
-        android:enableOnBackInvokedCallback="true">
+        android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -41,6 +40,9 @@
             android:name="flutterEmbedding"
             android:value="2"
             android:requestLegacyExternalStorage="true"/>
+        <meta-data
+            android:name="1:465498567418:android:3fcb613825db4dc6a88f43"
+            android:value="AIzaSyCS2TK3v9uZX69bRz_mgAuEFN71U2-A5ZI" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

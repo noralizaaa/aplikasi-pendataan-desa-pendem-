@@ -59,4 +59,5 @@ class DefaultFirebaseOptions {
     projectId: 'aplikasi-pendataan-desa',
     storageBucket: 'aplikasi-pendataan-desa.firebasestorage.app',
   );
+
 }

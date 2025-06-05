@@ -70,7 +70,7 @@ Future<bool> mintaIzinAksesFileNonMedia() async {
 }
 
 
-Future<void> main() async {
+void main() async {
   // Pastikan semua binding Flutter siap sebelum menjalankan kode plugin
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID', null);
@@ -148,6 +148,7 @@ class EnvironmentsBadge extends StatelessWidget {
 Future<void> bacaFileContohSetelahIzin(String pathFile) async {
   // Cek ulang izin sebelum operasi file, atau andalkan status dari startup
   bool punyaIzin = await mintaIzinAksesFileNonMedia(); // Atau simpan status dari `main`
+
 
   if (punyaIzin) {
     try {
