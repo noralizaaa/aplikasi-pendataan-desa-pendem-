@@ -12,8 +12,8 @@
 .swiftpm/
 migrate_working_dir/
 
-build
 android/app/build
+./android/app/build
 
 *.json
 
