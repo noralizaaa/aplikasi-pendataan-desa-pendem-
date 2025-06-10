@@ -310,13 +310,62 @@ class DependentOptionsConfig {
   }
 }
 
+class QuestionOption {
+  final String value;
+  final String? description;
+
+  const QuestionOption({
+    required this.value,
+    this.description,
+  });
+
+  factory QuestionOption.fromMap(Map<String, dynamic> map) {
+    return QuestionOption(
+      value: map['value'] as String? ?? '',
+      description: map['description'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{
+      'value': value,
+    };
+    if (description != null && description!.isNotEmpty) {
+      map['description'] = description;
+    }
+    return map;
+  }
+
+  QuestionOption copyWith({
+    String? value,
+    String? description,
+    bool setDescriptionNull = false,
+  }) {
+    return QuestionOption(
+      value: value ?? this.value,
+      description: setDescriptionNull ? null : (description ?? this.description),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+          other is QuestionOption &&
+              runtimeType == other.runtimeType &&
+              value == other.value &&
+              description == other.description;
+
+  @override
+  int get hashCode => value.hashCode ^ description.hashCode;
+}
+
 class FormQuestion {
   final String id;
   final String? code;
   final String questionText;
   final String? description; // <-- TAMBAHKAN INI
   final QuestionType type;
-  final List<String> options;
+  final List<QuestionOption> options;
   final bool isRequired;
   final bool hasOtherOption;
   final ValidationRule validation;
@@ -356,13 +405,24 @@ class FormQuestion {
   }) : validation = validation ?? ValidationRule.empty();
 
   factory FormQuestion.fromMap(Map<String, dynamic> map) {
+    var optionsList = map['options'] as List<dynamic>?;
+    List<QuestionOption> parsedOptions = [];
+    if (optionsList != null) {
+      if (optionsList.isNotEmpty && optionsList.first is String) {
+        // Mendukung format LAMA (List<String>) untuk backward compatibility
+        parsedOptions = optionsList.map((opt) => QuestionOption(value: opt as String)).toList();
+      } else {
+        // Mendukung format BARU (List<Map>)
+        parsedOptions = optionsList.map((opt) => QuestionOption.fromMap(opt as Map<String, dynamic>)).toList();
+      }
+    }
     return FormQuestion(
       id: map['id'] as String? ?? '',
       code: map['code'] as String?,
       questionText: map['questionText'] as String? ?? 'Pertanyaan Tanpa Teks',
       description: map['description'] as String?, // <-- TAMBAHKAN INI
       type: QuestionTypeExtension.fromString(map['type'] as String?),
-      options: List<String>.from((map['options'] as List<dynamic>?)?.map((e)=> e.toString()) ?? []),
+      options: parsedOptions,
       isRequired: map['isRequired'] as bool? ?? false,
       hasOtherOption: map['hasOtherOption'] as bool? ?? false,
       validation: ValidationRule.fromMap(map['validation'] as Map<String, dynamic>?),
@@ -392,7 +452,7 @@ class FormQuestion {
       // TAMBAHKAN INI (kondisional agar tidak menyimpan null/empty string jika tidak perlu)
       if (description != null && description!.isNotEmpty) 'description': description,
       'type': type.toShortString(),
-      'options': options,
+      'options': options.map((o) => o.toMap()).toList(),
       'isRequired': isRequired,
       'hasOtherOption': hasOtherOption,
       if (!validation.isEffectivelyEmpty) 'validation': validation.toMap(),
@@ -418,7 +478,7 @@ class FormQuestion {
     String? questionText,
     String? description, bool setDescriptionNull = false, // <-- TAMBAHKAN INI
     QuestionType? type,
-    List<String>? options,
+    List<QuestionOption>? options,
     bool? isRequired,
     bool? hasOtherOption,
     ValidationRule? validation, bool setValidationNull = false,
@@ -441,7 +501,7 @@ class FormQuestion {
       questionText: questionText ?? this.questionText,
       description: setDescriptionNull ? null : (description ?? this.description), // <-- TAMBAHKAN INI
       type: type ?? this.type,
-      options: options ?? List<String>.from(this.options),
+      options: options ?? List<QuestionOption>.from(this.options),
       isRequired: isRequired ?? this.isRequired,
       hasOtherOption: hasOtherOption ?? this.hasOtherOption,
       validation: setValidationNull ? ValidationRule.empty() : (validation ?? this.validation),

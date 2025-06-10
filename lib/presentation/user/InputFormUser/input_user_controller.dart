@@ -405,66 +405,45 @@ class InputUserController extends GetxController {
   void _populateAnswersFromSubmission() {
     if (loadedSubmission.value == null || loadedForm.value == null) return;
 
-    // DO NOT re-initialize answers to default here.
-    // _initializeStatesBasedOnMode already did that.
-    // This function should ONLY populate from the submission.
-
     Map<String, int> tempGroupCounts = {};
 
     // First pass: Populate non-repeatable answers and determine group counts
     for (var savedAnswer in loadedSubmission.value!.answers) {
       String originalQuestionId = savedAnswer.questionId;
       bool isRepeatableMemberInstance = false;
-      // int? potentialRepeatIndex; // Not used in this first pass logic for userAnswers
 
-      // Check if this savedAnswer.questionId is for a repeatable group member instance
-      // This simple split might be problematic if originalQuestionId itself contains underscores.
-      // A more robust way might be to check if originalQuestionId (without suffix)
-      // corresponds to a question that belongsToGroupTag.
+      // --- Logic to correctly identify original question ID from potentially suffixed ID ---
       final parts = savedAnswer.questionId.split('_');
       if (parts.length > 1) {
         final potentialIndex = int.tryParse(parts.last);
         if (potentialIndex != null) {
-          // Check if the part before the index is a valid question ID that belongs to a group
           String tempOriginalQId = parts.sublist(0, parts.length - 1).join('_');
           final tempQDef = findQuestionById(tempOriginalQId);
           if (tempQDef != null && tempQDef.belongsToGroupTag != null && tempQDef.belongsToGroupTag!.isNotEmpty) {
-            // This is likely a repeatable group member instance, skip in this pass
-            // It will be handled in the second pass below.
             isRepeatableMemberInstance = true;
-          } else {
-            // It's not a known repeatable group member, or the original ID itself had an underscore.
-            // Treat originalQuestionId as is for now.
-            originalQuestionId = savedAnswer.questionId; // use the full ID
+            // For repeatable members, the originalQuestionId is the one without the suffix.
+            originalQuestionId = tempOriginalQId;
           }
-        } else {
-          originalQuestionId = savedAnswer.questionId; // use the full ID
         }
-      } else {
-        originalQuestionId = savedAnswer.questionId;
       }
-
+      // --- End of identification logic ---
 
       final FormQuestion? questionDef = findQuestionById(originalQuestionId);
       if (questionDef == null) {
-        // print("Warning: Question definition not found for saved answer ID: ${savedAnswer.questionId} (original: $originalQuestionId). Skipping.");
         continue;
       }
 
-      // If it IS a repeatable member instance based on its definition (belongsToGroupTag is set), skip in this loop.
-      // This is a more reliable check than just parsing the ID.
       if (questionDef.belongsToGroupTag != null && questionDef.belongsToGroupTag!.isNotEmpty) {
-        isRepeatableMemberInstance = true; // Confirm it's a repeatable member
+        isRepeatableMemberInstance = true;
       }
-
 
       dynamic mappedMainAnswer;
       String? otherText;
 
-      // Map answer and handle "other" option
       if (questionDef.hasOtherOption) {
         if (savedAnswer.answer is String) {
-          bool isPredefinedOption = questionDef.options.contains(savedAnswer.answer as String);
+          // --- PERBAIKAN: Menggunakan .any() untuk mengecek di dalam List<QuestionOption> ---
+          bool isPredefinedOption = questionDef.options.any((opt) => opt.value == savedAnswer.answer);
           if (!isPredefinedOption && (savedAnswer.answer as String).isNotEmpty) {
             mappedMainAnswer = _kOtherOptionValue;
             otherText = savedAnswer.answer as String;
@@ -475,15 +454,16 @@ class InputUserController extends GetxController {
           List<String> tempCheckboxAnswers = [];
           List<String> otherTextsFound = [];
           for (var item in (savedAnswer.answer as List)) {
-            if (questionDef.options.contains(item.toString())) {
+            // --- PERBAIKAN: Menggunakan .any() untuk mengecek di dalam List<QuestionOption> ---
+            if (questionDef.options.any((opt) => opt.value == item.toString())) {
               tempCheckboxAnswers.add(item.toString());
-            } else if (item.toString().isNotEmpty) { // Collect non-predefined, non-empty items as "other"
+            } else if (item.toString().isNotEmpty) {
               otherTextsFound.add(item.toString());
             }
           }
           if (otherTextsFound.isNotEmpty) {
-            tempCheckboxAnswers.add(_kOtherOptionValue); // Mark "other" as selected
-            otherText = otherTextsFound.join(', '); // Join multiple other texts if any
+            tempCheckboxAnswers.add(_kOtherOptionValue);
+            otherText = otherTextsFound.join(', ');
           }
           mappedMainAnswer = tempCheckboxAnswers;
         } else {
@@ -493,14 +473,11 @@ class InputUserController extends GetxController {
         mappedMainAnswer = _mapAnswerToCorrectType(savedAnswer.answer, questionDef);
       }
 
-      // Populate non-repeatable answers or group controller answers
       if (!isRepeatableMemberInstance) {
         userAnswers[originalQuestionId] = mappedMainAnswer;
         if (otherText != null) {
           userOtherAnswers[originalQuestionId] = otherText;
         }
-
-        // If this question is a repeatable group controller, update its count
         if (questionDef.isRepeatableGroupController && questionDef.controlledGroupTag != null) {
           int count = 0;
           if (mappedMainAnswer is String && mappedMainAnswer.isNotEmpty) {
@@ -513,55 +490,47 @@ class InputUserController extends GetxController {
       }
     }
 
-    // Initialize repeatable groups based on determined counts
+    // Set up repeatable group structures based on the counts found.
     tempGroupCounts.forEach((tag, count) {
       repeatableGroupCounts[tag] = count;
       if (count > 0) {
-        activeRepeatIndexForGroup.putIfAbsent(tag, () => 0); // Default to first item
+        activeRepeatIndexForGroup.putIfAbsent(tag, () => 0);
       } else {
-        activeRepeatIndexForGroup.remove(tag); // No active index if count is 0
+        activeRepeatIndexForGroup.remove(tag);
       }
-      _adjustRepeatableGroupAnswers(tag, count); // This will create default entries for each instance
+      _adjustRepeatableGroupAnswers(tag, count);
     });
 
-    // Second pass: Populate answers for members of repeatable groups
+    // Second pass: Populate answers for members of repeatable groups.
     for (var savedAnswer in loadedSubmission.value!.answers) {
       String originalQuestionId = savedAnswer.questionId;
       int? repeatIndex;
-
-      // Parse ID to find originalQuestionId and repeatIndex for group members
       final parts = savedAnswer.questionId.split('_');
       if (parts.length > 1) {
         final potentialIndex = int.tryParse(parts.last);
         if (potentialIndex != null) {
           String tempOriginalQId = parts.sublist(0, parts.length - 1).join('_');
           final tempQDef = findQuestionById(tempOriginalQId);
-          // Ensure this is indeed a repeatable group member
           if (tempQDef != null && tempQDef.belongsToGroupTag != null && tempQDef.belongsToGroupTag!.isNotEmpty) {
             originalQuestionId = tempOriginalQId;
             repeatIndex = potentialIndex;
           }
-          // If not, originalQuestionId remains savedAnswer.questionId and repeatIndex remains null.
         }
       }
 
       final FormQuestion? questionDef = findQuestionById(originalQuestionId);
       if (questionDef == null || questionDef.belongsToGroupTag == null || questionDef.belongsToGroupTag!.isEmpty || repeatIndex == null) {
-        // Skip if not a valid repeatable group member or if parsing failed
         continue;
       }
 
-      // Ensure the repeatIndex is within the bounds of the group's count
-      if (repeatableGroupAnswers.containsKey(originalQuestionId) &&
-          repeatIndex < (repeatableGroupCounts[questionDef.belongsToGroupTag!] ?? 0)) {
-
+      if (repeatableGroupAnswers.containsKey(originalQuestionId) && repeatIndex < (repeatableGroupCounts[questionDef.belongsToGroupTag!] ?? 0)) {
         dynamic mappedMainAnswerRepeat;
         String? otherTextRepeat;
 
-        // Map answer and handle "other" option for repeatable group members
         if (questionDef.hasOtherOption) {
           if (savedAnswer.answer is String) {
-            bool isPredefinedOption = questionDef.options.contains(savedAnswer.answer as String);
+            // --- PERBAIKAN DI SINI JUGA ---
+            bool isPredefinedOption = questionDef.options.any((opt) => opt.value == savedAnswer.answer);
             if (!isPredefinedOption && (savedAnswer.answer as String).isNotEmpty) {
               mappedMainAnswerRepeat = _kOtherOptionValue;
               otherTextRepeat = savedAnswer.answer as String;
@@ -572,15 +541,16 @@ class InputUserController extends GetxController {
             List<String> tempCheckboxAnswers = [];
             List<String> otherTextsFound = [];
             for (var item in (savedAnswer.answer as List)) {
-              if (questionDef.options.contains(item.toString())) {
+              // --- PERBAIKAN DI SINI JUGA ---
+              if (questionDef.options.any((opt) => opt.value == item.toString())) {
                 tempCheckboxAnswers.add(item.toString());
-              } else if (item.toString().isNotEmpty){ // Collect non-predefined, non-empty items as "other"
+              } else if (item.toString().isNotEmpty){
                 otherTextsFound.add(item.toString());
               }
             }
             if(otherTextsFound.isNotEmpty){
-              tempCheckboxAnswers.add(_kOtherOptionValue); // Mark "other" as selected
-              otherTextRepeat = otherTextsFound.join(', '); // Join multiple other texts if any
+              tempCheckboxAnswers.add(_kOtherOptionValue);
+              otherTextRepeat = otherTextsFound.join(', ');
             }
             mappedMainAnswerRepeat = tempCheckboxAnswers;
           } else {
@@ -590,7 +560,6 @@ class InputUserController extends GetxController {
           mappedMainAnswerRepeat = _mapAnswerToCorrectType(savedAnswer.answer, questionDef);
         }
 
-        // Populate the answer for the specific instance in the repeatable group
         if (!repeatableGroupAnswers[originalQuestionId]!.containsKey(repeatIndex)) {
           repeatableGroupAnswers[originalQuestionId]![repeatIndex] = _getDefaultAnswerForQuestionType(questionDef.type);
         }

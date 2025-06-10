@@ -634,8 +634,29 @@ class InputUserScreen extends GetView<InputUserController> {
     List<Widget> sectionWidgets = [];
     Set<String> processedGroupTagsThisSection = {};
 
-    for (int i = 0; i < section.questions.length; i++) {
-      final question = section.questions[i];
+    final List<FormQuestion> sortedQuestions = List.from(section.questions);
+    sortedQuestions.sort((a, b) {
+      final codeA = a.code;
+      final codeB = b.code;
+
+      // Pertanyaan tanpa 'code' atau dengan code kosong akan diletakkan di akhir.
+      if (codeA == null || codeA.isEmpty) return 1;
+      if (codeB == null || codeB.isEmpty) return -1;
+
+      // Coba parse ke integer untuk melakukan sorting numerik yang benar (misal: "10" > "2")
+      final numA = int.tryParse(codeA);
+      final numB = int.tryParse(codeB);
+
+      if (numA != null && numB != null) {
+        return numA.compareTo(numB); // Lakukan perbandingan sebagai angka jika keduanya valid.
+      }
+
+      // Jika salah satu atau keduanya bukan angka, lakukan perbandingan sebagai string.
+      return codeA.compareTo(codeB);
+    });
+
+    for (int i = 0; i < sortedQuestions.length; i++) {
+      final question = sortedQuestions[i];
       Widget? widgetToAdd;
       final bool isQuestionStructurallyVisible = controller.questionVisibility[question.id] ?? true;
 
@@ -1203,34 +1224,6 @@ class InputUserScreen extends GetView<InputUserController> {
           );
         case QuestionType.multipleChoice:
           String? currentGroupValue = initialValue as String?;
-          List<Widget> radioTiles = question.options.map((option) {
-            return RadioListTile<String>(
-              key: ValueKey("${fieldKeyId}_${option.hashCode}_radio"),
-              title: Text(option, style: const TextStyle(fontSize: 15.0)),
-              value: option,
-              groupValue: currentGroupValue,
-              onChanged: (String? value) {},
-              activeColor: accentHeaderColor,
-              contentPadding: EdgeInsets.zero,
-              visualDensity: VisualDensity.compact,
-            );
-          }).toList();
-
-          if (question.hasOtherOption) {
-            radioTiles.add(
-              RadioListTile<String>(
-                key: ValueKey("${fieldKeyId}_other_radio"),
-                title: const Text("Lainnya...", style: TextStyle(fontSize: 15.0)),
-                value: _kOtherOptionValue,
-                groupValue: currentGroupValue,
-                onChanged: (String? value) {},
-                activeColor: accentHeaderColor,
-                contentPadding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
-              ),
-            );
-          }
-
           return FormField<String>(
               key: ValueKey("${fieldKeyId}_mc_formfield"),
               initialValue: currentGroupValue,
@@ -1240,29 +1233,56 @@ class InputUserScreen extends GetView<InputUserController> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ...radioTiles.map((tile){
-                      if (tile is RadioListTile<String>) {
-                        return RadioListTile<String>(
-                          key: tile.key,
-                          title: tile.title,
-                          value: tile.value,
-                          groupValue: field.value,
-                          onChanged: (String? value) {
-                            if (value != null) {
-                              onChangedCallback(value);
-                              field.didChange(value);
-                              if (value != _kOtherOptionValue) {
-                                onOtherTextChangedCallback('');
-                              }
+                    // --- PERUBAHAN: Membaca List<QuestionOption> untuk membuat RadioListTile ---
+                    ...question.options.map((option) { // option sekarang adalah QuestionOption
+                      return RadioListTile<String>(
+                        key: ValueKey("${fieldKeyId}_${option.value.hashCode}_radio"),
+                        title: Text(option.value, style: const TextStyle(fontSize: 15.0)),
+                        // Menampilkan deskripsi sebagai subtitle
+                        subtitle: (option.description != null && option.description!.isNotEmpty)
+                            ? Padding(
+                          padding: const EdgeInsets.only(top: 2.0, bottom: 4.0),
+                          child: Text(
+                            option.description!,
+                            style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.3),
+                          ),
+                        )
+                            : null,
+                        value: option.value, // Nilai yang disimpan tetap String
+                        groupValue: field.value,
+                        onChanged: (String? value) {
+                          if (value != null) {
+                            onChangedCallback(value);
+                            field.didChange(value);
+                            if (value != _kOtherOptionValue) {
+                              onOtherTextChangedCallback('');
                             }
-                          },
-                          activeColor: tile.activeColor,
-                          contentPadding: tile.contentPadding,
-                          visualDensity: tile.visualDensity,
-                        );
-                      }
-                      return tile;
+                          }
+                        },
+                        activeColor: accentHeaderColor,
+                        contentPadding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        // Penting agar subtitle dengan banyak baris tidak terpotong
+                        isThreeLine: (option.description != null && option.description!.isNotEmpty),
+                      );
                     }).toList(),
+                    // --- AKHIR PERUBAHAN ---
+                    if (question.hasOtherOption)
+                      RadioListTile<String>(
+                        key: ValueKey("${fieldKeyId}_other_radio"),
+                        title: const Text("Lainnya...", style: TextStyle(fontSize: 15.0)),
+                        value: _kOtherOptionValue,
+                        groupValue: field.value,
+                        onChanged: (String? value) {
+                          if (value != null) {
+                            onChangedCallback(value);
+                            field.didChange(value);
+                          }
+                        },
+                        activeColor: accentHeaderColor,
+                        contentPadding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                      ),
                     if (question.hasOtherOption && field.value == _kOtherOptionValue)
                       Padding(
                         padding: const EdgeInsets.only(top: 0.0, left: 40.0, right: 0.0, bottom: 8.0),
@@ -1294,72 +1314,76 @@ class InputUserScreen extends GetView<InputUserController> {
                       ),
                   ],
                 );
-              }
-          );
+              });
         case QuestionType.checkboxes:
-          List<String> currentSelectedValues = List<String>.from(initialValue as List<dynamic>? ?? []);
-
           return FormField<List<String>>(
             key: ValueKey("${fieldKeyId}_checkbox_formfield"),
-            initialValue: currentSelectedValues,
+            initialValue: List<String>.from(initialValue as List<dynamic>? ?? []),
             validator: validatorFunction,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             builder: (FormFieldState<List<String>> field) {
               bool isOtherCurrentlySelected = field.value?.contains(_kOtherOptionValue) ?? false;
-
-              List<Widget> checkboxTiles = question.options.map((option) {
-                return CheckboxListTile(
-                  key: ValueKey("${fieldKeyId}_${option.hashCode}_checkbox"),
-                  title: Text(option, style: const TextStyle(fontSize: 15.0)),
-                  value: field.value?.contains(option) ?? false,
-                  onChanged: (bool? selected) {
-                    final latestSelectedValues = List<String>.from(field.value ?? []);
-                    if (selected == true) {
-                      if (!latestSelectedValues.contains(option)) latestSelectedValues.add(option);
-                    } else {
-                      latestSelectedValues.remove(option);
-                    }
-                    onChangedCallback(latestSelectedValues);
-                    field.didChange(latestSelectedValues);
-                  },
-                  activeColor: accentHeaderColor,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                );
-              }).toList();
-
-              if (question.hasOtherOption) {
-                checkboxTiles.add(
-                  CheckboxListTile(
-                    key: ValueKey("${fieldKeyId}_other_checkbox"),
-                    title: const Text("Lainnya...", style: TextStyle(fontSize: 15.0)),
-                    value: isOtherCurrentlySelected,
-                    onChanged: (bool? selected) {
-                      final latestSelectedValues = List<String>.from(field.value ?? []);
-                      if (selected == true) {
-                        if (!latestSelectedValues.contains(_kOtherOptionValue)) {
-                          latestSelectedValues.add(_kOtherOptionValue);
-                        }
-                      } else {
-                        latestSelectedValues.remove(_kOtherOptionValue);
-                        onOtherTextChangedCallback('');
-                      }
-                      onChangedCallback(latestSelectedValues);
-                      field.didChange(latestSelectedValues);
-                    },
-                    activeColor: accentHeaderColor,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    contentPadding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                );
-              }
-
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ...checkboxTiles,
+                  // --- PERUBAHAN: Membaca List<QuestionOption> untuk membuat CheckboxListTile ---
+                  ...question.options.map((option) { // option adalah QuestionOption
+                    return CheckboxListTile(
+                      key: ValueKey("${fieldKeyId}_${option.value.hashCode}_checkbox"),
+                      title: Text(option.value, style: const TextStyle(fontSize: 15.0)),
+                      // Menampilkan deskripsi sebagai subtitle
+                      subtitle: (option.description != null && option.description!.isNotEmpty)
+                          ? Padding(
+                        padding: const EdgeInsets.only(top: 2.0, bottom: 4.0),
+                        child: Text(
+                          option.description!,
+                          style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.3),
+                        ),
+                      )
+                          : null,
+                      value: field.value?.contains(option.value) ?? false,
+                      onChanged: (bool? selected) {
+                        final latestSelectedValues = List<String>.from(field.value ?? []);
+                        if (selected == true) {
+                          if (!latestSelectedValues.contains(option.value)) latestSelectedValues.add(option.value);
+                        } else {
+                          latestSelectedValues.remove(option.value);
+                        }
+                        onChangedCallback(latestSelectedValues);
+                        field.didChange(latestSelectedValues);
+                      },
+                      activeColor: accentHeaderColor,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      // Penting agar subtitle dengan banyak baris tidak terpotong
+                      isThreeLine: (option.description != null && option.description!.isNotEmpty),
+                    );
+                  }).toList(),
+                  // --- AKHIR PERUBAHAN ---
+                  if (question.hasOtherOption)
+                    CheckboxListTile(
+                      key: ValueKey("${fieldKeyId}_other_checkbox"),
+                      title: const Text("Lainnya...", style: TextStyle(fontSize: 15.0)),
+                      value: isOtherCurrentlySelected,
+                      onChanged: (bool? selected) {
+                        final latestSelectedValues = List<String>.from(field.value ?? []);
+                        if (selected == true) {
+                          if (!latestSelectedValues.contains(_kOtherOptionValue)) {
+                            latestSelectedValues.add(_kOtherOptionValue);
+                          }
+                        } else {
+                          latestSelectedValues.remove(_kOtherOptionValue);
+                          onOtherTextChangedCallback('');
+                        }
+                        onChangedCallback(latestSelectedValues);
+                        field.didChange(latestSelectedValues);
+                      },
+                      activeColor: accentHeaderColor,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                    ),
                   if (question.hasOtherOption && isOtherCurrentlySelected)
                     Padding(
                       padding: const EdgeInsets.only(top: 0.0, left: 40.0, right: 0.0, bottom: 8.0),
@@ -1397,98 +1421,97 @@ class InputUserScreen extends GetView<InputUserController> {
           );
 
         case QuestionType.dropdown:
-          List<String> optionsToDisplay = List<String>.from(question.options);
-          bool isDependent = question.dependentOptions != null &&
-              question.dependentOptions!.parentQuestionId.isNotEmpty;
+        // List terpadu untuk menampung opsi, baik dari opsi utama maupun dari opsi dependen.
+        // Setiap item adalah Map yang berisi 'value' (wajib) dan 'description' (opsional).
+          List<Map<String, String?>> unifiedOptions = [];
+          bool isDependent = question.dependentOptions != null && question.dependentOptions!.parentQuestionId.isNotEmpty;
           String? parentAnswer;
 
           if (isDependent) {
             final parentQuestionId = question.dependentOptions!.parentQuestionId;
-            final parentQuestionDef = controller.findQuestionById(parentQuestionId);
-            if (parentQuestionDef?.belongsToGroupTag == question.belongsToGroupTag && repeatIndex != null) {
-              parentAnswer = controller.repeatableGroupAnswers[parentQuestionId]?[repeatIndex] as String?;
+            // Mendapatkan jawaban dari pertanyaan induk...
+            if (repeatIndex != null && controller.repeatableGroupAnswers.containsKey(parentQuestionId)) {
+              parentAnswer = controller.repeatableGroupAnswers[parentQuestionId]![repeatIndex] as String?;
             } else {
               parentAnswer = controller.userAnswers[parentQuestionId] as String?;
             }
 
-
+            // Jika ada jawaban induk, ambil opsi dependennya.
             if (parentAnswer != null && parentAnswer.isNotEmpty) {
-              optionsToDisplay =
-                  question.dependentOptions!.optionMapping[parentAnswer] ?? [];
-            } else {
-              optionsToDisplay = [];
+              final List<String> dependentOptions = question.dependentOptions!.optionMapping[parentAnswer] ?? [];
+              // Ubah List<String> menjadi List<Map> agar strukturnya sama. Deskripsi akan null.
+              unifiedOptions = dependentOptions.map((opt) => {'value': opt, 'description': null}).toList();
             }
+            // Jika tidak ada jawaban induk, unifiedOptions akan tetap kosong, dan dropdown akan dinonaktifkan.
+          } else {
+            // Jika bukan dropdown dependen, ambil dari opsi utama.
+            unifiedOptions = question.options.map((opt) => {'value': opt.value, 'description': opt.description}).toList();
           }
 
+          // Cek apakah nilai yang tersimpan saat ini masih valid dengan opsi yang ditampilkan.
           String? effectiveInitialValue = initialValue as String?;
-          if (effectiveInitialValue != null &&
-              !optionsToDisplay.contains(effectiveInitialValue) ) {
-            // Jika nilai awal tidak ada di opsi yang valid (misalnya karena parent berubah), reset
-            effectiveInitialValue = null;
-            // Penting: panggil onChangedCallback agar state di controller juga terupdate menjadi null
-            // Namun, ini bisa menyebabkan loop jika build dipicu oleh onChanged.
-            // Solusi yang lebih baik adalah controller yang menangani reset ini ketika parent berubah.
-            // Untuk sekarang, kita hanya null-kan tampilan. Controller akan menyimpan nilai lama
-            // sampai user memilih yang baru.
+          if (effectiveInitialValue != null && !unifiedOptions.any((opt) => opt['value'] == effectiveInitialValue)) {
+            effectiveInitialValue = null; // Reset jika tidak valid.
           }
 
-
-          if (isDependent && (parentAnswer == null || parentAnswer.isEmpty) && optionsToDisplay.isEmpty) {
+          // Tampilkan pesan jika dropdown dependen belum bisa ditampilkan
+          if (isDependent && (parentAnswer == null || parentAnswer.isEmpty)) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: Text(
-                "Pilih jawaban untuk pertanyaan induk (${controller.findQuestionById(question.dependentOptions!.parentQuestionId)?.questionText ?? 'sebelumnya'}) terlebih dahulu.",
-                style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontStyle: FontStyle.italic,
-                    fontSize: 14),
+                "Pilih jawaban untuk pertanyaan induk terlebih dahulu.",
+                style: TextStyle(color: Colors.grey.shade600, fontStyle: FontStyle.italic, fontSize: 14),
               ),
             );
           }
-          if (isDependent && parentAnswer != null && parentAnswer.isNotEmpty && optionsToDisplay.isEmpty) {
+          if (isDependent && parentAnswer != null && parentAnswer.isNotEmpty && unifiedOptions.isEmpty) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: Text(
                 "Tidak ada opsi yang tersedia untuk pilihan '$parentAnswer'.",
-                style: TextStyle(
-                    color: Colors.orange.shade700,
-                    fontStyle: FontStyle.italic,
-                    fontSize: 14),
+                style: TextStyle(color: Colors.orange.shade700, fontStyle: FontStyle.italic, fontSize: 14),
               ),
             );
           }
 
-          String optionsKeyPart = optionsToDisplay.join(',');
+          String optionsKeyPart = unifiedOptions.map((e) => e['value']).join(',');
           Key dropdownKey = ValueKey("${fieldKeyId}_${effectiveInitialValue ?? 'null'}_$optionsKeyPart");
 
-
           return DropdownButtonFormField<String>(
-            key: dropdownKey, // Kunci yang dinamis berdasarkan opsi yang tersedia
-            value: (optionsToDisplay.isEmpty && effectiveInitialValue != null) ? null : effectiveInitialValue,
-            decoration: _modernInputDecoration(
-                context,
-                labelText: (optionsToDisplay.isEmpty && !isDependent) // Jika bukan dependent tapi kosong, itu error konfigurasi
-                    ? "Tidak ada opsi dikonfigurasi"
-                    : (optionsToDisplay.isEmpty && isDependent)
-                    ? "Tidak ada opsi untuk pilihan induk"
-                    : "Pilih salah satu"),
-            items: optionsToDisplay.map((option) {
+            key: dropdownKey,
+            value: effectiveInitialValue,
+            decoration: _modernInputDecoration(context, labelText: "Pilih salah satu"),
+            isExpanded: true,
+            // --- PERUBAHAN: Membuat item dropdown dengan ListTile untuk mendukung deskripsi ---
+            items: unifiedOptions.map((option) {
+              final String value = option['value']!;
+              final String? description = option['description'];
               return DropdownMenuItem<String>(
-                  value: option,
-                  child: Text(option, style: const TextStyle(fontSize: 15), overflow: TextOverflow.ellipsis,));
+                value: value,
+                // Menggunakan ListTile agar rapi saat ada deskripsi
+                child: Tooltip(
+                  message: description ?? '',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(value, style: const TextStyle(fontSize: 15)),
+                    subtitle: (description != null && description.isNotEmpty)
+                        ? Text(description, style: TextStyle(fontSize: 12, color: Colors.grey.shade700, overflow: TextOverflow.ellipsis))
+                        : null,
+                  ),
+                ),
+              );
             }).toList(),
-            onChanged: (optionsToDisplay.isEmpty) // Jangan biarkan onChanged jika tidak ada opsi
-                ? null
+            onChanged: (unifiedOptions.isEmpty && isDependent)
+                ? null // Nonaktifkan jika dependen dan tidak ada opsi
                 : (String? newValue) {
               if (newValue != null) {
                 onChangedCallback(newValue);
               }
             },
-            isExpanded: true,
             validator: validatorFunction,
             autovalidateMode: AutovalidateMode.onUserInteraction,
           );
-
         case QuestionType.gridNumeric:
           Map<String, Map<String, Map<String, num?>>> effectiveGridAnswers = {};
 

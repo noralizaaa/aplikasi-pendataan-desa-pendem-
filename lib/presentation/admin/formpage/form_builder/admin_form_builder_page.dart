@@ -260,9 +260,6 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
         shouldBeInitiallyExpandedIfNoController = false; // Tutup semua jika mode edit
       }
 
-      // =======================================================================
-      // AWAL PERUBAHAN PADA BAGIAN ExpansionTile
-      // =======================================================================
       return Card(
         margin: const EdgeInsets.only(bottom: 20),
         elevation: 2,
@@ -273,19 +270,12 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
           key: ValueKey(section.id), // Key penting untuk menjaga state
           controller: tileController, // Controller yang Anda sediakan
 
-          // PERUBAHAN KRUSIAL:
-          // Jika 'tileController' ada (tidak null), maka 'initiallyExpanded' HARUS false.
-          // State ekspansi akan sepenuhnya diatur oleh 'tileController.isExpanded'.
-          // Jika 'tileController' null (seharusnya tidak terjadi jika manajemen controller benar),
-          // maka kita bisa menggunakan logika 'shouldBeInitiallyExpandedIfNoController'.
           initiallyExpanded: (tileController != null)
               ? false // WAJIB false jika controller ada
               : shouldBeInitiallyExpandedIfNoController,
 
           onExpansionChanged: (isExpanding) {
-            // Optional: Anda bisa menangani perubahan state ekspansi di sini jika perlu
-            // Misalnya, controller.updateSectionExpansionState(section.id, isExpanding);
-            // Namun, ExpansionTileController sudah menangani state isExpanded secara internal.
+            // State ekspansi sudah diatur oleh controller
           },
           backgroundColor: cardBgColor,
           collapsedBackgroundColor: cardBgColor,
@@ -342,7 +332,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                   const SizedBox(height: 16),
                   _buildExpansionTileForSettings(
                     "Pengaturan Pengulangan Bagian",
-                    [ /* ... konten repeatable settings ... */
+                    [
                       SwitchListTile(
                         title: const Text("Bagian ini dapat diulang?", style: TextStyle(fontSize: 14)),
                         value: section.isRepeatable,
@@ -409,24 +399,53 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                         ]),
                       ],
                     ],
-                    initiallyExpanded: section.isRepeatable, // Ini untuk ExpansionTile *dalam* section card, BUKAN section card itu sendiri
+                    initiallyExpanded: section.isRepeatable,
                   ),
                   const SizedBox(height: 20),
                   Text("Pertanyaan untuk Bagian Ini:", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
                   const SizedBox(height: 10),
+                  // --- KODE LAMA DIGANTIKAN DENGAN BLOK DI BAWAH ---
                   if (section.questions.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 16.0),
                       child: Center(child: Text("Belum ada pertanyaan di bagian ini.", style: TextStyle(color: Colors.grey.shade600))),
                     )
                   else
-                    Column(
-                      children: section.questions.asMap().entries.map((entry) {
-                        final questionIndexInSection = entry.key;
-                        final questionItem = entry.value;
-                        return _buildQuestionCard(section.id, sectionIndex, questionItem.id, questionIndexInSection);
-                      }).toList(),
-                    ),
+                  // --- PERBAIKAN: Logika Pengurutan Pertanyaan ---
+                    Builder(builder: (context) {
+                      // Buat salinan list pertanyaan agar bisa diurutkan.
+                      final sortedQuestions = List<FormQuestion>.from(section.questions);
+
+                      // Lakukan pengurutan berdasarkan 'code'.
+                      sortedQuestions.sort((a, b) {
+                        final codeA = a.code;
+                        final codeB = b.code;
+
+                        // Pertanyaan tanpa 'code' atau dengan code kosong diletakkan di akhir.
+                        if (codeA == null || codeA.isEmpty) return 1;
+                        if (codeB == null || codeB.isEmpty) return -1;
+
+                        // Coba parse ke integer untuk melakukan sorting numerik yang benar (misal: "10" > "2").
+                        final numA = int.tryParse(codeA);
+                        final numB = int.tryParse(codeB);
+
+                        if (numA != null && numB != null) {
+                          return numA.compareTo(numB);
+                        }
+
+                        // Jika tidak bisa di-parse sebagai angka, sorting sebagai string biasa.
+                        return codeA.compareTo(codeB);
+                      });
+
+                      // Gunakan list yang sudah diurutkan untuk membangun widget.
+                      return Column(
+                        children: sortedQuestions.asMap().entries.map((entry) {
+                          final questionIndexInSection = entry.key; // Index ini sekarang dari list yang sudah terurut.
+                          final questionItem = entry.value;
+                          return _buildQuestionCard(section.id, sectionIndex, questionItem.id, questionIndexInSection);
+                        }).toList(),
+                      );
+                    }),
                   const SizedBox(height: 15),
                   _buildAddQuestionButton(section.id),
 
@@ -944,27 +963,34 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
   }
 
 
-  Widget _buildOptionsSection(String sectionId, FormQuestion question) {
-    // Definisi InputDecoration lokal, pastikan accentThemeColor dapat diakses
-    // (misalnya, sebagai variabel anggota kelas atau konstanta global)
-    // Jika accentThemeColor adalah variabel anggota dari kelas AdminFormBuilderPage,
-    // Anda mungkin perlu meneruskannya ke fungsi ini atau mengaksesnya secara langsung jika ini adalah metode kelas.
-    // Untuk contoh ini, saya asumsikan ia bisa diakses.
-    // final Color accentThemeColor = ... ; // Anda perlu memastikan ini terdefinisi
+  // --- Ganti keseluruhan method _buildOptionsSection Anda dengan kode di bawah ini ---
 
+  Widget _buildOptionsSection(String sectionId, FormQuestion question) {
+    // Helper untuk dekorasi input nilai opsi
     InputDecoration optionInputDecoration(String hint) {
       return InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
         border: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade300)),
         enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade300)),
-        focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accentThemeColor)), // Pastikan accentThemeColor tersedia
+        focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: accentThemeColor)),
         contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
         isDense: true,
       );
     }
 
-    // Membuat daftar widget anak untuk Column secara dinamis
+    // Helper untuk dekorasi input deskripsi opsi
+    InputDecoration optionDescriptionInputDecoration(String hint) {
+      return InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400, fontStyle: FontStyle.italic),
+        border: InputBorder.none, // Dibuat lebih simpel tanpa border bawah
+        contentPadding: const EdgeInsets.fromLTRB(0, 4, 0, 4),
+        isDense: true,
+      );
+    }
+
+    // List untuk menampung semua widget di dalam section ini
     List<Widget> children = [
       Padding(
         padding: const EdgeInsets.only(bottom: 6.0, top: 4.0),
@@ -972,47 +998,73 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
       ),
     ];
 
-    // Menambahkan opsi-opsi yang sudah ada
+    // Menambahkan setiap opsi yang ada dengan field untuk nilai dan deskripsi
     children.addAll(question.options.asMap().entries.map((entry) {
       int index = entry.key;
-      String option = entry.value;
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 6.0),
-            child: Icon(
-              question.type == QuestionType.multipleChoice ? Icons.radio_button_off_rounded :
-              question.type == QuestionType.checkboxes ? Icons.check_box_outline_blank_rounded :
-              Icons.arrow_right_rounded, // Untuk dropdown
-              color: Colors.grey.shade500, size: 18,
+      // Asumsikan 'question.options' sekarang adalah 'List<QuestionOption>'
+      QuestionOption option = entry.value;
+
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8.0),
+        child: Column(
+          children: [
+            // Baris untuk nilai opsi
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 6.0),
+                  child: Icon(
+                    question.type == QuestionType.multipleChoice ? Icons.radio_button_off_rounded :
+                    question.type == QuestionType.checkboxes ? Icons.check_box_outline_blank_rounded :
+                    Icons.arrow_right_rounded,
+                    color: Colors.grey.shade500, size: 18,
+                  ),
+                ),
+                Expanded(
+                  child: _PersistentTextField(
+                    fieldKey: ValueKey('${question.id}_option_value_$index'),
+                    initialValue: option.value,
+                    // Panggil metode baru di controller untuk memperbarui nilai
+                    onChanged: (text) => controller.updateOptionValue(sectionId, question.id, index, text),
+                    decoration: optionInputDecoration('Nilai Opsi ${index + 1}'),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.remove_circle_outline_rounded, color: Colors.red.shade300, size: 20),
+                  onPressed: () => controller.removeOption(sectionId, question.id, index),
+                  splashRadius: 16, padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
             ),
-          ),
-          Expanded(
-            child: _PersistentTextField(
-              fieldKey: ValueKey('${question.id}_option_${index}_persistent'),
-              initialValue: option,
-              onChanged: (text) => controller.updateOption(sectionId, question.id, index, text),
-              decoration: optionInputDecoration('Opsi ${index + 1}'),
-              style: const TextStyle(fontSize: 14),
+            // TextField baru untuk deskripsi, diletakkan di bawah nilai
+            Padding(
+              padding: const EdgeInsets.only(left: 24, right: 44, top: 0),
+              child: _PersistentTextField(
+                fieldKey: ValueKey('${question.id}_option_desc_$index'),
+                initialValue: option.description ?? '',
+                // Panggil metode baru di controller untuk memperbarui deskripsi
+                onChanged: (text) => controller.updateOptionDescription(sectionId, question.id, index, text),
+                decoration: optionDescriptionInputDecoration('Deskripsi untuk opsi ini (opsional)'),
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+              ),
             ),
-          ),
-          IconButton(
-            icon: Icon(Icons.remove_circle_outline_rounded, color: Colors.red.shade300, size: 20),
-            onPressed: () => controller.removeOption(sectionId, question.id, index),
-            splashRadius: 16, padding: const EdgeInsets.all(4),
-            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-            visualDensity: VisualDensity.compact,
-          ),
-        ],
+            // Beri pemisah jika bukan opsi terakhir
+            if (index < question.options.length - 1)
+              Divider(height: 16, thickness: 0.5, color: Colors.grey.shade200, indent: 24, endIndent: 44),
+          ],
+        ),
       );
     }).toList());
 
-    // --- AWAL PERUBAHAN: Menambahkan representasi "Opsi Lainnya" ---
+    // Menambahkan placeholder untuk "Opsi Lainnya" jika aktif
     if (question.hasOtherOption && (question.type == QuestionType.multipleChoice || question.type == QuestionType.checkboxes)) {
       children.add(
           Padding(
-            padding: const EdgeInsets.only(top: 8.0, bottom: 4.0), // Sedikit spasi
+            padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -1020,20 +1072,19 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                   padding: const EdgeInsets.only(right: 6.0),
                   child: Icon(
                     question.type == QuestionType.multipleChoice ? Icons.radio_button_checked_rounded : Icons.check_box_rounded,
-                    color: Colors.grey.shade700, // Warna sedikit beda untuk menandakan ini spesial
+                    color: Colors.grey.shade700,
                     size: 18,
                   ),
                 ),
                 Expanded(
-                  child: AbsorbPointer( // Membuat TextField tidak interaktif
+                  child: AbsorbPointer(
                     child: TextField(
-                      enabled: false, // Secara visual tampak nonaktif
+                      enabled: false,
                       decoration: InputDecoration(
-                        labelText: 'Lainnya...', // Label yang jelas
+                        labelText: 'Lainnya...',
                         labelStyle: TextStyle(fontSize: 14, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
                         hintText: 'Kolom input teks akan muncul untuk responden',
                         hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontStyle: FontStyle.italic),
-                        // Menggunakan border yang berbeda untuk menandakan ini placeholder
                         border: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade400, style: BorderStyle.solid)),
                         disabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade400, style: BorderStyle.solid)),
                         contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
@@ -1043,15 +1094,12 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                     ),
                   ),
                 ),
-                // Memberi ruang agar sejajar dengan tombol hapus pada opsi biasa
-                // Sesuaikan nilai width jika perlu agar tampak rapi
-                const SizedBox(width: 48), // (lebar IconButton sekitar 20 + padding 2*4)*2 = 48, atau sesuaikan
+                const SizedBox(width: 48),
               ],
             ),
           )
       );
     }
-    // --- AKHIR PERUBAHAN ---
 
     // Tombol "Tambah Opsi"
     children.add(
@@ -1059,18 +1107,19 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
             onPressed: () => controller.addOption(sectionId, question.id),
-            icon: const Icon(Icons.add_circle_outline_rounded, color: accentThemeColor, size: 20), // Pastikan accentThemeColor tersedia
-            label: const Text('Tambah Opsi', style: TextStyle(color: accentThemeColor, fontSize: 14, fontWeight: FontWeight.w500)), // Pastikan accentThemeColor tersedia
+            icon: const Icon(Icons.add_circle_outline_rounded, color: accentThemeColor, size: 20),
+            label: const Text('Tambah Opsi', style: TextStyle(color: accentThemeColor, fontSize: 14, fontWeight: FontWeight.w500)),
             style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4)),
           ),
         )
     );
 
-    // Divider
+    // Divider di akhir section
     children.add(
       const Divider(height: 16, thickness: 0.5),
     );
 
+    // Mengembalikan semua widget dalam satu Column
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
@@ -1529,7 +1578,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
               if (question.options.isNotEmpty)
                 DropdownButtonFormField<String>(
                   decoration: _modernInputDecoration(labelText: 'Nilai Jawaban Pemicu', isDense: true),
-                  items: question.options.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(),
+                  items: question.options.map((opt) => DropdownMenuItem(value: opt.value, child: Text(opt.value))).toList(),
                   onChanged: (val) => conditionController.text = val ?? '',
                   hint: const Text('Pilih dari opsi'),
                 )
@@ -1609,48 +1658,28 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
           ?.questions
           .firstWhereOrNull((q) => q.id == questionToList.id) ?? questionToList;
 
-      // print("--- START _buildDependentOptionsConfigurator for child Q: ${question.id} ---");
-
       final potentialParents = controller.getPotentialParentQuestions(sectionId, question.id);
-      // print("Potential Parents count: ${potentialParents.length}");
 
-      FormQuestion? selectedParentQuestionObj; // Variabel baru untuk kejelasan
+      FormQuestion? selectedParentQuestionObj;
       final String? storedParentIdInChild = question.dependentOptions?.parentQuestionId;
-      // print("Stored Parent ID in child's dependentOptions: $storedParentIdInChild");
 
       if (storedParentIdInChild != null && storedParentIdInChild.isNotEmpty) {
         selectedParentQuestionObj = controller.findQuestionById(storedParentIdInChild);
-        // if (selectedParentQuestionObj == null) {
-        //   print("ERROR: Parent object for ID '$storedParentIdInChild' NOT FOUND by findQuestionById.");
-        // } else {
-        //   print("SUCCESS: Parent object FOUND: ID='${selectedParentQuestionObj.id}', Text='${selectedParentQuestionObj.questionText}'");
-        //   print("PARENT OBJECT OPTIONS (Length: ${selectedParentQuestionObj.options.length}): ${selectedParentQuestionObj.options}");
-        // }
-      } else {
-        // print("No parent ID stored in child's dependentOptions.");
       }
 
       final validParentQuestionIdsInDropdown = potentialParents.map((pQ) => pQ.id).toList();
       String? effectiveParentIdForDropdownValue = storedParentIdInChild;
       if (effectiveParentIdForDropdownValue != null && !validParentQuestionIdsInDropdown.contains(effectiveParentIdForDropdownValue)) {
-        // print("Warning: Stored parent ID '$effectiveParentIdForDropdownValue' is not in current valid dropdown items. Resetting dropdown value to null.");
         effectiveParentIdForDropdownValue = null;
       }
-      // print("Effective Parent ID for Dropdown 'value' property: $effectiveParentIdForDropdownValue");
 
-      // Kondisi utama untuk menampilkan UI mapping
-      // Kita cek sekali lagi di sini dengan objek yang baru di-fetch
+      // Kondisi ini sekarang sudah benar, karena `.options` pada parent adalah List<QuestionOption>
       bool showMappingInterface = selectedParentQuestionObj != null && selectedParentQuestionObj.options.isNotEmpty;
-      // print(">>> Condition to show mapping UI: showMappingInterface = $showMappingInterface");
-      // if (selectedParentQuestionObj == null) print("    Reason: selectedParentQuestionObj is NULL");
-      // if (selectedParentQuestionObj != null && selectedParentQuestionObj.options.isEmpty) print("    Reason: selectedParentQuestionObj.options IS EMPTY");
-      // if (selectedParentQuestionObj != null && selectedParentQuestionObj.options.isNotEmpty) print("    Reason: selectedParentQuestionObj IS NOT NULL and options IS NOT EMPTY");
-
 
       return _buildExpansionTileForSettings(
         'Opsi Bergantung (Cascading)',
         [
-          Padding( // Selalu tampilkan dropdown pemilihan parent
+          Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: DropdownButtonFormField<String?>(
               key: ValueKey('${question.id}_parent_dd_${effectiveParentIdForDropdownValue ?? "no_parent_selected"}'),
@@ -1665,7 +1694,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                   value: null,
                   child: Text("Tidak Bergantung / Hapus", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
                 ),
-                if (potentialParents.isNotEmpty) // Hanya tampilkan jika ada calon induk
+                if (potentialParents.isNotEmpty)
                   ...potentialParents.map((parentQ) {
                     String parentSectionTitle = "Lain Bagian";
                     String parentSectionRoman = "";
@@ -1684,24 +1713,22 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
                       ),
                     );
                   }).toList()
-                else // Jika potentialParents kosong, tambahkan item ini
+                else
                   const DropdownMenuItem<String?>(
-                    value: null, // atau nilai dummy yang tidak akan pernah terpilih
-                    enabled: false, // Buat tidak bisa dipilih
+                    value: null,
+                    enabled: false,
                     child: Text("Tidak ada calon induk tersedia", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
                   ),
               ],
               onChanged: (String? newParentId) {
-                // print("DROPDOWN PARENT CHANGED. New Parent ID selected: $newParentId");
                 controller.setParentQuestionForDependency(sectionId, question.id, newParentId);
               },
               isExpanded: true,
             ),
           ),
 
-          const SizedBox(height: 10), // Jarak sebelum pesan error atau UI mapping
+          const SizedBox(height: 10),
 
-          // Pesan error jika parent ID tersimpan tapi objeknya tidak ditemukan
           if (storedParentIdInChild != null && storedParentIdInChild.isNotEmpty && selectedParentQuestionObj == null)
             Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
@@ -1711,9 +1738,7 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
               ),
             ),
 
-          // Tampilkan UI mapping opsi
           if (showMappingInterface) ...[
-            // Jika showMappingInterface true, selectedParentQuestionObj dijamin tidak null.
             Text(
               'Atur opsi anak untuk pertanyaan "${question.questionText}" berdasarkan jawaban dari "${selectedParentQuestionObj!.code ?? "Induk"}" (${selectedParentQuestionObj.questionText}):',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade800),
@@ -1724,18 +1749,26 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: selectedParentQuestionObj.options.length,
               itemBuilder: (context, index) {
-                final parentOption = selectedParentQuestionObj!.options[index];
-                final currentChildOptions = question.dependentOptions?.optionMapping[parentOption] ?? [];
+                // --- PERBAIKAN DI SINI ---
+                // 1. Ambil objek QuestionOption lengkap dari parent.
+                final parentOptionObj = selectedParentQuestionObj!.options[index];
+                // 2. Ekstrak nilai String-nya untuk digunakan sebagai kunci map dan parameter.
+                final String parentOptionValue = parentOptionObj.value;
+
+                // 3. Gunakan nilai String untuk mencari di dalam mapping.
+                final currentChildOptions = question.dependentOptions?.optionMapping[parentOptionValue] ?? [];
+
+                // 4. Kirim nilai String ke _buildParentOptionMappingTile.
                 return _buildParentOptionMappingTile(
                   sectionId,
                   question.id,
-                  parentOption,
+                  parentOptionValue,
                   currentChildOptions,
                 );
+                // --- AKHIR PERBAIKAN ---
               },
             ),
           ]
-          // Pesan jika parent ditemukan tapi tidak punya opsi
           else if (storedParentIdInChild != null && storedParentIdInChild.isNotEmpty && selectedParentQuestionObj != null && selectedParentQuestionObj.options.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),

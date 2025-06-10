@@ -3,6 +3,33 @@
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+---
+
+## [0.30.0] - 2025-06-10
+> Contributed by [Bayu Ardiyansyah]
+
+> Added descriptive text support for each answer option to enhance clarity for form respondents.
+
+### ✨ Added
+- **Answer Option Descriptions:** A new feature has been implemented allowing administrators to add a descriptive text to each individual answer option (e.g., for Multiple Choice, Checkboxes, Dropdown).
+  - **Data Model (`admin_form_model.dart`):** Introduced a new `QuestionOption` class to store both a `value` and a `description`. The `FormQuestion` model was updated to use `List<QuestionOption>` and includes backward compatibility to correctly load older forms.
+  - **Admin Form Builder (`admin_form_builder_page.dart`):** The question editor UI now includes a dedicated text field for adding or editing the description for each answer option.
+  - **User Input Form (`input_user_screen.dart`):** The user-facing form now displays these descriptions as a subtitle below each corresponding option, making the choices clearer and more informative for the person filling out the form.
+  - **Edit Mode Support (`input_user_controller.dart`):** Corrected the data population logic in edit mode (`_populateAnswersFromSubmission`) to properly recognize the new `QuestionOption` structure, ensuring that submitted answers are mapped correctly when editing a form.
+
+---
+
+## [0.29.4] - 2025-06-10
+> Contributed by [Bayu Ardiyansyah]
+
+> Implemented automatic question sorting by code for a consistent and logical form structure in both user and admin views.
+
+### ✨ Added
+- **Automatic Question Sorting:**
+  - **User Input Form (`input_user_screen.dart`):** Questions presented to the end-user are now automatically sorted in ascending order based on their assigned `code` within each section. This ensures a logical and predictable question flow, independent of the order they were created in the database.
+  - **Admin Form Builder (`admin_form_builder_page.dart`):** The question editor for administrators now also displays questions sorted by `code`. This provides a "what you see is what you get" experience, allowing admins to view and manage questions in the exact same logical sequence that users will see them.
+
 ---
 
 ## [0.29.3] - 2025-06-05

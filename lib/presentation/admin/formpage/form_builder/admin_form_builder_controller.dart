@@ -231,9 +231,12 @@ class AdminFormBuilderController extends GetxController {
         code: suggestedCode,
         questionText: '',
         type: type,
-        options: (type == QuestionType.multipleChoice || type == QuestionType.checkboxes || type == QuestionType.dropdown) ? ['Opsi 1'] : [],
-        validation: defaultValidation,
+        options: (type == QuestionType.multipleChoice || type == QuestionType.checkboxes || type == QuestionType.dropdown)
+            ? [QuestionOption(value: 'Opsi 1')]
+            : [],
+        validation: ValidationRule.empty(),
       );
+
       final updatedQuestions = List<FormQuestion>.from(currentSection.questions)..add(newQuestion);
       sections[sectionIndex] = currentSection.copyWith(questions: updatedQuestions);
     }
@@ -261,21 +264,39 @@ class AdminFormBuilderController extends GetxController {
     _updateQuestionProperty(sectionId, questionId, (q) => q.copyWith(description: description, setDescriptionNull: description.isEmpty));
   }
 
-  void addOption(String sectionId, String questionId) => _updateQuestionProperty(sectionId, questionId, (q) => q.copyWith(options: List<String>.from(q.options)..add('Opsi ${q.options.length + 1}')));
-
-  void updateOption(String sectionId, String questionId, int optionIndex, String newText) => _updateQuestionProperty(sectionId, questionId, (q) {
-    if (optionIndex >= 0 && optionIndex < q.options.length) {
-      final newOptions = List<String>.from(q.options);
-      newOptions[optionIndex] = newText;
-      return q.copyWith(options: newOptions);
-    } return q;
+  void addOption(String sectionId, String questionId) => _updateQuestionProperty(sectionId, questionId, (q) {
+    final newOptions = List<QuestionOption>.from(q.options)
+      ..add(QuestionOption(value: 'Opsi ${q.options.length + 1}'));
+    return q.copyWith(options: newOptions);
   });
 
+  // Memperbarui NILAI dari sebuah opsi
+  void updateOptionValue(String sectionId, String questionId, int optionIndex, String newValue) => _updateQuestionProperty(sectionId, questionId, (q) {
+    if (optionIndex >= 0 && optionIndex < q.options.length) {
+      final newOptions = List<QuestionOption>.from(q.options);
+      newOptions[optionIndex] = newOptions[optionIndex].copyWith(value: newValue);
+      return q.copyWith(options: newOptions);
+    }
+    return q;
+  });
+
+  // Memperbarui DESKRIPSI dari sebuah opsi
+  void updateOptionDescription(String sectionId, String questionId, int optionIndex, String newDescription) => _updateQuestionProperty(sectionId, questionId, (q) {
+    if (optionIndex >= 0 && optionIndex < q.options.length) {
+      final newOptions = List<QuestionOption>.from(q.options);
+      newOptions[optionIndex] = newOptions[optionIndex].copyWith(description: newDescription, setDescriptionNull: newDescription.isEmpty);
+      return q.copyWith(options: newOptions);
+    }
+    return q;
+  });
+
+  // Menghapus opsi (logika sama, hanya tipe list yang berbeda)
   void removeOption(String sectionId, String questionId, int optionIndex) => _updateQuestionProperty(sectionId, questionId, (q) {
     if (optionIndex >= 0 && optionIndex < q.options.length) {
-      final newOptions = List<String>.from(q.options)..removeAt(optionIndex);
+      final newOptions = List<QuestionOption>.from(q.options)..removeAt(optionIndex);
       return q.copyWith(options: newOptions);
-    } return q;
+    }
+    return q;
   });
 
   void removeQuestion(String sectionId, String questionId) {
