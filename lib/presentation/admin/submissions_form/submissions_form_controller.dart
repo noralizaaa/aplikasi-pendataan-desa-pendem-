@@ -42,6 +42,7 @@ class DisplayableSubmission {
 
 class SubmissionsFormController extends GetxController {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final Map<String, String> _userNamesCache = {};
 
   final RxString formId = ''.obs;
   final RxString initialFormTitle = ''.obs;
@@ -403,7 +404,7 @@ class SubmissionsFormController extends GetxController {
         'form_id': submission.formId,
         'form_title': submission.formTitle,
         'user_id_pengisi': submission.userId,
-        'nama_pengisi': submission.userName,
+        'nama_pengisi': _getResolvedUserName(submission),
         'submitted_at': _convertValueForExport(submission.submittedAt),
         'updated_at': submission.updatedAt != null ? _convertValueForExport(submission.updatedAt) : null,
         'location': submission.location != null ? _convertValueForExport(submission.location) : null,
@@ -470,7 +471,7 @@ class SubmissionsFormController extends GetxController {
       rowData['Form_ID'] = submission.formId;
       rowData['Form_Judul'] = submission.formTitle;
       rowData['User_ID_Pengisi'] = submission.userId ?? '';
-      rowData['Nama_Pengisi'] = submission.userName ?? '';
+      rowData['Nama_Pengisi'] = _getResolvedUserName(submission);
       rowData['Waktu_Pengisian'] = _convertValueForExport(submission.submittedAt);
 
       if (hasUpdatedAtColumn) {
@@ -498,10 +499,58 @@ class SubmissionsFormController extends GetxController {
     return (data: processedData, headers: finalHeaders);
   }
 
+  /// Mengambil username dari koleksi 'users' untuk semua data lama yang userName-nya kosong.
+  Future<void> _fetchAndCacheUsernamesFromFirestore() async {
+    // 1. Kumpulkan semua userId unik yang perlu dicari namanya.
+    final uidsToFetch = _originalSubmissions
+        .where((s) => (s.userName.isEmpty) && (s.userId != null && s.userId!.isNotEmpty))
+        .map((s) => s.userId!)
+        .toSet();
+
+    // 2. Jangan lakukan apa-apa jika tidak ada yang perlu dicari.
+    uidsToFetch.removeWhere((uid) => _userNamesCache.containsKey(uid));
+    if (uidsToFetch.isEmpty) return;
+
+    // 3. Cari username untuk setiap UID yang dibutuhkan.
+    for (final uid in uidsToFetch) {
+      try {
+        final userDoc = await _db.collection('users').doc(uid).get();
+        if (userDoc.exists && userDoc.data() != null) {
+          // Ambil field 'username' sesuai permintaan Anda.
+          final usernameFromUsersCollection = userDoc.data()!['username'] as String?;
+          // Simpan di cache, beri nilai fallback jika field-nya kosong.
+          _userNamesCache[uid] = usernameFromUsersCollection ?? 'Username Kosong di DB';
+        } else {
+          // Jika dokumen user tidak ditemukan.
+          _userNamesCache[uid] = 'User Tidak Ditemukan di DB';
+        }
+      } catch (e) {
+        _userNamesCache[uid] = 'Error Saat Lookup';
+        if (kDebugMode) { print('Error fetching username for $uid: $e'); }
+      }
+    }
+  }
+
+  /// Mendapatkan nama pengisi yang sudah final (menggunakan cache jika perlu).
+  String _getResolvedUserName(FormSubmission submission) {
+    // 1. Jika userName di data submission sudah ada, langsung gunakan.
+    if (submission.userName.isNotEmpty) {
+      return submission.userName;
+    }
+    // 2. Jika kosong, coba cari di cache yang sudah kita isi.
+    if (submission.userId != null) {
+      return _userNamesCache[submission.userId!] ?? 'UID: ${submission.userId!}'; // Fallback jika tidak ada di cache
+    }
+    // 3. Fallback terakhir jika semua info tidak ada.
+    return "Tidak Diketahui";
+  }
+
   Future<void> exportSubmissionsAsJson() async {
     if (isExporting.value) return;
     isExporting.value = true;
     Get.snackbar('Export JSON', 'Mempersiapkan data...', showProgressIndicator: true, duration: const Duration(seconds: 120), dismissDirection: DismissDirection.horizontal, backgroundColor: Colors.blue.shade600, colorText: Colors.white);
+
+    await _fetchAndCacheUsernamesFromFirestore();
 
     bool hasPermission = await _checkAndRequestFilePermissions();
     if (!hasPermission) {
@@ -551,6 +600,8 @@ class SubmissionsFormController extends GetxController {
     if (isExporting.value) return;
     isExporting.value = true;
     Get.snackbar('Export CSV', 'Mempersiapkan data...', showProgressIndicator: true, duration: const Duration(seconds: 120), dismissDirection: DismissDirection.horizontal, backgroundColor: Colors.blue.shade600, colorText: Colors.white);
+
+    await _fetchAndCacheUsernamesFromFirestore();
 
     bool hasPermission = await _checkAndRequestFilePermissions();
     if (!hasPermission) {
@@ -613,6 +664,8 @@ class SubmissionsFormController extends GetxController {
     if (isExporting.value) return;
     isExporting.value = true;
     Get.snackbar('Export XLSX', 'Mempersiapkan data...', showProgressIndicator: true, duration: const Duration(seconds: 120), dismissDirection: DismissDirection.horizontal, backgroundColor: Colors.blue.shade600, colorText: Colors.white);
+
+    await _fetchAndCacheUsernamesFromFirestore();
 
     bool hasPermission = await _checkAndRequestFilePermissions();
     if (!hasPermission) {

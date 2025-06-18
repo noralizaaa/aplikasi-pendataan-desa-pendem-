@@ -1831,17 +1831,32 @@ class InputUserController extends GetxController {
       });
     });
 
+    final currentUser = _auth.currentUser!;
+    String finalUserName;
+
+    // 1. Prioritaskan `displayName` (Nama Lengkap) jika ada.
+    if (currentUser.displayName != null && currentUser.displayName!.trim().isNotEmpty) {
+      finalUserName = currentUser.displayName!;
+    }
+    // 2. Jika tidak, baru gunakan `email`.
+    else if (currentUser.email != null && currentUser.email!.trim().isNotEmpty) {
+      finalUserName = currentUser.email!;
+    }
+    // 3. Fallback jika keduanya kosong.
+    else {
+      finalUserName = "User Tidak Dikenal";
+    }
+
     final submissionData = FormSubmission(
-      id: isEditMode.value ? submissionId.value : null, // Use existing ID if editing
+      id: isEditMode.value ? submissionId.value : null,
       formId: loadedForm.value!.id,
       formTitle: loadedForm.value!.title,
-      userId: _auth.currentUser!.uid,
-      userName: _auth.currentUser!.displayName ?? _auth.currentUser!.email ?? 'Anonim',
+      userId: currentUser.uid,
+      userName: finalUserName,
       submittedAt: (isEditMode.value && loadedSubmission.value?.submittedAt != null)
-          ? loadedSubmission.value!.submittedAt! // Preserve original submission time on edit
-          : Timestamp.now(), // New submission time for new entries
+          ? loadedSubmission.value!.submittedAt!
+          : Timestamp.now(),
       answers: answersToSubmit,
-      // No 'updatedAt' here in the model directly, handled in Firestore data map
     );
 
     Map<String, dynamic> firestoreData = submissionData.toFirestore();

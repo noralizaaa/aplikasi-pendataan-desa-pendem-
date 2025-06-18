@@ -1,8 +1,34 @@
-# 📦 CHANGELOG
+**# 📦 CHANGELOG
 
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## [0.31.0] - 2025-06-18
+> Contributed by [Bayu Ardiyansyah]
+
+> Fundamental enhancements to user data handling, improved data export logic, and increased robustness of form data submission.
+
+### ✨ Added
+- **Intelligent Fallback for Submitter Name on Export (`submissions_form_controller.dart`):**
+  - Implemented an intelligent fallback mechanism when exporting old data that lacks a `userName`.
+  - If `userName` is empty, the system now retrieves the `userId` from the submission data, looks it up in the `users` collection in Firestore, and uses the `username` from that collection as the submitter's name in the exported file (JSON/CSV/XLSX).
+  - Added a caching system for fetched usernames to avoid repeated database queries for the same user, ensuring the export process remains efficient.
+
+### 🛠️ Changed
+- **Submitter Name Storage Priority (`input_user_controller.dart`):**
+  - Changed the `userName` storage logic when a user submits a new form.
+  - The priority order was changed to:
+    1.  **User's Email** (as the primary priority).
+    2.  **Full Name (DisplayName)** (used if the email is unavailable).
+    3.  The text "Unknown User" (as the final fallback if both are empty).
+  - This change ensures that all new data entering the database will always have an informative and consistent `userName`, prioritizing email as required.
+
+### 🐛 Fixed
+- **Empty `userName` Storage:**
+  - The issue where submissions could be saved with an empty `userName` has now been prevented at its source.
+  - With the new logic in `input_user_controller.dart`, every new submission is guaranteed to have a valid `userName`, retrieved from the authentication details of the currently logged-in user. This effectively eliminates the "empty submitter name" issue for all future entries.
 
 ---
 
@@ -167,7 +193,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🐛 Fixed
 - Corrected logic in updating repeatable group counts to prevent display inconsistencies when the number of items decreases and to reset the display index if it becomes invalid.
 
----
+---**
 
 ## [0.27.1] - 2025-06-02
 > Contributed by [Bayu Ardiyansyah]
