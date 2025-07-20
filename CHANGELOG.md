@@ -5,6 +5,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2025-07-20
+
+**Contributed by [Bayu Ardiyansyah]**
+
+Complete overhaul of the admin dashboard for a more flexible and dynamic data visualization experience. Replaced static metrics with a dynamic, horizontally-scrolling form overview. Introduced an on-demand, interactive chart to visualize daily progress for any selected form, and fixed critical UI layout overflow issues.
+
+### ✨ Added
+
+- **Interactive On-Demand Chart (`admin_screen.dart`)**
+  - Implemented a conditional chart that only appears after a user selects a form from the overview slider.
+  - The chart area now displays a helpful prompt guiding the user to select a form to view its progress.
+
+- **Form Selection State Management (`admin_controller.dart`)**
+  - Added a new state variable `selectedFormForChart` to track the currently active form for chart visualization.
+  - Introduced logic to toggle the selection on/off if the same form card is clicked repeatedly, allowing users to hide the chart.
+
+### 🛠️ Changed
+
+- **Dashboard Layout Overhaul (`admin_screen.dart`)**
+  - Replaced the static `GridView` of metric cards with a dynamic, horizontally-scrolling `ListView`.
+  - Each card in the slider now represents a form type fetched from the database, making the dashboard automatically adapt to new forms without code changes.
+
+- **Dynamic Chart Data Calculation (`admin_controller.dart`)**
+  - Reworked the `submissionTrend` logic to be populated on-demand instead of being hardcoded for a single form type.
+  - The new `updateChartForForm` method now calculates the daily submission trend for any given form, respecting the active date filters.
+
+### 🐛 Fixed
+
+- **UI Layout Overflow (`admin_screen.dart`)**
+  - Fixed a persistent `RenderFlex overflowed` bug by wrapping the main body's `Column` widget in a `SafeArea`.
+  - This ensures the layout correctly accounts for system UI elements like status bars and notches, preventing visual glitches across various devices.
+
+### 🔧 Refactoring & Improvements
+
+- **Centralized Chart Logic (`admin_controller.dart`)**
+  - Created the new `updateChartForForm` method to centralize all logic related to calculating and updating the chart's data, improving code maintainability and clarity.
+
+- **Simplified State Management (`admin_controller.dart`)**
+  - Removed multiple obsolete `RxInt` state variables (e.g., `totalSubmissions`, `totalDesaSubmissions`) that were tied to the old static dashboard, resulting in a cleaner and more efficient controller.
+
+---
+
 ## [1.1.0] - 2025-07-20
 > Contributed by [Febri Bagus Triwibowo]
 
