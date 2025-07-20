@@ -1309,6 +1309,11 @@ class AdminFormBuilderPage extends GetView<AdminFormBuilderController> {
       'noKK': 'No. KK (16 Digit Angka)',
       // Add more as needed
     };
+
+    if (question.type == QuestionType.gridNumeric) {
+      predefinedRulesDisplay['gridAllCellsRequired'] = 'Wajib Isi Semua Sel Grid (Angka)';
+    }
+
     if (question.type == QuestionType.date) {
       predefinedRulesDisplay['pastDateOnly'] = 'Hanya Tanggal Lalu';
       predefinedRulesDisplay['futureDateOnly'] = 'Hanya Tanggal Akan Datang';

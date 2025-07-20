@@ -5,6 +5,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2025-07-20
+> Contributed by [Febri Bagus Triwibowo]
+
+> Major improvements to numeric grid validation, refactoring of validation logic, and fixes related to the "Other" option in form submissions. Enhancements also include UI layout fixes for better user experience.
+
+### ✨ Added
+- **Numeric Grid Validation Rules (`input_user_controller.dart`):**
+  - Added new validation rules specifically for the `QuestionType.gridNumeric` question type.
+  - New rule `gridAllCellsRequired` ensures all cells in the numeric grid must be filled.
+  - Implemented `minValue` and `maxValue` validation for each filled cell in the grid for more granular validation control.
+
+### 🛠️ Changed
+- **Refactoring of Validation Logic (`input_user_screen.dart`):**
+  - Rewrote the core validation function for clearer and more structured logic.
+  - Simplified the validation process for empty answers, required fields, and specific rules (minLength, maxLength, regex).
+  - Replaced hardcoded comparison checks with a more dynamic `comparisonOperator`.
+
+- **"Other" Option Handling in `admin_form_builder_page.dart`:**
+  - Fixed a bug where the "Other" option text was not properly recognized when loading existing submissions.
+  - The system now correctly maps free text to the "Other" option in checkbox-type questions.
+  - Improved UI layout to prevent overflow, ensuring the "Other" option remains properly aligned.
+
+### 🐛 Fixed
+- **"Other" Option Data Submission Bug (`admin_form_builder_page.dart`):**
+  - Fixed a bug where the internal flag for "Other" was being saved to Firestore instead of the actual user input.
+  - Now, the system replaces the internal flag with the actual "Other" text before submitting the data, ensuring data integrity.
+
+### 🔧 Refactoring & Improvements
+- **Grid Data Conversion Extraction (`input_user_controller.dart`):**
+  - Added the `GridMapConversion` extension with the `getGridMapForValidation` function to convert grid data to a more robust structure.
+  - This reduces code duplication and enhances readability in the validation process.
+
+- **Code Simplification (`input_user_screen.dart`):**
+  - Used the `??=` operator in `submitForm` to assign `firstInvalidSectionIdToFocus`, making the code more concise and efficient.
+
+---
+
 ## [0.31.0] - 2025-06-18
 > Contributed by [Bayu Ardiyansyah]
 

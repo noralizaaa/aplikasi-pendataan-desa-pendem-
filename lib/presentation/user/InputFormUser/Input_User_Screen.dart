@@ -879,15 +879,20 @@ class InputUserScreen extends GetView<InputUserController> {
         onChangedCallback = (value) => controller.updateUserAnswer(question.id, value);
       }
 
+      // Ganti keseluruhan 'validatorFunction' yang ada di dalam '_buildQuestionInput' dengan ini:
       String? validatorFunction(dynamic val) {
         final FormQuestion currentQuestionState =
             controller.findQuestionById(question.id) ?? question;
         final ValidationRule? rule = currentQuestionState.validation;
         final String questionLabel =
-        (itemTitleOverrideForValidation(currentQuestionState, repeatIndex) ?? currentQuestionState.questionText).isNotEmpty
-            ? (itemTitleOverrideForValidation(currentQuestionState, repeatIndex) ?? currentQuestionState.questionText)
+        (itemTitleOverrideForValidation(currentQuestionState, repeatIndex) ??
+            currentQuestionState.questionText)
+            .isNotEmpty
+            ? (itemTitleOverrideForValidation(currentQuestionState, repeatIndex) ??
+            currentQuestionState.questionText)
             : "Isian ini";
 
+        // --- LOGIKA PENENTUAN JAWABAN KOSONG ---
         String effectiveValueString = "";
         bool isEmptyAnswer = true;
 
@@ -902,31 +907,29 @@ class InputUserScreen extends GetView<InputUserController> {
           if (val.isEmpty) {
             isEmptyAnswer = true;
           } else {
-            isEmptyAnswer = (val as Map<String, Map<String, Map<String, num?>>>)
-                .values
-                .every((colMap) => colMap.values.every(
-                    (subColMap) => subColMap.values.every(
-                        (cellVal) => cellVal == null || cellVal.toString().trim().isEmpty
-                )
-            ));
+            // Grid dianggap kosong hanya jika SEMUA selnya kosong
+            final gridData = controller.getGridMapForValidation(val);
+            isEmptyAnswer = gridData.values.every((colMap) => colMap.values.every(
+                    (subColMap) => subColMap.values
+                    .every((cellVal) => cellVal == null || cellVal.toString().trim().isEmpty)));
           }
         } else if (val is Map) {
           isEmptyAnswer = val.isEmpty;
         }
 
-
+        // --- VALIDASI WAJIB ISI (REQUIRED) ---
         if (currentQuestionState.isRequired && isEmptyAnswer) {
-          bool isOtherSelected = false;
-          if (currentQuestionState.type == QuestionType.multipleChoice && val == _kOtherOptionValue) {
-            isOtherSelected = true;
-          } else if (currentQuestionState.type == QuestionType.checkboxes && (val as List?)?.contains(_kOtherOptionValue) == true) {
-            isOtherSelected = true;
-          }
+          bool isOtherSelected = (currentQuestionState.type ==
+              QuestionType.multipleChoice &&
+              val == _kOtherOptionValue) ||
+              (currentQuestionState.type == QuestionType.checkboxes &&
+                  (val as List?)?.contains(_kOtherOptionValue) == true);
 
           if (isOtherSelected) {
             String? otherTextValue;
             if (repeatIndex != null) {
-              otherTextValue = controller.repeatableGroupOtherAnswers[question.id]?[repeatIndex];
+              otherTextValue =
+              controller.repeatableGroupOtherAnswers[question.id]?[repeatIndex];
             } else {
               otherTextValue = controller.userOtherAnswers[question.id];
             }
@@ -938,10 +941,47 @@ class InputUserScreen extends GetView<InputUserController> {
           }
         }
 
+        // Jika tidak wajib dan jawabannya kosong, tidak perlu validasi lebih lanjut
         if (isEmptyAnswer && !currentQuestionState.isRequired) return null;
 
-
+        // --- VALIDASI BERDASARKAN ATURAN (ValidationRule) ---
         if (rule != null) {
+          // A. VALIDASI KHUSUS UNTUK GRID NUMERIK
+          if (currentQuestionState.type == QuestionType.gridNumeric && val is Map) {
+            final gridData = controller.getGridMapForValidation(val);
+            final List<String> rowLabels = currentQuestionState.gridRowLabels.isNotEmpty
+                ? currentQuestionState.gridRowLabels
+                : [""]; // Handle grid tanpa label baris
+            final List<String> colLabels = currentQuestionState.gridColumnLabels;
+            final List<String> subColLabels = currentQuestionState.gridSubColumnLabels;
+
+            for (final row in rowLabels) {
+              for (final col in colLabels) {
+                for (final subCol in subColLabels) {
+                  final cellValue = gridData[row]?[col]?[subCol];
+
+                  // Aturan 1: Cek jika semua sel wajib diisi
+                  if (rule.predefinedRule == 'gridAllCellsRequired') {
+                    if (cellValue == null || cellValue.toString().trim().isEmpty) {
+                      return 'Semua sel pada grid "$questionLabel" wajib diisi.';
+                    }
+                  }
+
+                  // Aturan 2: Cek min/max untuk setiap sel yang TIDAK kosong
+                  if (cellValue != null) {
+                    if (rule.minValue != null && cellValue < rule.minValue!) {
+                      return 'Nilai di grid ($col) minimal ${rule.minValue}.';
+                    }
+                    if (rule.maxValue != null && cellValue > rule.maxValue!) {
+                      return 'Nilai di grid ($col) maksimal ${rule.maxValue}.';
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // B. VALIDASI UNTUK TIPE TEKS
           if (val is String && val.isNotEmpty) {
             if (rule.minLength != null &&
                 effectiveValueString.length < rule.minLength!) {
@@ -969,13 +1009,16 @@ class InputUserScreen extends GetView<InputUserController> {
               return 'Format email untuk $questionLabel tidak valid.';
             }
             if (rule.predefinedRule == 'numbersOnly' &&
-                !GetUtils.isNumericOnly(effectiveValueString.replaceAll(',', '').replaceAll('.', ''))) {
+                !GetUtils.isNumericOnly(
+                    effectiveValueString.replaceAll(',', '').replaceAll('.', ''))) {
               return '$questionLabel hanya boleh berisi angka.';
             }
           }
 
-          // Validasi untuk Tipe Pertanyaan Angka
-          if (currentQuestionState.type == QuestionType.number && val != null && val.toString().isNotEmpty) {
+          // C. VALIDASI UNTUK TIPE ANGKA (non-grid)
+          if (currentQuestionState.type == QuestionType.number &&
+              val != null &&
+              val.toString().isNotEmpty) {
             num? numAnswer = num.tryParse(val.toString().replaceAll(',', '.'));
 
             if (numAnswer == null && val.toString().isNotEmpty) {
@@ -983,7 +1026,6 @@ class InputUserScreen extends GetView<InputUserController> {
             }
 
             if (numAnswer != null) {
-              // Validasi Min/Max Value
               if (rule.minValue != null && numAnswer < rule.minValue!) {
                 return '$questionLabel minimal ${rule.minValue}.';
               }
@@ -991,112 +1033,90 @@ class InputUserScreen extends GetView<InputUserController> {
                 return '$questionLabel maksimal ${rule.maxValue}.';
               }
 
-              // ---- AWAL IMPLEMENTASI VALIDASI PERBANDINGAN ----
               if (rule.comparisonOperator != null &&
-                  rule.comparisonOperator != ComparisonOperatorType.none.toShortString() &&
+                  rule.comparisonOperator !=
+                      ComparisonOperatorType.none.toShortString() &&
                   rule.compareToQuestionId != null &&
                   rule.compareToQuestionId!.isNotEmpty) {
-
                 final String compareToQuestionId = rule.compareToQuestionId!;
-                final FormQuestion? targetQuestion = controller.findQuestionById(compareToQuestionId);
+                final FormQuestion? targetQuestion =
+                controller.findQuestionById(compareToQuestionId);
 
                 if (targetQuestion != null) {
                   dynamic targetAnswerDynamic;
-                  // Cek apakah pertanyaan target berada dalam grup yang sama dan ada repeatIndex
                   if (targetQuestion.belongsToGroupTag != null &&
-                      targetQuestion.belongsToGroupTag == currentQuestionState.belongsToGroupTag &&
+                      targetQuestion.belongsToGroupTag ==
+                          currentQuestionState.belongsToGroupTag &&
                       repeatIndex != null &&
-                      controller.repeatableGroupAnswers.containsKey(compareToQuestionId)) {
-                    targetAnswerDynamic = controller.repeatableGroupAnswers[compareToQuestionId]![repeatIndex];
+                      controller.repeatableGroupAnswers
+                          .containsKey(compareToQuestionId)) {
+                    targetAnswerDynamic = controller
+                        .repeatableGroupAnswers[compareToQuestionId]![repeatIndex];
                   } else if (controller.userAnswers.containsKey(compareToQuestionId)) {
-                    // Ambil dari userAnswers jika bukan kasus di atas atau tidak ditemukan di repeatableGroupAnswers
-                    targetAnswerDynamic = controller.userAnswers[compareToQuestionId];
+                    targetAnswerDynamic =
+                    controller.userAnswers[compareToQuestionId];
                   }
 
-
-                  if (targetAnswerDynamic != null && targetAnswerDynamic.toString().isNotEmpty) {
-                    num? targetNumAnswer = num.tryParse(targetAnswerDynamic.toString().replaceAll(',', '.'));
+                  if (targetAnswerDynamic != null &&
+                      targetAnswerDynamic.toString().isNotEmpty) {
+                    num? targetNumAnswer = num.tryParse(
+                        targetAnswerDynamic.toString().replaceAll(',', '.'));
 
                     if (targetNumAnswer != null) {
-                      String operatorText = _getComparisonOperatorDisplayText(rule.comparisonOperator);
-                      String targetQuestionLabel = targetQuestion.code != null && targetQuestion.code!.isNotEmpty
+                      String operatorText =
+                      _getComparisonOperatorDisplayText(rule.comparisonOperator);
+                      String targetQuestionLabel = targetQuestion.code != null &&
+                          targetQuestion.code!.isNotEmpty
                           ? "${targetQuestion.questionText} (${targetQuestion.code})"
                           : targetQuestion.questionText;
 
                       bool comparisonResult = false;
                       switch (rule.comparisonOperator) {
-                        case 'lessThan': // ComparisonOperatorType.lessThan.toShortString()
+                        case 'lessThan':
                           comparisonResult = numAnswer < targetNumAnswer;
-                          if (!comparisonResult) return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (nilai dari: $targetQuestionLabel).';
+                          if (!comparisonResult) {
+                            return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (dari: $targetQuestionLabel).';
+                          }
                           break;
-                        case 'lessThanOrEqual': // ComparisonOperatorType.lessThanOrEqual.toShortString()
+                        case 'lessThanOrEqual':
                           comparisonResult = numAnswer <= targetNumAnswer;
-                          if (!comparisonResult) return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (nilai dari: $targetQuestionLabel).';
+                          if (!comparisonResult) {
+                            return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (dari: $targetQuestionLabel).';
+                          }
                           break;
-                        case 'equal': // ComparisonOperatorType.equal.toShortString()
+                        case 'equal':
                           comparisonResult = numAnswer == targetNumAnswer;
-                          if (!comparisonResult) return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (nilai dari: $targetQuestionLabel).';
+                          if (!comparisonResult) {
+                            return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (dari: $targetQuestionLabel).';
+                          }
                           break;
-                        case 'notEqual': // ComparisonOperatorType.notEqual.toShortString()
+                        case 'notEqual':
                           comparisonResult = numAnswer != targetNumAnswer;
-                          if (!comparisonResult) return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (nilai dari: $targetQuestionLabel).';
+                          if (!comparisonResult) {
+                            return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (dari: $targetQuestionLabel).';
+                          }
                           break;
-                        case 'greaterThan': // ComparisonOperatorType.greaterThan.toShortString()
+                        case 'greaterThan':
                           comparisonResult = numAnswer > targetNumAnswer;
-                          if (!comparisonResult) return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (nilai dari: $targetQuestionLabel).';
+                          if (!comparisonResult) {
+                            return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (dari: $targetQuestionLabel).';
+                          }
                           break;
-                        case 'greaterThanOrEqual': // ComparisonOperatorType.greaterThanOrEqual.toShortString()
+                        case 'greaterThanOrEqual':
                           comparisonResult = numAnswer >= targetNumAnswer;
-                          if (!comparisonResult) return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (nilai dari: $targetQuestionLabel).';
+                          if (!comparisonResult) {
+                            return '$questionLabel harus $operatorText ${targetNumAnswer.toString()} (dari: $targetQuestionLabel).';
+                          }
                           break;
                       }
-                    } else {
-                      // Nilai pertanyaan target tidak valid (bukan angka), mungkin tampilkan warning atau abaikan
-                      // Untuk saat ini, kita bisa memilih untuk mengabaikan jika nilai target tidak bisa di-parse,
-                      // karena validasi tipe data pertanyaan target seharusnya ditangani oleh validatornya sendiri.
-                      // Atau bisa juga: return 'Nilai pertanyaan "${targetQuestion.questionText}" yang dibandingkan bukan angka.';
                     }
-                  } else {
-                    // Pertanyaan target belum diisi, mungkin tampilkan pesan agar user mengisinya terlebih dahulu
-                    // atau abaikan validasi perbandingan ini.
-                    // Untuk saat ini, validasi dilewati jika pertanyaan target kosong.
-                    // Bisa juga: return 'Isi dulu pertanyaan "${targetQuestion.questionText}" untuk perbandingan.';
-                  }
-                } else {
-                  // Seharusnya tidak terjadi jika konfigurasi benar
-                  print("Peringatan: Pertanyaan dengan ID ${compareToQuestionId} untuk perbandingan tidak ditemukan.");
-                }
-              }
-              // ---- AKHIR IMPLEMENTASI VALIDASI PERBANDINGAN ----
-
-
-              // Contoh validasi custom spesifik yang sudah ada sebelumnya
-              if (currentQuestionState.code == "203" ||
-                  currentQuestionState.code == "204") {
-                final artQuestion = controller.findQuestionByCode("112");
-                if (artQuestion != null) {
-                  dynamic artCountValueDynamic;
-                  if (repeatIndex != null && artQuestion.belongsToGroupTag == currentQuestionState.belongsToGroupTag) {
-                    artCountValueDynamic = controller.repeatableGroupAnswers[artQuestion.id]?[repeatIndex];
-                  } else {
-                    artCountValueDynamic = controller.userAnswers[artQuestion.id];
-                  }
-
-                  num? artCount;
-                  if (artCountValueDynamic is num) {
-                    artCount = artCountValueDynamic;
-                  } else if (artCountValueDynamic is String) {
-                    artCount = num.tryParse(artCountValueDynamic.replaceAll(',', '.'));
-                  }
-
-                  if (artCount != null && numAnswer > artCount) {
-                    return '$questionLabel (${numAnswer.toInt()}) tidak boleh melebihi ${artQuestion.questionText} (${artCount.toInt()}).';
                   }
                 }
               }
             }
           }
         }
+
         return null; // Tidak ada error
       }
 
@@ -1668,7 +1688,7 @@ class InputUserScreen extends GetView<InputUserController> {
                                               child: Padding(
                                                 padding: const EdgeInsets.all(2.0), // Padding around TextFormField
                                                 child: TextFormField(
-                                                  key: ValueKey(cellKeyIdGrid + (cellValue?.toString() ?? "")), // Key includes value for rebuild
+                                                  key: ValueKey(cellKeyIdGrid), // KUNCI: Key stabil berdasarkan posisi sel, bukan nilai.
                                                   initialValue: cellValue?.toString().replaceAll('.', ',') ?? '',
                                                   textAlign: TextAlign.center,
                                                   style: const TextStyle(fontSize: 13),
@@ -1773,52 +1793,4 @@ class InputUserScreen extends GetView<InputUserController> {
 }
 
 
-extension GridMapConversion on InputUserController {
-  Map<String, Map<String, Map<String, num?>>> getGridMapForValidation(dynamic currentGridData) {
-    if (currentGridData is Map<String, Map<String, Map<String, num?>>>) {
-      return currentGridData;
-    }
-    if (currentGridData is Map) {
-      try {
-        return Map<String, Map<String, Map<String, num?>>>.fromEntries(
-            (currentGridData as Map<dynamic, dynamic>).entries.map((rowEntry) {
-              var colMap = rowEntry.value;
-              if (colMap is! Map) colMap = <String, dynamic>{};
-              return MapEntry(
-                  rowEntry.key.toString(),
-                  Map<String, Map<String, num?>>.fromEntries(
-                      (colMap as Map<dynamic, dynamic>).entries.map((colEntry) {
-                        var subColMap = colEntry.value;
-                        if (subColMap is! Map) subColMap = <String, dynamic>{};
-                        return MapEntry(
-                            colEntry.key.toString(),
-                            Map<String, num?>.fromEntries(
-                                (subColMap as Map<dynamic, dynamic>).entries.map((subColEntry) {
-                                  num? cellValueNum;
-                                  if (subColEntry.value == null) {
-                                    cellValueNum = null;
-                                  } else if (subColEntry.value is num) {
-                                    cellValueNum = subColEntry.value as num;
-                                  } else {
-                                    cellValueNum = num.tryParse(subColEntry.value.toString().replaceAll(',', '.'));
-                                  }
-                                  return MapEntry(
-                                      subColEntry.key.toString(),
-                                      cellValueNum
-                                  );
-                                })
-                            )
-                        );
-                      })
-                  )
-              );
-            })
-        );
-      } catch (e) {
-        print("Error in getGridMapForValidation: $e. Data: $currentGridData");
-        return <String, Map<String, Map<String, num?>>>{};
-      }
-    }
-    return <String, Map<String, Map<String, num?>>>{};
-  }
-}
+
