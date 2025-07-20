@@ -51,6 +51,7 @@ dev_dependencies:
 # Konfigurasi untuk flutter_launcher_icons sudah benar di bawah ini
 flutter_launcher_icons:
   android: "launcher_icon"
+  windows: "launcher_icon"
   ios: false # Set ke true jika Anda juga ingin generate untuk iOS
   image_path: "assets/images/splashpage_1.png"
   min_sdk_android: 23 # Pastikan ini sesuai dengan minSdk aplikasi Anda

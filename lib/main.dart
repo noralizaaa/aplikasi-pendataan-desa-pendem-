@@ -15,56 +15,51 @@ import 'presentation/theme/app_theme.dart';
 // Jika EnvironmentsBadge ada di file terpisah:
 // import 'presentation/widgets/environments_badge.dart'; // Contoh path
 
-// Fungsi untuk meminta izin akses file non-media
-// Anda bisa menempatkan ini di sini atau di file helper terpisah dan mengimpornya.
+/// Fungsi untuk meminta izin akses file non-media di Android.
+/// Untuk platform selain Android, fungsi ini akan melewati permintaan izin.
+///
+/// Returns [true] jika izin diberikan, [false] jika ditolak atau tidak relevan.
 Future<bool> mintaIzinAksesFileNonMedia() async {
-  PermissionStatus status;
-  AndroidDeviceInfo androidInfo = await DeviceInfoPlugin().androidInfo;
-  int sdkInt = androidInfo.version.sdkInt;
-
-  print('Versi SDK Android: $sdkInt');
-
-  if (sdkInt >= 30) { // Android 11 (API 30) atau lebih baru
-    print('Memeriksa izin MANAGE_EXTERNAL_STORAGE untuk Android 11+');
-    // Penting: Pertama cek statusnya, jangan langsung request jika sudah granted.
-    status = await Permission.manageExternalStorage.status;
-    print('Status MANAGE_EXTERNAL_STORAGE awal: $status');
-    if (!status.isGranted) {
-      // PERINGATAN: Meminta MANAGE_EXTERNAL_STORAGE akan mengarahkan pengguna
-      // ke halaman pengaturan sistem. Ini bukan dialog popup biasa.
-      status = await Permission.manageExternalStorage.request();
-      print('Status MANAGE_EXTERNAL_STORAGE setelah request (dari halaman pengaturan): $status');
-    }
-  } else { // Android 10 (API 29) atau lebih lama (hingga Nougat API 24)
-    print('Memeriksa izin STORAGE untuk Android < 11');
-    status = await Permission.storage.status;
-    print('Status STORAGE awal: $status');
-    if (!status.isGranted) {
-      status = await Permission.storage.request();
-      print('Status STORAGE setelah request: $status');
-    }
-  }
-
-  if (status.isGranted) {
-    print('Izin yang relevan diberikan.');
+  // Cek apakah platform adalah Android
+  if (!Platform.isAndroid) {
+    print('Platform bukan Android, melewati proses izin file non-media.');
     return true;
-  } else if (status.isPermanentlyDenied) {
-    // Jika ditolak permanen, selalu baik untuk menawarkan membuka pengaturan.
-    print('Izin ditolak permanen. Membuka pengaturan aplikasi...');
-    await openAppSettings();
-    return false;
-  } else if (sdkInt >= 30 && status.isDenied) {
-    // Untuk MANAGE_EXTERNAL_STORAGE, status 'isDenied' setelah request() sering berarti
-    // pengguna keluar dari halaman pengaturan tanpa memberikan izin.
-    // Atau pengguna menolak di dialog konfirmasi sebelum ke halaman pengaturan (jika ada).
-    print('Izin MANAGE_EXTERNAL_STORAGE ditolak (mungkin dari halaman pengaturan). Pertimbangkan untuk membuka pengaturan.');
-    // Anda bisa memilih untuk memanggil openAppSettings() di sini juga,
-    // atau memberikan pesan lain kepada pengguna.
-    // await openAppSettings(); // Opsional, tergantung UX yang diinginkan
-    return false;
   }
-  else {
-    print('Izin ditolak (status: $status).');
+
+  try {
+    final androidInfo = await DeviceInfoPlugin().androidInfo;
+    final int sdkInt = androidInfo.version.sdkInt ?? 0;
+    print('Versi SDK Android: $sdkInt');
+
+    PermissionStatus status;
+
+    if (sdkInt >= 30) {
+      print('Memeriksa izin MANAGE_EXTERNAL_STORAGE untuk Android 11+');
+      status = await Permission.manageExternalStorage.status;
+      if (!status.isGranted) {
+        status = await Permission.manageExternalStorage.request();
+      }
+    } else {
+      print('Memeriksa izin STORAGE untuk Android < 11');
+      status = await Permission.storage.status;
+      if (!status.isGranted) {
+        status = await Permission.storage.request();
+      }
+    }
+
+    if (status.isGranted) {
+      print('Izin diberikan.');
+      return true;
+    } else if (status.isPermanentlyDenied) {
+      print('Izin ditolak permanen. Membuka pengaturan aplikasi...');
+      await openAppSettings();
+      return false;
+    } else {
+      print('Izin ditolak atau belum diberikan. Status: $status');
+      return false;
+    }
+  } catch (e) {
+    print('Gagal memeriksa versi Android atau meminta izin: $e');
     return false;
   }
 }
