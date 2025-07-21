@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Contributed by [Bayu Ardiyansyah]**
 
-Complete overhaul of the admin dashboard for a more flexible and dynamic data visualization experience. Replaced static metrics with a dynamic, horizontally-scrolling form overview. Introduced an on-demand, interactive chart to visualize daily progress for any selected form, and fixed critical UI layout overflow issues.
+> Complete overhaul of the admin dashboard for a more flexible and dynamic data visualization experience. Replaced static metrics with a dynamic, horizontally-scrolling form overview. Introduced an on-demand, interactive chart to visualize daily progress for any selected form, and fixed critical UI layout overflow issues.
 
 ### ✨ Added
 
