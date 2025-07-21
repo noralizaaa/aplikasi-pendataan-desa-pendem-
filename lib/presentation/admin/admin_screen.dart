@@ -30,11 +30,9 @@ class AdminScreen extends GetView<AdminController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: pageBackgroundColor,
-      // SafeArea digunakan untuk mencegah overflow oleh status bar atau notch.
       body: SafeArea(
         child: Column(
           children: [
-            // Bagian Header
             Container(
               padding: const EdgeInsets.only(
                   top: 20.0, left: 24.0, right: 24.0, bottom: 20.0),
@@ -145,7 +143,6 @@ class AdminScreen extends GetView<AdminController> {
                 ],
               ),
             ),
-            // Konten Utama (Dasbor, Form, Akun)
             Expanded(
               child: Obx(
                     () => IndexedStack(
@@ -157,7 +154,6 @@ class AdminScreen extends GetView<AdminController> {
           ],
         ),
       ),
-      // Bottom Navigation
       bottomNavigationBar: Obx(() => BottomNavigationBar(
         currentIndex: controller.selectedPageIndex.value,
         onTap: controller.onPageChanged,
@@ -183,7 +179,6 @@ class AdminScreen extends GetView<AdminController> {
   }
 }
 
-/// Widget internal yang hanya berisi konten untuk tab Dasbor.
 class _DashboardContentOnly extends StatelessWidget {
   final AdminController controller;
   const _DashboardContentOnly({required this.controller});
@@ -200,14 +195,12 @@ class _DashboardContentOnly extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.only(bottom: 16.0, top: 16.0),
         children: [
-          // Filter Tanggal
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: _buildDateFilterSection(context),
           ),
           const SizedBox(height: 24),
 
-          // Judul Grafik (Dinamis)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Obx(() => Text(
@@ -220,7 +213,6 @@ class _DashboardContentOnly extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Kontainer Grafik (Kondisional)
           Container(
             height: 220,
             margin: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -238,14 +230,12 @@ class _DashboardContentOnly extends StatelessWidget {
               ],
             ),
             child: Obx(() {
-              // Tampilkan pesan jika tidak ada form yang dipilih.
               if (controller.selectedFormForChart.value == null) {
                 return _buildDummyChartWithLabel(
                     "Pilih salah satu form di bawah untuk melihat progress harian.",
                     isEmpty: true);
               }
 
-              // Tampilkan loading atau pesan jika data kosong.
               if (controller.isDashboardLoading.value) {
                 return const Center(child: CircularProgressIndicator(color: AdminScreen.accentHeaderColor, strokeWidth: 2.5));
               }
@@ -255,7 +245,6 @@ class _DashboardContentOnly extends StatelessWidget {
                     isEmpty: true);
               }
 
-              // Persiapan data untuk LineChart
               List<FlSpot> spots = [];
               List<String> dateLabels = [];
               final trendEntries = controller.submissionTrend.entries.toList();
@@ -271,7 +260,6 @@ class _DashboardContentOnly extends StatelessWidget {
                 dateLabels.add(trendEntries[i].key);
               }
 
-              // Render LineChart
               return LineChart(
                 LineChartData(
                   minY: 0,
@@ -354,7 +342,6 @@ class _DashboardContentOnly extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Judul Slider Form
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Text(
@@ -365,7 +352,6 @@ class _DashboardContentOnly extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Slider Form
           Obx(() {
             if (controller.isDashboardLoading.value && controller.filteredFormSubmissions.isEmpty) {
               return const SizedBox(height: 180, child: Center(child: CircularProgressIndicator(color: AdminScreen.accentHeaderColor)));
@@ -401,7 +387,6 @@ class _DashboardContentOnly extends StatelessWidget {
           }),
           const SizedBox(height: 24),
 
-          // Bagian Akses Form
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: _buildFormAccessSection(),
@@ -413,6 +398,7 @@ class _DashboardContentOnly extends StatelessWidget {
   }
 
   /// Membangun setiap kartu dalam slider formulir.
+  /// **BAGIAN INI TELAH DIUBAH**
   Widget _buildFormSubmissionSliderItem(
       Map<String, dynamic> entry, BuildContext context) {
     final String formTitle = entry['formTitle'] ?? 'Untitled Form';
@@ -439,6 +425,7 @@ class _DashboardContentOnly extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             borderRadius: BorderRadius.circular(18),
+            // Aksi klik utama: memilih kartu untuk menampilkan grafik
             onTap: () => controller.updateChartForForm(entry),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
@@ -446,6 +433,7 @@ class _DashboardContentOnly extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Bagian Atas: Ikon dan Judul
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -486,35 +474,65 @@ class _DashboardContentOnly extends StatelessWidget {
                       ),
                     ],
                   ),
-                  Align(
-                    alignment: Alignment.bottomRight,
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 12),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                          color: AdminScreen.accentHeaderColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(25),
-                          border: Border.all(
-                            color: AdminScreen.accentHeaderColor.withOpacity(0.3),
-                            width: 1.0,
-                          )),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.format_list_bulleted_rounded, size: 18, color: AdminScreen.accentHeaderColor),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${count} Isian',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AdminScreen.accentHeaderColor,
+                  // Bagian Bawah: Jumlah Isian dan Tombol Navigasi
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Chip Jumlah Isian
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                            color: AdminScreen.accentHeaderColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(25),
+                            border: Border.all(
+                              color: AdminScreen.accentHeaderColor.withOpacity(0.3),
+                              width: 1.0,
+                            )),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.format_list_bulleted_rounded, size: 18, color: AdminScreen.accentHeaderColor),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${count} Isian',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AdminScreen.accentHeaderColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Tombol Navigasi ke Halaman Detail
+                      Material(
+                        color: AdminScreen.accentHeaderColor.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () {
+                            Get.toNamed(
+                              AppRoutes.SUBMISSIONS_FORM,
+                              arguments: {
+                                'formId': formId,
+                                'formTitle': formTitle,
+                              },
+                            );
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: 20,
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -525,7 +543,6 @@ class _DashboardContentOnly extends StatelessWidget {
     });
   }
 
-  /// Membangun widget untuk filter tanggal.
   Widget _buildDateFilterSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -607,7 +624,6 @@ class _DashboardContentOnly extends StatelessWidget {
     );
   }
 
-  /// Membangun bagian untuk 'Gambaran Akses Form'.
   Widget _buildFormAccessSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -643,7 +659,6 @@ class _DashboardContentOnly extends StatelessWidget {
     );
   }
 
-  /// Membangun setiap item dalam 'Gambaran Akses Form'.
   Widget _buildFormAccessItem(Map<String, dynamic> entry) {
     return Card(
       elevation: 1.5,
@@ -687,7 +702,6 @@ class _DashboardContentOnly extends StatelessWidget {
     );
   }
 
-  /// Membangun widget placeholder untuk area grafik.
   Widget _buildDummyChartWithLabel(String message, {bool isEmpty = false}) {
     return Center(
       child: Padding(
@@ -714,7 +728,6 @@ class _DashboardContentOnly extends StatelessWidget {
     );
   }
 
-  /// Membangun widget pesan ketika tidak ada data ditemukan.
   Widget _buildNoDataMessage(String message) {
     return Container(
       height: 150,

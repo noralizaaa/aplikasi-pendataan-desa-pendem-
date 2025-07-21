@@ -5,6 +5,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.1] - 2025-07-21
+
+**Contributed by [Bayu Ardiyansyah]**
+
+> Enhanced the dynamic form cards on the admin dashboard by adding a dedicated navigation button. This change restores the ability to access the detailed submission view for each form, providing a more intuitive dual-action user interface.
+
+### ✨ Added
+
+- **Dedicated Navigation Button on Form Cards (`admin_screen.dart`)**
+  - Added a new tappable forward-arrow icon to each form card in the horizontal slider.
+  - This button navigates the user to the detailed submissions page (`SubmissionsFormScreen`) for the corresponding form, enabling data viewing and export functionality.
+
+### 🛠️ Changed
+
+- **Form Card Layout (`admin_screen.dart`)**
+  - Adjusted the bottom layout of form cards to use a `Row`, accommodating both the submission count chip and the new navigation button.
+  - The main area of the card retains its original `onTap` behavior, used for toggling the form's progress chart.
+
+### 🔧 Refactoring & Improvements
+
+- **Improved User Experience (UX)**
+  - Refined the interaction model by clearly separating two distinct user actions: tapping the card for chart visualization and tapping the arrow icon for detailed data view.
+  - This dual-action pattern enhances usability and makes it easier for admins to explore both summarized and detailed form insights.
+
+---
+
 ## [1.2.0] - 2025-07-20
 
 **Contributed by [Bayu Ardiyansyah]**

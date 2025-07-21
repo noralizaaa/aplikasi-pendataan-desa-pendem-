@@ -32,7 +32,7 @@ dependencies:
   permission_handler: ^11.3.1
   open_filex: ^4.4.0 # Pastikan nama paketnya open_filex, bukan open_file
   file_picker: ^8.0.6
-  device_info_plus: ^10.1.0
+  device_info_plus: any
 
   # Data Handling
   csv: ^6.0.0

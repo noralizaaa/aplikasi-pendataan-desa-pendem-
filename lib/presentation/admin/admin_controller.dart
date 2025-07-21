@@ -32,18 +32,14 @@ class AdminController extends GetxController {
 
   final RxBool isDashboardLoading = true.obs;
 
-  // State untuk menampung semua data form dan submissionnya
   final RxList<Map<String, dynamic>> _allFormEntriesWithSubmissions =
       <Map<String, dynamic>>[].obs;
-  // State untuk daftar form yang akan ditampilkan di slider (setelah difilter)
   final RxList<Map<String, dynamic>> filteredFormSubmissions =
       <Map<String, dynamic>>[].obs;
 
-  // State BARU: Menyimpan form yang dipilih untuk ditampilkan grafiknya
   final Rx<Map<String, dynamic>?> selectedFormForChart =
   Rx<Map<String, dynamic>?>(null);
 
-  // State untuk data grafik, diisi secara on-demand
   final RxMap<String, int> submissionTrend = <String, int>{}.obs;
 
   final RxList<Map<String, dynamic>> _allFormAccessCounts =
@@ -70,15 +66,14 @@ class AdminController extends GetxController {
     _fetchAdminName();
     fetchDashboardData();
 
-    // Listener ini akan memfilter ulang data saat tanggal atau query pencarian berubah
     ever(selectedStartDate, (_) => _applyDashboardFilter());
     ever(selectedEndDate, (_) => _applyDashboardFilter());
     ever(globalSearchQuery, (_) => _applyDashboardFilter());
   }
 
-  /// Method untuk memperbarui grafik berdasarkan form yang dipilih di UI.
+  /// **Logika Inti untuk Klik Kartu**
+  /// Memperbarui grafik berdasarkan form yang dipilih.
   void updateChartForForm(Map<String, dynamic> formEntry) {
-    // Jika kartu yang sama diklik lagi, batalkan pilihan & hapus grafik.
     if (selectedFormForChart.value?['formId'] == formEntry['formId']) {
       selectedFormForChart.value = null;
       submissionTrend.clear();
@@ -88,42 +83,24 @@ class AdminController extends GetxController {
     selectedFormForChart.value = formEntry;
     Map<String, int> dailyCounts = {};
 
-    // Ambil data submission dari entri yang dipilih.
+    // **FIX**: Data 'submissions' di sini sudah difilter sebelumnya oleh `_applyDashboardFilter`.
+    // Tidak perlu lagi melakukan filter tanggal di sini, sehingga lebih efisien dan akurat.
     List<Map<String, dynamic>> submissions =
     List.from(formEntry['submissions'] ?? []);
-
-    // Filter submission berdasarkan rentang tanggal yang aktif di UI.
-    final bool isDateFilterActive =
-        selectedStartDate.value != null && selectedEndDate.value != null;
-    final DateTime? filterStartDate = selectedStartDate.value;
-    final DateTime? filterEndDate = selectedEndDate.value;
 
     for (var sub in submissions) {
       if (sub['submittedAt'] is Timestamp) {
         DateTime date = (sub['submittedAt'] as Timestamp).toDate().toLocal();
-
-        // Cek apakah tanggal berada dalam rentang filter (jika filter aktif).
-        bool isInRange = true;
-        if (isDateFilterActive) {
-          if (date.isBefore(filterStartDate!) || date.isAfter(filterEndDate!)) {
-            isInRange = false;
-          }
-        }
-
-        if (isInRange) {
-          String dateKey = DateFormat('yyyy-MM-dd').format(date);
-          dailyCounts.update(dateKey, (value) => value + 1, ifAbsent: () => 1);
-        }
+        String dateKey = DateFormat('yyyy-MM-dd').format(date);
+        dailyCounts.update(dateKey, (value) => value + 1, ifAbsent: () => 1);
       }
     }
 
-    // Urutkan data berdasarkan tanggal sebelum ditampilkan di grafik.
     var sortedKeys = dailyCounts.keys.toList()..sort();
     final sortedDailyCounts = {for (var k in sortedKeys) k: dailyCounts[k]!};
     submissionTrend.assignAll(sortedDailyCounts);
   }
 
-  /// Mengambil semua data yang diperlukan untuk dasbor dari Firestore.
   Future<void> fetchDashboardData() async {
     isDashboardLoading.value = true;
     try {
@@ -142,21 +119,18 @@ class AdminController extends GetxController {
     }
   }
 
-  /// Mengambil semua isian form dan mengelompokkannya berdasarkan ID form.
   Future<void> _fetchAllSubmissionsAndGroupThem() async {
     Map<String, List<Map<String, dynamic>>> submissionsByFormId = {};
     Map<String, String> formTitles = {};
 
-    // 1. Ambil semua metadata form (judul, dll)
     QuerySnapshot formsMetaSnapshot =
     await _db.collection(_adminFormsCollectionPath).get();
     for (var formDoc in formsMetaSnapshot.docs) {
-      formTitles[formDoc.id] =
-          (formDoc.data() as Map<String, dynamic>)['title'] as String? ??
-              'Form Tanpa Judul';
+      formTitles[formDoc.id] = (formDoc.data()
+      as Map<String, dynamic>)['title'] as String? ??
+          'Form Tanpa Judul';
     }
 
-    // 2. Ambil semua dokumen isian
     QuerySnapshot allSubmissionsSnapshot =
     await _db.collection(_formSubmissionsCollectionPath).get();
     for (var submissionDoc in allSubmissionsSnapshot.docs) {
@@ -181,7 +155,6 @@ class AdminController extends GetxController {
       }
     }
 
-    // 3. Bentuk struktur data akhir untuk digunakan di UI
     List<Map<String, dynamic>> tempFormEntries = [];
     formTitles.forEach((formId, title) {
       List<Map<String, dynamic>> submissionsForThisForm =
@@ -189,17 +162,17 @@ class AdminController extends GetxController {
       tempFormEntries.add({
         'formId': formId,
         'formTitle': title,
-        'count': submissionsForThisForm.length, // Total isian
-        'submissions': submissionsForThisForm, // Data mentah semua isian
+        // 'count' tidak lagi diperlukan di sini karena akan dihitung saat filter
+        'submissions': submissionsForThisForm,
       });
     });
 
     _allFormEntriesWithSubmissions.assignAll(tempFormEntries);
   }
 
-  /// Menerapkan filter (tanggal/pencarian) dan memperbarui state untuk UI.
+  /// **Logika Inti untuk Filter**
+  /// Menerapkan filter dan mempersiapkan data untuk UI.
   void _applyDashboardFilter() {
-    // Reset pilihan grafik setiap kali filter berubah untuk menghindari kebingungan.
     selectedFormForChart.value = null;
     submissionTrend.clear();
 
@@ -218,39 +191,39 @@ class AdminController extends GetxController {
 
       if (!matchesSearch) continue;
 
-      List<Map<String, dynamic>> submissionsForThisForm =
+      List<Map<String, dynamic>> allSubmissionsForForm =
       List<Map<String, dynamic>>.from(formEntry['submissions'] ?? []);
-      int countInPeriod = 0;
 
-      // Hitung jumlah isian dalam periode tanggal yang dipilih
+      // **FIX**: Membuat list baru untuk menampung submission yang sudah terfilter.
+      List<Map<String, dynamic>> submissionsInPeriod = [];
+
       if (isDateFilterActive) {
-        for (var submissionData in submissionsForThisForm) {
+        for (var submissionData in allSubmissionsForForm) {
           if (submissionData.containsKey('submittedAt') &&
               submissionData['submittedAt'] is Timestamp) {
-            Timestamp submittedAtTimestamp = submissionData['submittedAt'];
-            DateTime submissionDate = submittedAtTimestamp.toDate().toLocal();
+            DateTime submissionDate =
+            (submissionData['submittedAt'] as Timestamp).toDate().toLocal();
             if (!submissionDate.isBefore(filterStartDate!) &&
                 !submissionDate.isAfter(filterEndDate!)) {
-              countInPeriod++;
+              submissionsInPeriod.add(submissionData);
             }
           }
         }
       } else {
-        // Jika tidak ada filter tanggal, gunakan jumlah total
-        countInPeriod = submissionsForThisForm.length;
+        submissionsInPeriod.addAll(allSubmissionsForForm);
       }
 
+      // Data yang dikirim ke UI sekarang berisi jumlah dan list submission yang sudah konsisten.
       tempFilteredSubmissionsSummary.add({
         'formId': formEntry['formId'],
         'formTitle': formEntry['formTitle'],
-        'count': countInPeriod, // Jumlah isian setelah difilter
-        'submissions': submissionsForThisForm, // Kirim semua data asli untuk kalkulasi grafik
+        'count': submissionsInPeriod.length, // Jumlah yang sudah difilter
+        'submissions': submissionsInPeriod,   // List yang sudah difilter
       });
     }
 
     filteredFormSubmissions.assignAll(tempFilteredSubmissionsSummary);
 
-    // Filter data untuk 'Gambaran Akses Form'
     List<Map<String, dynamic>> tempFilteredAccessCounts = [];
     if (query.isEmpty) {
       tempFilteredAccessCounts.addAll(_allFormAccessCounts);
@@ -266,7 +239,7 @@ class AdminController extends GetxController {
     filteredFormAccessCounts.assignAll(tempFilteredAccessCounts);
   }
 
-  // Method di bawah ini tidak diubah dan berfungsi seperti sebelumnya.
+  // Sisa method di bawah ini tidak ada perubahan.
 
   Future<void> _fetchAdminName() async {
     User? user = _auth.currentUser;
@@ -358,7 +331,6 @@ class AdminController extends GetxController {
   }
 }
 
-/// Widget dialog kustom untuk memilih rentang tanggal.
 class _CustomDateRangePickerDialog extends StatefulWidget {
   final DateTime initialFocusedDay;
   final DateTime? initialRangeStart;
