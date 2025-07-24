@@ -1,4 +1,4 @@
-**# 📦 CHANGELOG
+ 📦 CHANGELOG
 
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.1] - 2025-07-21
 
-**Contributed by [Bayu Ardiyansyah]**
+> Contributed by [Bayu Ardiyansyah]
 
 > Enhanced the dynamic form cards on the admin dashboard by adding a dedicated navigation button. This change restores the ability to access the detailed submission view for each form, providing a more intuitive dual-action user interface.
 
@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.0] - 2025-07-20
 
-**Contributed by [Bayu Ardiyansyah]**
+> Contributed by [Bayu Ardiyansyah]
 
 > Complete overhaul of the admin dashboard for a more flexible and dynamic data visualization experience. Replaced static metrics with a dynamic, horizontally-scrolling form overview. Introduced an on-demand, interactive chart to visualize daily progress for any selected form, and fixed critical UI layout overflow issues.
 
