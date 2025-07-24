@@ -6,6 +6,7 @@ version: 1.0.0+1
 
 environment:
   sdk: '>=3.4.0 <4.0.0' # Direkomendasikan untuk memperluas sedikit rentang SDK jika paket memerlukan versi Dart yang lebih baru
+  flutter: ">=3.32.0"
 
 dependencies:
   flutter:
