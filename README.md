@@ -7,30 +7,28 @@
 [![MIT License][license-shield]][license-url]
 [![LinkedIn][linkedin-shield]][linkedin-url]
 
-<!-- PROJECT LOGO -->
 <br />
 <div align="center">
   <a href="https://github.com/RazerArdi/Sensusku-bpsBatu">
     <img src="assets/images/bps.png" alt="Logo" width="80" height="80">
   </a>
 
-  <h3 align="center">SensusKu</h3>
+<h3 align="center">SensusKu</h3>
 
   <p align="center">
     Aplikasi Pendataan dan Pengelolaan Desa oleh BPS Kota Batu
     <br />
-    <a href="https://github.com/RazerArdi/Sensusku-bpsBatu"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/RazerArdi/Sensusku-bpsBatu"><strong>Explore the documentation »</strong></a>
     <br />
     <br />
     <a href="https://github.com/RazerArdi/Sensusku-bpsBatu">View Demo</a>
     ·
-    <a href="https://github.com/RazerArdi/Sensusku-bpsBatu/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
+    <a href="https://github.com/RazerArdi/Sensusku-bpsBatu/issues/new?labels=bug&template=bug-report---.md">Report a Bug</a>
     ·
-    <a href="https://github.com/RazerArdi/Sensusku-bpsBatu/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
+    <a href="https://github.com/RazerArdi/Sensusku-bpsBatu/issues/new?labels=enhancement&template=feature-request---.md">Request a Feature</a>
   </p>
 </div>
 
-<!-- TABLE OF CONTENTS -->
 <details>
   <summary>Table of Contents</summary>
   <ol>
@@ -57,171 +55,171 @@
   </ol>
 </details>
 
-<!-- ABOUT THE PROJECT -->
 ## About The Project
 
 ![SensusKu Screenshot][product-screenshot]
 
-**SensusKu** is a mobile application developed by BPS Kota Batu for efficient data collection and management in villages. Built with **Flutter**, **GetX**, and **Firebase**, it offers an intuitive user interface, splash screen animations, and a modern prototype design. The application supports dynamic form creation, real-time data synchronization, and secure authentication, making it a powerful tool for village data management. Currently under active development, SensusKu is open for contributions to enhance its features and performance.
+**SensusKu** is a mobile application developed by BPS Kota Batu (Central Bureau of Statistics, Batu City) to streamline data collection and management processes in villages. Engineered with **Flutter** for cross-platform compatibility, **GetX** for state management, and **Firebase** for backend services, SensusKu offers a robust and intuitive solution for localized data initiatives. Its design prioritizes an engaging user experience, featuring dynamic form creation, real-time data synchronization, and secure authentication. This project is currently in active development, welcoming contributions to expand its capabilities and refine its performance.
 
 ### Key Features
 
-Based on the development progress documented in the changelog (up to version 0.31.0, June 18, 2025), SensusKu includes the following features:
+Based on its active development and recent updates (up to version [1.2.1] , July 21, 2025), SensusKu boasts a comprehensive set of features:
 
-- **Splash Screen and Landing Page**:
-  - Displays the BPS logo with a fade-in animation and a modern landing page featuring a gradient header, SensusKu logo, and a "START" button.
-  - Enhanced with a scrollable landing page, updated application icon (`launcher_icon.png`), and a new splash screen image (`DaunSS.png`).
+* **Dynamic Form Builder**:
+    * **Customizable Question Types**: Admins can create and modify forms using a variety of question types including Short Text, Paragraph, Number, Date, Multiple Choice, Checkboxes, Dropdown, and advanced Grid Numeric fields.
+    * **Structured Forms**: Supports collapsible sections, Roman numeral titles for clarity, and features like cascading dropdowns and conditional jump logic for intricate survey flows.
+    * **Advanced Validation**: Includes options for required fields, min/max length for text, numeric ranges, and predefined regex patterns (e.g., Indonesian phone numbers, NIK, No. KK).
+    * **Repeatable Elements**: Allows questions and entire sections to be repeatable, with options to control repetition count via numeric answers from other questions.
 
-- **User Authentication and Profile Management**:
-  - Secure login and logout via Firebase Authentication with login state tracking in Firestore (`isLogin` field).
-  - Dynamic user profile page with editable usernames, role-based navigation (admin/user), and real-time synchronization with Firestore.
-  - Automatic migration to add `isLogin: false` for existing users and sequential username generation (e.g., 'Pendata 1', 'Pendata 2').
+* **User and Account Management**:
+    * **Secure Authentication**: Leverages Firebase Authentication for secure login/logout, with login state tracking in Firestore.
+    * **Role-Based Access**: Seamlessly navigates users to either the admin dashboard or the user home page based on their assigned roles.
+    * **Admin Account Control**: Provides a dedicated interface for administrators to create, edit, and delete user accounts across the system, as well as manage form-specific access permissions.
+    * **Profile Customization**: Users can update their usernames directly from their profile, with real-time synchronization to Firestore.
 
-- **Dynamic Form Builder**:
-  - Administrators can create and edit forms with diverse question types: Short Text, Paragraph, Number, Date, Multiple Choice, Checkboxes, Dropdown, and Grid Numeric.
-  - Supports collapsible sections/questions with Roman numeral titles, cascading dropdowns, conditional jump logic, repeatable questions, and validation rules (e.g., min/max length, Indonesian phone number regex: `^(\+62|0)8[0-9]{8,11}$`).
-  - Forms are saved to Firestore with robust data export options (JSON, CSV, XLSX) and custom save locations via system file picker.
+* **Efficient Data Collection**:
+    * **Intuitive Forms**: Offers user-friendly input forms, ensuring smooth data entry with auto-sorting of questions by code and clear answer options.
+    * **Comprehensive Grid Inputs**: Facilitates the collection of complex data (e.g., household demographics) using flexible grid numeric questions.
+    * **Real-time Validation**: Enforces data integrity through strict validation rules applied during input.
 
-- **Data Collection and Submission**:
-  - User-friendly input forms with automatic question sorting by code, answer option descriptions, and grid numeric questions for complex data (e.g., household data tracking).
-  - Edit mode support with proper data population and visibility logic based on conditional jumps.
-  - Strict validation, including 16-digit Family Card Number (No KK) checks and dynamic comparison logic for number questions.
+* **Admin Dashboard & Reporting**:
+    * **Key Metrics Overview**: Displays vital statistics, such as "Jumlah Rumah Tangga yang Sudah Didata" (Number of Households Surveyed) and daily submission trends for specific forms.
+    * **Date Range Filtering**: Allows administrators to filter and analyze data using a custom pop-up date range picker.
+    * **Data Export**: Enables robust data export capabilities for form submissions in **JSON**, **CSV**, and **XLSX** formats, with options for custom headers and handling of various cell types.
 
-- **Admin Dashboard**:
-  - Displays metrics like "Jumlah Rumah Tangga yang Sudah Didata" and daily submission trends for DC-Penduduk forms.
-  - Features a custom pop-up date range picker using `TableCalendar` for data filtering.
-  - Includes form access overview, submission counts per form, and a modern UI with gradient headers and card-based styling.
-
-- **Account Management**:
-  - Global account management page for admins to create, edit, and delete user accounts in the `/users` Firestore collection.
-  - Form-specific authority management via `managedAccounts` subcollection, enabling granular access control.
-  - Modernized dialogs with rounded borders, search bars, and consistent styling for account creation and selection.
-
-- **UI/UX Enhancements**:
-  - Unified validation error notifications in a single, scrollable snackbar to prevent notification spam.
-  - Improved readability with wrapped error messages, modern text field styling (`_modernInputDecoration`), and consistent color schemes.
-  - Optimized navigation with pull-to-refresh for submission lists and automatic section expansion for single-section forms.
-
-- **Data Export and Reporting**:
-  - Form-specific export functions (`exportSubmissionsAsJson`, `exportSubmissionsAsCsv`, `exportSubmissionsAsXlsx`) with flexible header builders and proper cell type handling (e.g., `TextCellValue`, `DateTimeCellValue`).
-  - Enhanced export flow with permission checks, snackbar feedback, and robust error handling.
-
-- **Bug Fixes and Stability**:
-  - Resolved issues like text input focus loss, Firestore permission errors, navigation glitches, and UI overflows.
-  - Fixed specific bugs, such as empty `userName` storage, cascading dropdown filtering, and inconsistent state rendering in edit mode.
+* **UI/UX and Performance**:
+    * **Modern Design**: Features a clean, card-based design with consistent color schemes, gradient headers, and intuitive navigation.
+    * **Enhanced Feedback**: Provides clear user feedback through consolidated snackbar notifications for validation errors and improved loading indicators.
+    * **Stability**: Incorporates bug fixes and optimizations to ensure smooth performance, address focus issues, and prevent UI overflows.
 
 ### Built With
 
-- [![Flutter][Flutter]][Flutter-url]
-- [![GetX][GetX]][GetX-url]
-- [![Firebase][Firebase]][Firebase-url]
-- Additional libraries: `uuid`, `intl`, `file_picker`, `excel`, `table_calendar`
+* [![Flutter][Flutter]][Flutter-url]
+* [![GetX][GetX]][GetX-url]
+* [![Firebase][Firebase]][Firebase-url]
+* `uuid` for unique ID generation
+* `intl` for internationalization and date formatting
+* `file_picker` for custom file save locations
+* `excel` for XLSX file manipulation
+* `table_calendar` for enhanced date picking
+* `permission_handler` for managing app permissions
+* `device_info_plus` for device-specific information
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- GETTING STARTED -->
 ## Getting Started
 
-To set up and run SensusKu locally, follow these steps.
+To get a local copy of SensusKu up and running, follow these simple steps.
 
 ### Prerequisites
 
-- **Flutter SDK**
-  ```sh
-  # Install Flutter (follow instructions at https://flutter.dev/docs/get-started/install)
-  flutter doctor
-  ```
-- **Firebase CLI** (for Firebase setup)
-  ```sh
-  npm install -g firebase-tools
-  ```
-- **Dart/Flutter Dependencies**
-  Ensure packages listed in `pubspec.yaml` are installed, including `get`, `firebase_core`, `firebase_auth`, `cloud_firestore`, `uuid`, `intl`, `file_picker`, `excel`, and `table_calendar`.
+Ensure you have the following installed:
+
+* **Flutter SDK**:
+    ```sh
+    # Follow installation instructions at [https://flutter.dev/docs/get-started/install](https://flutter.dev/docs/get-started/install)
+    flutter doctor
+    ```
+* **Firebase CLI**:
+    ```sh
+    npm install -g firebase-tools
+    ```
+* **Dart/Flutter Dependencies**: The `pubspec.yaml` file lists all necessary packages, including `get`, `firebase_core`, `firebase_auth`, `cloud_firestore`, `uuid`, `intl`, `file_picker`, `excel`, `table_calendar`, `permission_handler`, and `device_info_plus`.
 
 ### Installation
 
-1. Clone the repository
-   ```sh
-   git clone https://github.com/RazerArdi/Sensusku-bpsBatu.git
-   ```
-2. Install dependencies
-   ```sh
-   cd Sensusku-bpsBatu
-   flutter pub get
-   ```
-3. Set up Firebase
-   - Create a Firebase project at [https://console.firebase.google.com/](https://console.firebase.google.com/).
-   - Add an Android/iOS app to your Firebase project.
-   - Download the `google-services.json` (Android) or `GoogleService-Info.plist` (iOS) and place it in `android/app/` or `ios/Runner/`.
-   - Update Firestore Security Rules to allow authenticated read/write access to collections (`adminForms`, `users`, `submissions`, etc.).
-   - Run:
-     ```sh
-     flutter pub add firebase_core
-     flutter pub add firebase_auth
-     flutter pub add cloud_firestore
-     ```
-4. Configure Firestore Indexes
-   - Set up composite indexes in Firestore for queries, e.g., `role` (Ascending) and `username` (Ascending) on the `users` collection.
-5. Run the app
-   ```sh
-   flutter run
-   ```
+1.  **Clone the repository**:
+    ```sh
+    git clone [https://github.com/RazerArdi/Sensusku-bpsBatu.git](https://github.com/RazerArdi/Sensusku-bpsBatu.git)
+    ```
+2.  **Navigate to the project directory**:
+    ```sh
+    cd Sensusku-bpsBatu
+    ```
+3.  **Install Flutter dependencies**:
+    ```sh
+    flutter pub get
+    ```
+4.  **Set up Firebase**:
+    * Create a new Firebase project at [https://console.firebase.google.com/](https://console.firebase.google.com/).
+    * Add an Android and/or iOS application to your Firebase project.
+    * Download the `google-services.json` (for Android) and place it in the `android/app/` directory.
+    * Download the `GoogleService-Info.plist` (for iOS) and place it in the `ios/Runner/` directory.
+    * **Crucially, configure your Firestore Security Rules** to allow authenticated read/write access to your `adminForms`, `users`, `submissions`, and other relevant collections.
+    * Ensure Firebase authentication and Firestore are enabled in your Firebase project.
+    * **Configure Firestore Indexes**: For efficient querying, create composite indexes in Firestore as required. For example, for the `users` collection, you might need an index on `role` (Ascending) and `username` (Ascending). You will be prompted by Firebase in the console if a specific query requires an index.
+
+5.  **Run the application**:
+    ```sh
+    flutter run
+    ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- USAGE EXAMPLES -->
 ## Usage
 
-1. **Splash Screen**: Displays the BPS logo with a fade-in animation, transitioning to the landing page after a 3-second delay.
-2. **Landing Page**: Features a gradient header with BPS and SensusKu logos, an illustration, and a "START" button to initiate authentication.
-3. **Authentication**: Users log in via Firebase Authentication, with role-based navigation to the admin dashboard or user home page.
-4. **Data Collection**:
-   - Users access forms based on permissions, view submission history, and create/edit entries.
-   - Forms support various question types, cascading dropdowns, and grid numeric inputs with real-time validation and conditional logic.
-5. **Admin Dashboard**:
-   - Admins monitor household data collection progress, filter data by date range, and manage forms and user accounts.
-   - Export data in JSON, CSV, or XLSX formats with custom save locations.
-6. **Account Management**: Admins create new users, assign form-specific authorities, and manage accounts via a dedicated interface.
+**SensusKu** is designed for a seamless workflow, from initial app launch to complex data management:
 
-For detailed documentation, refer to the [Wiki](https://github.com/RazerArdi/Sensusku-bpsBatu/wiki).
+1.  **Splash Screen**: Upon launch, the app displays a branded splash screen with a smooth fade-in animation, leading to the landing page.
+2.  **Landing Page**: A visually appealing landing page welcomes users, featuring the BPS and SensusKu logos and a prominent "START" button to begin their journey.
+3.  **Authentication**: Users authenticate securely via Firebase. Their role (admin or regular user) dictates their access, routing them to the appropriate dashboard.
+4.  **Data Collection (User)**:
+    * Users can access forms based on their assigned permissions.
+    * They can view their submission history and create new data entries or edit existing ones.
+    * Forms are dynamic, supporting various question types, including smart features like cascading dropdowns and grid numeric inputs.
+    * Input is guided by real-time validation and conditional logic, ensuring data quality.
+5.  **Admin Dashboard**:
+    * Administrators gain insights into data collection progress, such as the total number of surveyed households.
+    * Data can be filtered by date ranges using an intuitive calendar interface.
+    * Admins have full control over form definitions and user accounts.
+    * Crucially, they can export collected data in **JSON**, **CSV**, or **XLSX** formats, choosing their preferred save location through the system's file picker.
+6.  **Account Management (Admin)**:
+    * A dedicated interface allows admins to create new user accounts, modify existing ones (e.g., updating usernames, changing roles), and delete accounts.
+    * Granular authority management enables admins to assign specific forms to individual users, controlling who can submit data for which form.
+
+For a more in-depth guide and visual walkthroughs, please refer to the [Wiki](https://github.com/RazerArdi/Sensusku-bpsBatu/wiki).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- ROADMAP -->
 ## Roadmap
 
-- [x] Implement splash screen with animation
-- [x] Design modern landing page with gradient header
-- [x] Integrate Firebase authentication and Firestore
-- [x] Develop dynamic form builder with diverse question types
-- [x] Create admin dashboard with data filtering and export
-- [x] Add user profile management and account administration
-- [ ] Implement offline data storage and synchronization
-- [ ] Enhance reporting dashboard with advanced visualizations
-- [ ] Support complex validation rules and repeatable group UI
-- [ ] Fix edit mode navigation issue (returns to edit page on back press)
-- [ ] Optimize performance for large datasets and complex forms
+SensusKu is continually evolving. Here's a glimpse of planned enhancements and known areas for improvement:
 
-See the [open issues](https://github.com/RazerArdi/Sensusku-bpsBatu/issues) for a full list of proposed features and known issues.
+-   [x] Implement splash screen with animation.
+-   [x] Design a modern landing page with a gradient header.
+-   [x] Integrate Firebase authentication and Firestore for robust backend services.
+-   [x] Develop a dynamic form builder supporting diverse question types.
+-   [x] Create an admin dashboard with comprehensive data filtering and export capabilities.
+-   [x] Add user profile management and full account administration features.
+-   [ ] Implement robust **offline data storage and synchronization** to ensure data collection continuity in areas with limited connectivity.
+-   [ ] Enhance the reporting dashboard with **advanced data visualizations and analytics**.
+-   [ ] Support more complex validation rules and improve the UI for **repeatable question groups**.
+-   [ ] Address minor **UI/UX inconsistencies** and refine navigation flows.
+-   [ ] Optimize overall **performance** for handling large datasets and highly complex forms.
+
+See the [open issues](https://github.com/RazerArdi/Sensusku-bpsBatu/issues) for a full list of proposed features and known issues that need attention.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- CONTRIBUTING -->
 ## Contributing
 
-Contributions are welcome! To contribute:
+We welcome and appreciate contributions to the SensusKu project! Whether it's reporting bugs, suggesting features, or submitting code, your help is invaluable.
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+To contribute code:
+
+1.  **Fork** the project.
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`).
+3.  **Commit** your changes (`git commit -m 'Add some AmazingFeature'`).
+4.  **Push** to the branch (`git push origin feature/AmazingFeature`).
+5.  **Open a Pull Request**.
 
 ### Top Contributors
 
-- **Bayu Ardiyansyah**: Led core development, including form builder, admin dashboard, authentication, and data export features.
-- **Lutfi Indra Nur Praditya**: Contributed to form input enhancements, login state tracking, and UI/UX improvements.
-- **Febri Bagus Triwibowo**: Enhanced UI elements, splash screen, and submission history features.
+A huge thank you to our top contributors who have significantly shaped SensusKu:
+
+* **Bayu Ardiyansyah**: Spearheaded core development, including the dynamic form builder, admin dashboard, robust authentication system, and comprehensive data export functionalities.
+* **Lutfi Indra Nur Praditya**: Contributed significantly to form input enhancements, reliable login state tracking, and overall UI/UX improvements.
+* **Febri Bagus Triwibowo**: Focused on enhancing critical UI elements, refining the splash screen, and improving submission history features.
 
 <a href="https://github.com/RazerArdi/Sensusku-bpsBatu/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=RazerArdi/Sensusku-bpsBatu" alt="contrib.rocks image" />
@@ -229,36 +227,36 @@ Contributions are welcome! To contribute:
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- LICENSE -->
 ## License
 
-Distributed under the MIT License. See `LICENSE.txt` for more information.
+This project is distributed under the **MIT License**. See `LICENSE.txt` for more information.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- CONTACT -->
 ## Contact
 
-- **Email**: [bayuardi30@outlook.com](mailto:bayuardi30@outlook.com)
-- **GitHub Issues**: [Open an issue](https://github.com/RazerArdi/Sensusku-bpsBatu/issues)
+For any inquiries or collaborations, feel free to reach out:
+
+* **Email**: [bayuardi30@outlook.com](mailto:bayuardi30@outlook.com)
+* **GitHub Issues**: [Open an Issue](https://github.com/RazerArdi/Sensusku-bpsBatu/issues)
 
 **Project Link**: [https://github.com/RazerArdi/Sensusku-bpsBatu](https://github.com/RazerArdi/Sensusku-bpsBatu)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
-- [Flutter](https://flutter.dev/)
-- [GetX](https://pub.dev/packages/get)
-- [Firebase](https://firebase.google.com/)
-- [unDraw](https://undraw.co/) for illustrations
-- [Keep a Changelog](https://keepachangelog.com/)
-- [Semantic Versioning](https://semver.org/)
+We extend our gratitude to the following resources and communities:
+
+* [Flutter](https://flutter.dev/) - For providing an excellent framework for building cross-platform mobile applications.
+* [GetX](https://pub.dev/packages/get) - For simplifying state management and navigation in Flutter.
+* [Firebase](https://firebase.google.com/) - For offering scalable backend services.
+* [unDraw](https://undraw.co/) - For beautiful open-source illustrations.
+* [Keep a Changelog](https://keepachangelog.com/) - For a standardized format for changelogs.
+* [Semantic Versioning](https://semver.org/) - For clear version management.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- MARKDOWN LINKS & IMAGES -->
 [contributors-shield]: https://img.shields.io/github/contributors/RazerArdi/Sensusku-bpsBatu.svg?style=for-the-badge
 [contributors-url]: https://github.com/RazerArdi/Sensusku-bpsBatu/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/RazerArdi/Sensusku-bpsBatu.svg?style=for-the-badge
