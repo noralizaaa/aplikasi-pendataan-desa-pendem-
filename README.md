@@ -132,11 +132,11 @@ Ensure you have the following installed:
 
 1.  **Clone the repository**:
     ```sh
-    git clone [https://github.com/RazerArdi/Sensusku-bpsBatu.git](https://github.com/RazerArdi/Sensusku-bpsBatu.git)
+    git clone https://github.com/noralizaaa/aplikasi-pendataan-desa-pendem-.git
     ```
 2.  **Navigate to the project directory**:
     ```sh
-    cd Sensusku-bpsBatu
+    cd aplikasi_pendataan_desa
     ```
 3.  **Install Flutter dependencies**:
     ```sh
