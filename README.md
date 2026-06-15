@@ -96,25 +96,47 @@ Based on its active development and recent updates (up to version [1.2.1] , July
 
 ### Project Structure & Feature Mapping
 
-Untuk memudahkan pengembangan dan pemeliharaan, berikut adalah pemetaan fitur utama ke lokasi file kodenya:
+Berikut adalah rincian detail mengenai lokasi file kode berdasarkan fungsi fitur untuk memudahkan navigasi bagi pengembang:
 
-#### **Modul Admin (Pusat Kendali)**
-| Fitur Utama | Lokasi File / Folder | Deskripsi |
-| :--- | :--- | :--- |
-| **Dashboard & Statistik** | `lib/presentation/admin/admin_controller.dart` | Logika monitoring, grafik tren harian, dan status server lokal. |
-| **Form Management** | `lib/presentation/admin/formpage/` | Pengaturan daftar formulir dan navigasi ke pembuat form. |
-| **Form Builder** | `lib/presentation/admin/formpage/form_builder/` | Otak pembuatan formulir dinamis, logika lompatan, dan rekap otomatis. |
-| **Account Management** | `lib/presentation/admin/Admin_Profile/` | Manajemen seluruh akun (Global, Desa, RT/RW) dan hak akses spesifik. |
-| **Village Management** | `lib/presentation/admin/village_management/` | Konfigurasi infrastruktur desa, integrasi Hybrid (IP/Port/VPN). |
-| **Submission Viewer** | `lib/presentation/admin/submissions_form/` | Daftar hasil isian petugas dan mesin ekspor data (Excel/CSV/JSON). |
+#### **1. Modul Admin (Pusat Kendali Sistem)**
+| Pilar Fitur | Komponen | Lokasi File / Folder | Peran Teknis |
+| :--- | :--- | :--- | :--- |
+| **Dashboard** | Monitoring Utama | `lib/presentation/admin/admin_controller.dart` | Mengelola grafik statistik, status server lokal (Online/Offline), dan filtering global. |
+| | Tampilan Utama | `lib/presentation/admin/admin_screen.dart` | Layout utama dashboard dengan sistem navigasi tab. |
+| **Form Management** | Daftar Formulir | `lib/presentation/admin/formpage/admin_form_controller.dart` | Logika pengambilan daftar form, duplikasi form, dan hak akses otomatis desa. |
+| | Pembangun Form | `lib/presentation/admin/formpage/form_builder/` | Otak pembuatan pertanyaan dinamis, logika lompatan (skip logic), dan aturan validasi. |
+| **Data Submission** | Viewer Hasil | `lib/presentation/admin/submissions_form/` | Menampilkan ribuan jawaban petugas dengan filter RT/RW yang akurat. |
+| | Engine Ekspor | `submissions_form_controller.dart` | Transformasi data mentah ke format **Excel (XLSX)**, CSV, dan JSON. |
+| **Account & Security**| Manajemen Akun | `lib/presentation/admin/Admin_Profile/` | Kontrol penuh pembuatan akun petugas baru dan pengaturan izin per-formulir. |
+| | Profil Admin | `lib/presentation/admin/profil/` | Pengaturan identitas pribadi admin dan proses logout. |
+| **Village Settings** | Manajemen Desa | `lib/presentation/admin/village_management/` | Konfigurasi infrastruktur desa (Alamat IP lokal untuk sistem Hybrid). |
 
-#### **Modul User (Petugas Lapangan)**
-| Fitur Utama | Lokasi File / Folder | Deskripsi |
+#### **2. Modul User (Aplikasi Petugas Lapangan)**
+| Pilar Fitur | Komponen | Lokasi File / Folder | Peran Teknis |
+| :--- | :--- | :--- | :--- |
+| **Home** | Daftar Tugas | `lib/presentation/user/user_controller.dart` | Sinkronisasi daftar formulir yang ditugaskan kepada petugas secara spesifik. |
+| **Data Entry** | Input Lapangan | `lib/presentation/user/input_form_user/` | Logika pengisian cerdas: hitung umur otomatis, slider anggota keluarga, dan upload foto. |
+| **Submission List** | Riwayat Kerja | `lib/presentation/user/list_submission_form/` | Monitoring riwayat isian (Draf/Terkirim) dan pemicu **Auto-Duplicate Bulanan**. |
+| **User Profile** | Identitas | `lib/presentation/user/user_profile/` | Pengaturan mandiri nama petugas dan informasi wilayah tugas (RT/RW). |
+
+#### **3. Arsitektur Data & Infrastruktur**
+| Lapangan | Lokasi | Peran |
 | :--- | :--- | :--- |
-| **Home (Daftar Form)** | `lib/presentation/user/user_controller.dart` | Menampilkan formulir yang hanya diotorisasikan untuk petugas tersebut. |
-| **Riwayat (History)** | `lib/presentation/user/list_submission_form/` | Daftar isian yang sudah dikirim atau draf, beserta fitur Auto-Duplicate. |
-| **Input Data (Entry)** | `lib/presentation/user/input_form_user/` | Antarmuka pengisian data lapangan, upload foto, dan koordinat GPS. |
-| **Profil Petugas** | `lib/presentation/user/user_profile/` | Pengaturan mandiri identitas petugas dan informasi wilayah tugas. |
+| **Domain Models** | `lib/domain/` | Definisi struktur data (Form, Submission, User, Village) yang digunakan di seluruh aplikasi. |
+| **Navigation** | `lib/infrastructure/navigation/` | Pengaturan rute (routing) dan pemetaan halaman aplikasi. |
+| **Authentication** | `lib/domain/auth/` | Sistem login aman menggunakan Firebase Authentication. |
+
+---
+
+### Penjelasan Alur Kerja Sistem (Untuk Pengguna Non-IT)
+
+Aplikasi SensusKu bekerja dalam satu siklus terpadu untuk menjamin validitas data desa:
+
+1.  **Penyusunan (Admin):** Admin menggunakan *Form Builder* untuk membuat kuesioner digital. Di sini, Admin bisa mengatur agar kuesioner "pintar" (misal: pertanyaan tertentu hanya muncul untuk warga berjenis kelamin perempuan).
+2.  **Penugasan (Otoritas):** Admin memberikan hak akses formulir tersebut kepada petugas-petugas tertentu di desa yang bersangkutan.
+3.  **Pendataan (Petugas):** Petugas lapangan membuka aplikasi, melihat daftar kuesioner, dan mulai mengisi data warga. Data dapat disimpan sebagai **Draf** jika belum selesai, atau langsung **Kirim** jika sudah lengkap.
+4.  **Penyimpanan Hybrid:** Saat dikirim, data otomatis masuk ke **Google Cloud** (agar bisa dilihat pusat) dan juga ke **Server Lokal Kantor Desa** (untuk arsip fisik mandiri desa).
+5.  **Pemantauan & Pelaporan:** Admin memantau grafik progres harian di Dashboard. Jika pendataan sudah selesai, Admin tinggal klik "Export" untuk mendapatkan laporan dalam bentuk file **Excel** yang sudah rapi dan siap cetak.
 
 ### Built With
 
