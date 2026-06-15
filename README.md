@@ -94,6 +94,28 @@ Based on its active development and recent updates (up to version [1.2.1] , July
     * **Enhanced Feedback**: Provides clear user feedback through consolidated snackbar notifications for validation errors and improved loading indicators.
     * **Stability**: Incorporates bug fixes and optimizations to ensure smooth performance, address focus issues, and prevent UI overflows.
 
+### Project Structure & Feature Mapping
+
+Untuk memudahkan pengembangan dan pemeliharaan, berikut adalah pemetaan fitur utama ke lokasi file kodenya:
+
+#### **Modul Admin (Pusat Kendali)**
+| Fitur Utama | Lokasi File / Folder | Deskripsi |
+| :--- | :--- | :--- |
+| **Dashboard & Statistik** | `lib/presentation/admin/admin_controller.dart` | Logika monitoring, grafik tren harian, dan status server lokal. |
+| **Form Management** | `lib/presentation/admin/formpage/` | Pengaturan daftar formulir dan navigasi ke pembuat form. |
+| **Form Builder** | `lib/presentation/admin/formpage/form_builder/` | Otak pembuatan formulir dinamis, logika lompatan, dan rekap otomatis. |
+| **Account Management** | `lib/presentation/admin/Admin_Profile/` | Manajemen seluruh akun (Global, Desa, RT/RW) dan hak akses spesifik. |
+| **Village Management** | `lib/presentation/admin/village_management/` | Konfigurasi infrastruktur desa, integrasi Hybrid (IP/Port/VPN). |
+| **Submission Viewer** | `lib/presentation/admin/submissions_form/` | Daftar hasil isian petugas dan mesin ekspor data (Excel/CSV/JSON). |
+
+#### **Modul User (Petugas Lapangan)**
+| Fitur Utama | Lokasi File / Folder | Deskripsi |
+| :--- | :--- | :--- |
+| **Home (Daftar Form)** | `lib/presentation/user/user_controller.dart` | Menampilkan formulir yang hanya diotorisasikan untuk petugas tersebut. |
+| **Riwayat (History)** | `lib/presentation/user/list_submission_form/` | Daftar isian yang sudah dikirim atau draf, beserta fitur Auto-Duplicate. |
+| **Input Data (Entry)** | `lib/presentation/user/input_form_user/` | Antarmuka pengisian data lapangan, upload foto, dan koordinat GPS. |
+| **Profil Petugas** | `lib/presentation/user/user_profile/` | Pengaturan mandiri identitas petugas dan informasi wilayah tugas. |
+
 ### Built With
 
 * [![Flutter][Flutter]][Flutter-url]
@@ -215,6 +237,15 @@ To contribute code:
 3.  **Commit** your changes (`git commit -m 'Add some AmazingFeature'`).
 4.  **Push** to the branch (`git push origin feature/AmazingFeature`).
 5.  **Open a Pull Request**.
+
+### Top Contributors
+
+A huge thank you to our top contributors who have significantly shaped SensusKu:
+
+* **Noraliza Putri Nabila**: Spearheaded core development, including the dynamic form builder, admin dashboard, robust authentication system, and comprehensive data export functionalities.
+* **Nur Fitrah Wahyuni**: Contributed significantly to form input enhancements, reliable login state tracking, and overall UI/UX improvements.
+* **Felda Mufarihati**: Focused on enhancing critical UI elements, refining the splash screen, and improving submission history features.
+
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
