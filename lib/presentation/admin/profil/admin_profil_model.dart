@@ -1,9 +1,18 @@
 // lib/presentation/admin/profil/admin_profil_model.dart
+/// [AdminProfilModel] merepresentasikan struktur data profil pengguna dengan hak akses Admin.
+/// 
+/// Model ini digunakan untuk menyimpan dan mentransformasi data identitas admin
+/// yang diambil dari koleksi `users` di Firestore.
 class AdminProfilModel {
+  /// Unique ID pengguna dari Firebase Auth.
   final String uid;
+  /// Nama pengguna (username) admin.
   final String username;
-  final String email; // Anda bisa tambahkan atau kurangi field sesuai kebutuhan
+  /// Alamat email admin.
+  final String email; 
+  /// Peran pengguna dalam sistem (misal: admin_global, admin_desa, dll).
   final String role;
+  /// URL foto profil pengguna (opsional).
   final String? photoURL;
 
   AdminProfilModel({
@@ -14,7 +23,9 @@ class AdminProfilModel {
     this.photoURL,
   });
 
-  // Factory constructor untuk membuat instance dari Map (misalnya, data Firestore)
+  /// Factory constructor untuk membuat instance [AdminProfilModel] dari Map data Firestore.
+  /// 
+  /// Menggunakan [uid] dari dokumen dan Map [data] yang berisi field profil.
   factory AdminProfilModel.fromMap(String uid, Map<String, dynamic> data) {
     return AdminProfilModel(
       uid: uid,
@@ -25,7 +36,9 @@ class AdminProfilModel {
     );
   }
 
-  // Method untuk konversi ke Map (berguna jika Anda ingin update data ke Firestore)
+  /// Mengonversi objek [AdminProfilModel] kembali ke format Map.
+  /// 
+  /// Berguna untuk melakukan operasi pembaruan data (update) ke Firestore.
   Map<String, dynamic> toMap() {
     return {
       'username': username,

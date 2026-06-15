@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import '../../../infrastructure/navigation/routes.dart';
 import './list_submission_form_controller.dart';
 // FormSubmission tidak perlu diimport di sini jika kita pakai DisplayableSubmission
 // import 'package:aplikasi_pendataan_desa/presentation/user/InputFormUser/input_user_model.dart';
 
+/// [ListSubmissionFormScreen] adalah antarmuka untuk menampilkan daftar riwayat pendataan 
+/// yang dilakukan oleh Petugas pada satu formulir tertentu.
+/// 
+/// Halaman ini menyediakan fitur:
+/// 1. Bar pencarian identitas (Nama/NIK) yang modern dalam header gradasi.
+/// 2. Kontrol pengurutan data (sorting).
+/// 3. Kartu informasi ringkas per isian dengan status badge.
+/// 4. Tombol aksi cepat untuk mengedit atau menghapus isian.
 class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
-  const ListSubmissionFormScreen({Key? key}) : super(key: key);
+  const ListSubmissionFormScreen({super.key});
 
+  /// Skema warna standar halaman riwayat pendataan.
   static const Color pageBackgroundColor = Color(0xFFF0F4F8);
   static const Color primaryHeaderColor = Color(0xFFFFCC80);
   static const Color accentHeaderColor = Color(0xFFFF9800);
@@ -25,26 +35,12 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
   @override
   Widget build(BuildContext context) {
     final DateFormat dateFormat = DateFormat('dd MMM yy, HH:mm', 'id_ID'); // Format diperpendek
-    final TextEditingController searchController = TextEditingController();
-
-    // Sinkronisasi searchController dengan RxString searchQuery
-    ever(controller.searchQuery, (String query) {
-      if (searchController.text != query) {
-        searchController.text = query;
-        // Pindahkan kursor ke akhir teks jika diperlukan
-        searchController.selection = TextSelection.fromPosition(TextPosition(offset: searchController.text.length));
-      }
-    });
-    // Membersihkan searchController saat widget di-dispose
-    // Atau bisa dilakukan di onInit dan onClose controller jika searchController ada di controller.
-    // Untuk saat ini, cukup di sini karena searchController bersifat lokal.
-    // Jika ingin state search tetap ada saat kembali ke halaman ini, pindahkan searchController ke controller.
 
     return Scaffold(
       backgroundColor: pageBackgroundColor,
       body: Column(
         children: [
-          _buildHeader(context, searchController),
+          _buildHeader(context, controller.searchController),
           _buildControlsAndTitle(context),
           Expanded(
             child: Obx(() {
@@ -91,6 +87,10 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
     );
   }
 
+  /// Membangun bagian header yang mencakup AppBar dan bar pencarian identitas.
+  /// 
+  /// Menggunakan dekorasi gradasi oranye dan lengkungan pada sisi bawah untuk 
+  /// konsistensi desain modern aplikasi.
   Widget _buildHeader(BuildContext context, TextEditingController searchController) {
     return Container(
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
@@ -117,11 +117,11 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
           AppBar(
             // AWAL PENAMBAHAN UNTUK Get.back()
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back), // Anda bisa mengganti ikon ini jika mau
-              color: Colors.white, // Warna ikon, bisa juga diatur via iconTheme di AppBar
-              tooltip: 'Kembali', // Opsional, untuk aksesibilitas
+              icon: const Icon(Icons.arrow_back_rounded),
+              color: Colors.white,
+              tooltip: 'Kembali',
               onPressed: () {
-                Get.back(); // Memanggil fungsi Get.back() saat tombol ditekan
+                Navigator.of(context).pop();
               },
             ),
             // AKHIR PENAMBAHAN
@@ -147,7 +147,7 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
                 style: const TextStyle(color: textColorPrimary, fontSize: 15),
                 decoration: InputDecoration(
                   hintText: 'Cari berdasarkan nama/NIK/No.KK...', // Hint lebih spesifik
-                  hintStyle: TextStyle(color: textColorSecondary.withOpacity(0.7), fontSize: 14.5),
+                  hintStyle: TextStyle(color: textColorSecondary.withValues(alpha: 0.7), fontSize: 14.5),
                   filled: true,
                   fillColor: searchFieldColor,
                   border: OutlineInputBorder(
@@ -157,7 +157,7 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12), // Padding vertikal disesuaikan
                   suffixIcon: Container(
                     margin: const EdgeInsets.all(6), // Margin agar tidak terlalu mepet
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: searchButtonBackgroundColor,
                       shape: BoxShape.circle, // Tombol search bulat
                     ),
@@ -178,6 +178,7 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
     );
   }
 
+  /// Membangun barisan judul section dan dropdown untuk pengurutan data.
   Widget _buildControlsAndTitle(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20.0, 18.0, 20.0, 10.0), // Padding disesuaikan
@@ -202,7 +203,7 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
                 border: Border.all(color: Colors.grey.shade300, width: 1), // Border lebih halus
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: Colors.grey.withValues(alpha: 0.1),
                     spreadRadius: 1,
                     blurRadius: 4,
                     offset: const Offset(0, 2),
@@ -232,6 +233,10 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
     );
   }
 
+  /// Membangun kartu item individu untuk setiap data isian (submission).
+  /// 
+  /// Menampilkan judul (Nama KRT), NIK, status badge, periode, dan waktu pengiriman.
+  /// Dilengkapi dengan tombol aksi edit dan hapus.
   Widget _buildSubmissionCard(DisplayableSubmission displayableSubmission, DateFormat dateFormat, BuildContext context) {
     final submission = displayableSubmission.originalSubmission; // Ambil original submission
     return Card(
@@ -254,16 +259,59 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    displayableSubmission.displayTitle, // Menggunakan displayTitle
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: textColorPrimary),
-                    maxLines: 2, // Izinkan 2 baris jika panjang
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          displayableSubmission.displayTitle,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColorPrimary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      _buildStatusBadge(displayableSubmission.status),
+                    ],
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    'Dikirim: ${dateFormat.format(submission.submittedAt.toDate())}',
-                    style: TextStyle(fontSize: 12, color: textColorSecondary.withOpacity(0.9)),
+                  if (displayableSubmission.displayDescription.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2.0),
+                      child: Text(
+                        displayableSubmission.displayDescription,
+                        style: TextStyle(fontSize: 13, color: textColorSecondary.withValues(alpha: 0.9)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  if (displayableSubmission.nikKepalaKeluarga.isNotEmpty && 
+                      displayableSubmission.displayTitle != displayableSubmission.nikKepalaKeluarga &&
+                      displayableSubmission.displayDescription != displayableSubmission.nikKepalaKeluarga)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2.0),
+                      child: Text(
+                        "NIK: ${displayableSubmission.nikKepalaKeluarga}",
+                        style: TextStyle(fontSize: 12, color: textColorSecondary.withValues(alpha: 0.7), letterSpacing: 0.5),
+                      ),
+                    ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: accentHeaderColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          displayableSubmission.period,
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: accentHeaderColor),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Dikirim: ${dateFormat.format(submission.submittedAt.toDate())}',
+                        style: TextStyle(fontSize: 11, color: textColorSecondary.withValues(alpha: 0.9)),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -273,13 +321,13 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
               children: [
                 IconButton(
                   tooltip: 'Edit Pengajuan', // Tooltip for edit
-                  icon: Icon(Icons.edit_outlined, color: editButtonColor),
+                  icon: const Icon(Icons.edit_outlined, color: editButtonColor),
                   onPressed: () => controller.editSubmission(submission),
                 ),
                 const SizedBox(width: 4), // Consistent spacing with all_account_page
                 IconButton(
                   tooltip: 'Hapus Pengajuan', // Tooltip for delete
-                  icon: Icon(Icons.delete_outline_rounded, color: deleteButtonColor),
+                  icon: const Icon(Icons.delete_outline_rounded, color: deleteButtonColor),
                   onPressed: () => controller.deleteSubmission(submission, displayableSubmission.displayTitle),
                 ),
               ],
@@ -290,34 +338,14 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
     );
   }
 
-  Widget _actionButton({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required Color textColor,
-    required VoidCallback onPressed
-  }) {
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 16, color: textColor),
-      label: Text(label, style: TextStyle(fontSize: 12.5, color: textColor, fontWeight: FontWeight.w500)), // Ukuran font disesuaikan
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), // Padding tombol
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        elevation: 1.0,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap, // Mengurangi area tap
-      ),
-    );
-  }
-
+  /// Menampilkan pesan placeholder saat petugas belum pernah mengisi formulir tersebut.
   Widget _buildNoSubmissionsMessage() {
-    return LayoutBuilder( // Agar bisa mengambil constraint tinggi
+    return LayoutBuilder(
         builder: (context, constraints) {
-          return SingleChildScrollView( // Agar bisa di-scroll jika kontennya melebihi tinggi
-            physics: const AlwaysScrollableScrollPhysics(), // Selalu bisa di-scroll untuk RefreshIndicator
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight), // Minimal setinggi parent
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
@@ -331,7 +359,7 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
                         style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: textColorPrimary),
                       ),
                       const SizedBox(height: 8),
-                      Text(
+                      const Text(
                         'Anda belum pernah mengisi form ini.\nTekan tombol di bawah untuk memulai pendataan baru.',
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 13.5, color: textColorSecondary, height: 1.4),
@@ -346,6 +374,30 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
     );
   }
 
+  /// Membangun label (badge) berwarna untuk menunjukkan status isian (Draft, Submitted, Locked).
+  Widget _buildStatusBadge(String status) {
+    Color color;
+    switch (status.toLowerCase()) {
+      case 'draft': color = Colors.grey; break;
+      case 'submitted': color = Colors.green; break;
+      case 'locked': color = Colors.red; break;
+      default: color = Colors.blue;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  /// Membangun tombol utama di bagian bawah layar untuk membuat pendataan baru.
   Widget _buildBottomButton(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20), // Padding bawah lebih besar untuk home indicator
@@ -353,7 +405,7 @@ class ListSubmissionFormScreen extends GetView<ListSubmissionFormController> {
         color: pageBackgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             spreadRadius: 0,
             blurRadius: 8,
             offset: const Offset(0, -2),

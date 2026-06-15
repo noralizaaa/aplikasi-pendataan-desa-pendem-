@@ -70,22 +70,24 @@ Based on its active development and recent updates (up to version [1.2.1] , July
     * **Structured Forms**: Supports collapsible sections, Roman numeral titles for clarity, and features like cascading dropdowns and conditional jump logic for intricate survey flows.
     * **Advanced Validation**: Includes options for required fields, min/max length for text, numeric ranges, and predefined regex patterns (e.g., Indonesian phone numbers, NIK, No. KK).
     * **Repeatable Elements**: Allows questions and entire sections to be repeatable, with options to control repetition count via numeric answers from other questions.
+    * **Auto-Calculate Age**: Automatically calculates and stores respondent age based on birth date input.
 
 * **User and Account Management**:
     * **Secure Authentication**: Leverages Firebase Authentication for secure login/logout, with login state tracking in Firestore.
-    * **Role-Based Access**: Seamlessly navigates users to either the admin dashboard or the user home page based on their assigned roles.
+    * **Granular Role-Based Access (RBAC)**: Tailored interfaces and data access for **Global Admin**, **Village Admin**, **RW Admin**, and **RT Admin**.
     * **Admin Account Control**: Provides a dedicated interface for administrators to create, edit, and delete user accounts across the system, as well as manage form-specific access permissions.
     * **Profile Customization**: Users can update their usernames directly from their profile, with real-time synchronization to Firestore.
 
-* **Efficient Data Collection**:
+* **Efficient Data Collection & Hybrid Connectivity**:
+    * **Hybrid Data Storage**: Seamlessly fetch and save data using both **Cloud (Firebase)** and **Local Village Servers (REST API)** to ensure data sovereignty and reliability in areas with limited internet.
+    * **Auto-Duplicate Monthly**: Automatically copies relevant household data from the previous period to current surveys, drastically reducing enumerator workload.
+    * **Dynamic Population Profiling**: Real-time classification of respondents into specific groups (Toddlers, Elderly, WUS, etc.) based on age and gender configuration.
     * **Intuitive Forms**: Offers user-friendly input forms, ensuring smooth data entry with auto-sorting of questions by code and clear answer options.
-    * **Comprehensive Grid Inputs**: Facilitates the collection of complex data (e.g., household demographics) using flexible grid numeric questions.
-    * **Real-time Validation**: Enforces data integrity through strict validation rules applied during input.
 
-* **Admin Dashboard & Reporting**:
-    * **Key Metrics Overview**: Displays vital statistics, such as "Jumlah Rumah Tangga yang Sudah Didata" (Number of Households Surveyed) and daily submission trends for specific forms.
-    * **Date Range Filtering**: Allows administrators to filter and analyze data using a custom pop-up date range picker.
-    * **Data Export**: Enables robust data export capabilities for form submissions in **JSON**, **CSV**, and **XLSX** formats, with options for custom headers and handling of various cell types.
+* **Admin Dashboard & Advanced Reporting**:
+    * **Key Metrics Overview**: Displays vital statistics, daily submission trends, and **Local Server Connectivity Status** (Online/Offline).
+    * **Strict Regional Filtering**: High-accuracy data filtering based on RT/RW profiles to ensure enumerators and monitors only see data relevant to their specific jurisdiction.
+    * **Robust Data Export**: Advanced export engine for **JSON**, **CSV**, and **XLSX (Excel)** formats, featuring professional styling, dynamic headers, and smart handling of sensitive IDs like NIK.
 
 * **UI/UX and Performance**:
     * **Modern Design**: Features a clean, card-based design with consistent color schemes, gradient headers, and intuitive navigation.
@@ -162,20 +164,20 @@ Ensure you have the following installed:
 
 1.  **Splash Screen**: Upon launch, the app displays a branded splash screen with a smooth fade-in animation, leading to the landing page.
 2.  **Landing Page**: A visually appealing landing page welcomes users, featuring the BPS and SensusKu logos and a prominent "START" button to begin their journey.
-3.  **Authentication**: Users authenticate securely via Firebase. Their role (admin or regular user) dictates their access, routing them to the appropriate dashboard.
-4.  **Data Collection (User)**:
-    * Users can access forms based on their assigned permissions.
-    * They can view their submission history and create new data entries or edit existing ones.
-    * Forms are dynamic, supporting various question types, including smart features like cascading dropdowns and grid numeric inputs.
-    * Input is guided by real-time validation and conditional logic, ensuring data quality.
-5.  **Admin Dashboard**:
-    * Administrators gain insights into data collection progress, such as the total number of surveyed households.
-    * Data can be filtered by date ranges using an intuitive calendar interface.
-    * Admins have full control over form definitions and user accounts.
-    * Crucially, they can export collected data in **JSON**, **CSV**, or **XLSX** formats, choosing their preferred save location through the system's file picker.
-6.  **Account Management (Admin)**:
+3.  **Authentication**: Users authenticate securely via Firebase. Their specific role (**Global Admin**, **Village Admin**, **RW/RT Admin**, or **Enumerator**) determines their access level and dashboard layout.
+4.  **Data Collection (Petugas/Enumerator)**:
+    * Users access forms authorized by the admin.
+    * **Auto-Duplicate**: Seamlessly continue surveys by automatically copying household data from the previous month.
+    * Dynamic forms support smart features like cascading dropdowns, age-calculation, and real-time population classification.
+    * Input is guided by real-time validation and skip logic, with data stored in both Cloud and **Local Village Servers**.
+5.  **Admin Dashboard & Village Infrastructure**:
+    * Monitor collection progress with real-time stats and daily trend charts.
+    * **Hybrid Management**: Register and manage local village servers (IP, Port, VPN settings) to ensure data sovereignty.
+    * Admins can perform high-accuracy regional filtering based on RT/RW boundaries.
+    * Export collected data into professional **XLSX (Excel)**, **CSV**, or **JSON** files with styled headers and sorted data columns.
+6.  **Account & Authority Management (Admin)**:
     * A dedicated interface allows admins to create new user accounts, modify existing ones (e.g., updating usernames, changing roles), and delete accounts.
-    * Granular authority management enables admins to assign specific forms to individual users, controlling who can submit data for which form.
+    * Granular authority control: Assign specific forms to individual users or grant village-wide access otomatis.
 
 For a more in-depth guide and visual walkthroughs, please refer to the [Wiki](https://github.com/RazerArdi/Sensusku-bpsBatu/wiki).
 
@@ -185,17 +187,18 @@ For a more in-depth guide and visual walkthroughs, please refer to the [Wiki](ht
 
 SensusKu is continually evolving. Here's a glimpse of planned enhancements and known areas for improvement:
 
--   [x] Implement splash screen with animation.
--   [x] Design a modern landing page with a gradient header.
--   [x] Integrate Firebase authentication and Firestore for robust backend services.
--   [x] Develop a dynamic form builder supporting diverse question types.
--   [x] Create an admin dashboard with comprehensive data filtering and export capabilities.
--   [x] Add user profile management and full account administration features.
--   [ ] Implement robust **offline data storage and synchronization** to ensure data collection continuity in areas with limited connectivity.
--   [ ] Enhance the reporting dashboard with **advanced data visualizations and analytics**.
--   [ ] Support more complex validation rules and improve the UI for **repeatable question groups**.
--   [ ] Address minor **UI/UX inconsistencies** and refine navigation flows.
--   [ ] Optimize overall **performance** for handling large datasets and highly complex forms.
+- [x] Implement splash screen with animation.
+- [x] Design a modern landing page with a gradient header.
+- [x] Integrate Firebase authentication and Firestore for robust backend services.
+- [x] Develop a dynamic form builder supporting diverse question types.
+- [x] Create an admin dashboard with comprehensive data filtering and export capabilities.
+- [x] Add user profile management and full account administration features.
+- [x] Integrate **Local Village Server (Hybrid)** for data sovereignty.
+- [x] Implement **Auto-Duplicate Monthly** for continuous data collection.
+- [x] Enhance reporting with **real-time daily trend charts (fl_chart)**.
+- [ ] Implement robust **offline data synchronization** for zero-connectivity environments.
+- [ ] Support more complex validation rules and improve the UI for **repeatable question groups**.
+- [ ] Optimize overall **performance** for handling extremely large datasets.
 
 See the [open issues](https://github.com/RazerArdi/Sensusku-bpsBatu/issues) for a full list of proposed features and known issues that need attention.
 
@@ -217,30 +220,16 @@ To contribute code:
 
 A huge thank you to our top contributors who have significantly shaped SensusKu:
 
-* **Bayu Ardiyansyah**: Spearheaded core development, including the dynamic form builder, admin dashboard, robust authentication system, and comprehensive data export functionalities.
-* **Lutfi Indra Nur Praditya**: Contributed significantly to form input enhancements, reliable login state tracking, and overall UI/UX improvements.
-* **Febri Bagus Triwibowo**: Focused on enhancing critical UI elements, refining the splash screen, and improving submission history features.
+* **Noraliza Putri Nabila**: Spearheaded core development, including the dynamic form builder, admin dashboard, robust authentication system, and comprehensive data export functionalities.
+* **Nur Fitrah Wahyuni**: Contributed significantly to form input enhancements, reliable login state tracking, and overall UI/UX improvements.
+* **Felda Mufarihati**: Focused on enhancing critical UI elements, refining the splash screen, and improving submission history features.
 
-<a href="https://github.com/RazerArdi/Sensusku-bpsBatu/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=RazerArdi/Sensusku-bpsBatu" alt="contrib.rocks image" />
-</a>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## License
 
 This project is distributed under the **MIT License**. See `LICENSE.txt` for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-## Contact
-
-For any inquiries or collaborations, feel free to reach out:
-
-* **Email**: [bayuardi30@outlook.com](mailto:bayuardi30@outlook.com)
-* **GitHub Issues**: [Open an Issue](https://github.com/RazerArdi/Sensusku-bpsBatu/issues)
-
-**Project Link**: [https://github.com/RazerArdi/Sensusku-bpsBatu](https://github.com/RazerArdi/Sensusku-bpsBatu)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

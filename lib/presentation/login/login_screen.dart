@@ -17,7 +17,7 @@ class LoginScreen extends GetView<LoginController> {
 
   @override
   Widget build(BuildContext context) {
-    print('DEBUG: LoginScreen loaded. Current route: ${Get.currentRoute}, Previous route: ${Get.previousRoute}');
+    debugPrint('DEBUG: LoginScreen loaded. Current route: ${Get.currentRoute}, Previous route: ${Get.previousRoute}');
     return Scaffold(
       backgroundColor: pageBackgroundColor,
       appBar: AppBar(
@@ -26,7 +26,7 @@ class LoginScreen extends GetView<LoginController> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black54),
           onPressed: () {
-            print('DEBUG: Back button pressed. Navigating to LandingPage.');
+            debugPrint('DEBUG: Back button pressed. Navigating to LandingPage.');
             Get.offNamed(AppRoutes.landingPage);
           },
         ),
@@ -38,7 +38,7 @@ class LoginScreen extends GetView<LoginController> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               const SizedBox(height: 40),
-              Text(
+              const Text(
                 'Silakan isi Email dan\nPassword Terlebih Dahulu',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -52,7 +52,30 @@ class LoginScreen extends GetView<LoginController> {
               _buildUsernameField(context),
               const SizedBox(height: 25),
               _buildPasswordField(context),
-              const SizedBox(height: 60),
+              const SizedBox(height: 12),
+              Obx(() => controller.errorMessage.value.isNotEmpty
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red.shade700, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              controller.errorMessage.value,
+                              style: TextStyle(color: Colors.red.shade700, fontSize: 13, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox.shrink()),
+              const SizedBox(height: 48),
               _buildLoginButton(),
               const SizedBox(height: 20),
             ],
@@ -69,7 +92,7 @@ class LoginScreen extends GetView<LoginController> {
       style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
         hintText: 'Email',
-        hintStyle: TextStyle(color: textFieldDefaultColor.withOpacity(0.7)),
+        hintStyle: TextStyle(color: textFieldDefaultColor.withValues(alpha: 0.7)),
         labelText: 'Email',
         labelStyle: const TextStyle(color: textFieldDefaultColor),
         filled: true,
@@ -99,7 +122,7 @@ class LoginScreen extends GetView<LoginController> {
         style: const TextStyle(color: Colors.black),
         decoration: InputDecoration(
           hintText: 'Password',
-          hintStyle: TextStyle(color: textFieldDefaultColor.withOpacity(0.7)),
+          hintStyle: TextStyle(color: textFieldDefaultColor.withValues(alpha: 0.7)),
           labelText: 'Password',
           labelStyle: const TextStyle(color: textFieldDefaultColor),
           filled: true,

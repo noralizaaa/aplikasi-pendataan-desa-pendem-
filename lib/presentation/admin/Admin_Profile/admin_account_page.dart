@@ -1,18 +1,28 @@
 // lib/presentation/admin/Admin_Profile/admin_account_page.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:aplikasi_pendataan_desa/domain/auth/models/user_model.dart';
 import 'admin_account_controller.dart'; // Menggunakan controller yang sudah dirombak
 import 'package:aplikasi_pendataan_desa/presentation/admin/formpage/admin_form_model.dart'; // Untuk FormItem
-import 'package:aplikasi_pendataan_desa/presentation/admin/admin_screen.dart'; // Untuk warna konsisten
+import 'package:aplikasi_pendataan_desa/presentation/admin/admin_constants.dart'; // Untuk warna konsisten
 import 'package:aplikasi_pendataan_desa/infrastructure/navigation/routes.dart'; // Untuk navigasi
 
+/// [AdminAccountPage] adalah halaman UI untuk kategori Manajemen Akun pada sisi Admin.
+/// 
+/// Halaman ini menampilkan:
+/// 1. Shortcut ke daftar semua akun dan manajemen desa (jika Admin Global).
+/// 2. Daftar formulir aktif yang dapat dikelola hak akses akunnya secara spesifik.
 class AdminAccountPage extends GetView<AdminAccountController> {
-  const AdminAccountPage({Key? key}) : super(key: key);
+  const AdminAccountPage({super.key});
 
+  /// Warna latar belakang halaman.
   static const Color pageBackgroundColor = Color(0xFFEBF4F8);
+  /// Warna judul utama halaman.
   static const Color titlePageColor = Colors.black87;
-  static const Color cardBgColor = AdminScreen.cardBackgroundColor;
-  // Warna baru untuk kartu "Daftar Semua Akun" agar lebih mencolok
+  /// Warna latar belakang kartu item.
+  static const Color cardBgColor = AdminTheme.cardBackgroundColor;
+  
+  /// Gradien warna untuk kartu "Daftar Akun" agar terlihat berbeda secara visual.
   static const Gradient allAccountsCardGradient = LinearGradient(
     colors: [Color(0xFFFFF9C4), Color(0xFFFFF176)],
     begin: Alignment.topLeft,
@@ -21,7 +31,7 @@ class AdminAccountPage extends GetView<AdminAccountController> {
   static const Color titleColor = Colors.black87;
   static const Color subtitleColor = Colors.black54;
   static const Color dateColor = Colors.grey;
-  static const Color iconDetailColor = AdminScreen.iconColor;
+  static const Color iconDetailColor = AdminTheme.iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -41,8 +51,21 @@ class AdminAccountPage extends GetView<AdminAccountController> {
               ),
             ),
             const SizedBox(height: 20), // Jarak setelah judul utama
-            // --- Card untuk "Daftar Semua Akun" ---
-            _buildAllAccountsCard(context),
+            // --- Row untuk Card Utama ---
+            Obx(() {
+              final userModel = UserModel(uid: '', role: controller.userRole.value);
+              debugPrint('AdminAccountPage: Rendering cards for role: ${userModel.role}, isGlobal: ${userModel.isGlobalAdmin}');
+              
+              return Row(
+                children: [
+                  Expanded(child: _buildAllAccountsCard(context)),
+                  if (userModel.isGlobalAdmin) ...[
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildVillagesCard(context)),
+                  ],
+                ],
+              );
+            }),
             const SizedBox(height: 24),
             // --- Daftar form lainnya ---
             Expanded(
@@ -50,14 +73,14 @@ class AdminAccountPage extends GetView<AdminAccountController> {
                 if (controller.isLoading.value && controller.listedForms.isEmpty) {
                   return const Center(
                       child: CircularProgressIndicator(
-                          color: AdminScreen.accentHeaderColor));
+                          color: AdminTheme.accentHeaderColor));
                 }
                 if (controller.listedForms.isEmpty) {
                   return _buildNoFormsMessage(); // Pesan jika tidak ada form
                 }
                 return RefreshIndicator(
                   onRefresh: () => controller.refreshListedForms(),
-                  color: AdminScreen.accentHeaderColor,
+                  color: AdminTheme.accentHeaderColor,
                   child: ListView.builder(
                     padding: EdgeInsets.zero,
                     itemCount: controller.listedForms.length,
@@ -80,6 +103,7 @@ class AdminAccountPage extends GetView<AdminAccountController> {
     );
   }
 
+  /// Membangun kartu navigasi untuk menuju ke manajemen seluruh akun pengguna.
   Widget _buildAllAccountsCard(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
@@ -87,9 +111,9 @@ class AdminAccountPage extends GetView<AdminAccountController> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -98,51 +122,35 @@ class AdminAccountPage extends GetView<AdminAccountController> {
         child: InkWell(
           onTap: () {
             Get.toNamed(AppRoutes.allAccountManagement);
-            print('Navigasi ke halaman Manajemen Semua Akun');
           },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8),
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    color: Colors.white70,
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.manage_accounts_outlined,
-                    color: AdminScreen.primaryHeaderColor,
-                    size: 36,
+                    color: AdminTheme.accentHeaderColor,
+                    size: 28,
                   ),
                 ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'Daftar Semua Akun',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      SizedBox(height: 6),
-                      Text(
-                        'Kelola semua akun pengguna terdaftar',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 12),
+                const Text(
+                  'Daftar Akun',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios, color: Colors.black45, size: 22),
               ],
             ),
           ),
@@ -151,6 +159,70 @@ class AdminAccountPage extends GetView<AdminAccountController> {
     );
   }
 
+  /// Membangun kartu navigasi untuk manajemen desa (Hanya muncul untuk Admin Global).
+  Widget _buildVillagesCard(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFB2EBF2), Color(0xFF4DD0E1)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Get.toNamed(AppRoutes.allVillageManagement);
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    color: Colors.white70,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.holiday_village_outlined,
+                    color: Color(0xFF0097A7),
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Daftar Desa',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Membangun kartu item untuk setiap formulir.
+  /// 
+  /// Kartu ini mengarahkan admin ke halaman manajemen akun spesifik yang 
+  /// memiliki akses ke formulir tersebut.
   Widget _buildFormItemCardForAccountTab(FormItem item, BuildContext context) {
     int totalQuestions = item.sections.fold(0, (sum, section) => sum + section.questions.length);
     String formattedDate =
@@ -183,7 +255,7 @@ class AdminAccountPage extends GetView<AdminAccountController> {
               'formTitle': item.title,
             },
           );
-          print('Navigasi ke manajemen akun untuk form: ${item.title} (ID: ${item.id})');
+          debugPrint('Navigasi ke manajemen akun untuk form: ${item.title} (ID: ${item.id})');
         },
         borderRadius: BorderRadius.circular(10),
         child: Padding(
@@ -194,10 +266,10 @@ class AdminAccountPage extends GetView<AdminAccountController> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AdminScreen.primaryHeaderColor.withOpacity(0.25),
+                  color: AdminTheme.primaryHeaderColor.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(formIcon, color: AdminScreen.iconColor, size: 28),
+                child: Icon(formIcon, color: AdminTheme.iconColor, size: 28),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -256,6 +328,7 @@ class AdminAccountPage extends GetView<AdminAccountController> {
     );
   }
 
+  /// Menampilkan pesan placeholder jika belum ada formulir yang dibuat.
   Widget _buildNoFormsMessage() {
     return Center(
       child: Padding(

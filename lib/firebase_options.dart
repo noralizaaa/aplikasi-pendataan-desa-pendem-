@@ -4,9 +4,13 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-/// Default [FirebaseOptions] for use with your Firebase apps.
+/// [DefaultFirebaseOptions] menyediakan konfigurasi default [FirebaseOptions] 
+/// untuk setiap platform yang didukung.
 ///
-/// Example:
+/// File ini secara otomatis dihasilkan oleh FlutterFire CLI dan berisi 
+/// kunci API serta ID proyek yang diperlukan untuk menghubungkan aplikasi ke Firebase.
+///
+/// Contoh Penggunaan:
 /// ```dart
 /// import 'firebase_options.dart';
 /// // ...
@@ -15,6 +19,9 @@ import 'package:flutter/foundation.dart'
 /// );
 /// ```
 class DefaultFirebaseOptions {
+  /// Mendapatkan konfigurasi [FirebaseOptions] berdasarkan platform saat ini (Android, Windows, dll).
+  /// 
+  /// Melemparkan [UnsupportedError] jika platform tidak didukung atau belum dikonfigurasi.
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       throw UnsupportedError(
@@ -49,6 +56,7 @@ class DefaultFirebaseOptions {
     }
   }
 
+  /// Konfigurasi Firebase untuk platform Android.
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCS2TK3v9uZX69bRz_mgAuEFN71U2-A5ZI',
     appId: '1:465498567418:android:18a88f02827c4e3da88f43',
@@ -57,6 +65,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'aplikasi-pendataan-desa.firebasestorage.app',
   );
 
+  /// Konfigurasi Firebase untuk platform Windows.
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyCS2TK3v9uZX69bRz_mgAuEFN71U2-A5ZI',
     appId: '1:465498567418:android:18a88f02827c4e3da88f43',

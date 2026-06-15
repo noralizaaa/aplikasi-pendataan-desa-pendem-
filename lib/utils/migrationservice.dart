@@ -192,20 +192,26 @@ Migrasi Complete: ${status['migrationComplete'] ? 'Ya' : 'Tidak'}
 
     Get.dialog(
       AlertDialog(
-        title: Text('Status Migrasi isLogin'),
+        title: const Text('Status Migrasi isLogin'),
         content: Text(message),
         actions: [
           if (!status['migrationComplete'])
             TextButton(
               onPressed: () async {
-                Get.back();
+                if (Get.isDialogOpen == true) {
+                  Get.back();
+                }
                 await MigrationService.migrateIsLoginField();
               },
-              child: Text('Jalankan Migrasi'),
+              child: const Text('Jalankan Migrasi'),
             ),
           TextButton(
-            onPressed: () => Get.back(),
-            child: Text('Tutup'),
+            onPressed: () {
+              if (Get.isDialogOpen == true) {
+                Get.back();
+              }
+            },
+            child: const Text('Tutup'),
           ),
         ],
       ),

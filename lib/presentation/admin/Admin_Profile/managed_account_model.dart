@@ -1,11 +1,20 @@
 // lib/presentation/admin/Admin_Profile/managed_account_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// [ManagedAccount] merepresentasikan data otoritas akun pada sebuah formulir.
+/// 
+/// Model ini disimpan dalam subkoleksi `managedAccounts` di bawah setiap dokumen 
+/// formulir untuk menentukan siapa saja yang memiliki akses pengisian/pengelolaan data.
 class ManagedAccount {
-  final String id; // ID dokumen di subkoleksi managedAccounts
+  /// ID dokumen unik di dalam subkoleksi `managedAccounts`.
+  final String id; 
+  /// Alamat email pengguna yang diberi otoritas.
   final String email;
-  final String role; // Peran pengguna, e.g., "user"
-  final String? userId; // UID pengguna dari koleksi /users
+  /// Peran pengguna khusus untuk formulir ini (misal: "user").
+  final String role; 
+  /// UID pengguna yang merujuk pada koleksi utama `/users`.
+  final String? userId; 
+  /// Waktu pembuatan atau pemberian otoritas.
   final Timestamp createdAt;
 
   ManagedAccount({
@@ -16,6 +25,7 @@ class ManagedAccount {
     required this.createdAt,
   });
 
+  /// Membuat instance [ManagedAccount] dari dokumen [DocumentSnapshot] Firestore.
   factory ManagedAccount.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return ManagedAccount(
@@ -27,6 +37,7 @@ class ManagedAccount {
     );
   }
 
+  /// Mengonversi objek [ManagedAccount] ke dalam format Map untuk disimpan di Firestore.
   Map<String, dynamic> toFirestore() {
     return {
       'email': email,

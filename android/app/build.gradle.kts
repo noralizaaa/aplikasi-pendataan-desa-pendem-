@@ -21,8 +21,8 @@ android {
 
     defaultConfig {
         applicationId = "com.bpsbatu.aplikasi_pendataan_desa"
-        minSdk = 23
-        targetSdk = 36
+        minSdk = flutter.minSdkVersion
+        targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true

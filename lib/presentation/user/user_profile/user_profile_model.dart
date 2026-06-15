@@ -1,26 +1,33 @@
 // Path: lib/presentation/user_profile/user_profile_model.dart
 
+/// [UserProfile] merepresentasikan struktur data profil untuk pengguna level User/Petugas.
+/// 
+/// Digunakan untuk menyimpan informasi identitas pengguna yang sedang aktif, 
+/// termasuk username, peran (role), dan kaitannya dengan program pendataan tertentu.
 class UserProfile {
-  // CHANGE: Make username non-final so it can be updated
+  /// Nama tampilan pengguna yang dapat diperbarui.
   String username;
+  /// Peran pengguna dalam sistem (misal: 'user', 'admin_desa', dll).
   final String role;
-  final String? programId; // This is correctly defined as nullable
+  /// ID program atau formulir yang dikaitkan dengan otoritas user (opsional).
+  final String? programId; 
 
   UserProfile({
     required this.username,
     required this.role,
-    this.programId, // This is correctly defined as an optional named parameter
+    this.programId, 
   });
 
-  // FIX: Removed the extra 'Map<' from the type argument of the 'data' parameter
+  /// Membuat instance [UserProfile] dari format Map (biasanya dari Firestore atau argumen navigasi).
   factory UserProfile.fromMap(Map<String, dynamic> data) {
     return UserProfile(
-      username: data['username'] as String? ?? 'N/A', // Safer cast with `as String?`
-      role: data['role'] as String? ?? 'user', // Safer cast
-      programId: data['programId'] as String?, // Null-safe cast
+      username: data['username'] as String? ?? 'N/A', 
+      role: data['role'] as String? ?? 'user', 
+      programId: data['programId'] as String?, 
     );
   }
 
+  /// Mengonversi objek [UserProfile] ke format Map.
   Map<String, dynamic> toMap() {
     return {
       'username': username,

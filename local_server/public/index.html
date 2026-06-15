@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Pendataan Desa - Realtime</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        .update-flash { animation: flash 2s ease-out; }
+        @keyframes flash {
+            0% { background-color: #fef3c7; }
+            100% { background-color: transparent; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <nav class="bg-blue-600 p-4 text-white shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Dashboard Realtime Desa</h1>
+            <div id="status" class="flex items-center">
+                <span class="h-3 w-3 bg-green-400 rounded-full mr-2"></span>
+                <span class="text-sm">Terhubung (Live)</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6">
+        <!-- Statistik Sederhana -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-gray-500 text-sm font-semibold">TOTAL SUBMISSION</h3>
+                <p id="stat-total" class="text-3xl font-bold text-blue-600">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-gray-500 text-sm font-semibold">FORM AKTIF</h3>
+                <p id="stat-forms" class="text-3xl font-bold text-green-600">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-gray-500 text-sm font-semibold">STATUS SERVER</h3>
+                <p class="text-3xl font-bold text-gray-800">ONLINE</p>
+            </div>
+        </div>
+
+        <!-- Tabel Data -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-700">Data Masuk Terbaru</h2>
+                <span class="text-xs text-gray-400 italic">Data terupdate otomatis tanpa refresh</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-600 text-sm">
+                            <th class="p-4">ID Submission</th>
+                            <th class="p-4">Form ID</th>
+                            <th class="p-4">User</th>
+                            <th class="p-4">Periode</th>
+                            <th class="p-4">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table">
+                        <!-- Data akan muncul di sini -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const tableBody = document.getElementById('data-table');
+        const statTotal = document.getElementById('stat-total');
+        const statForms = document.getElementById('stat-forms');
+
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/submissions');
+                const data = await response.json();
+                renderTable(data);
+                updateStats(data);
+            } catch (err) {
+                console.error("Gagal mengambil data:", err);
+            }
+        }
+
+        function renderTable(data) {
+            tableBody.innerHTML = '';
+            data.reverse().forEach(item => {
+                const row = `
+                    <tr class="border-b hover:bg-gray-50 transition" id="row-${item.id}">
+                        <td class="p-4 font-mono text-xs text-blue-600">${item.id}</td>
+                        <td class="p-4">${item.formId}</td>
+                        <td class="p-4 font-medium text-gray-700">${item.userId}</td>
+                        <td class="p-4"><span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">${item.period || '-'}</span></td>
+                        <td class="p-4">
+                            <button onclick="alert('Detail Data: ' + JSON.stringify(${JSON.stringify(item).replace(/"/g, '&quot;')}))" class="text-blue-500 hover:underline text-sm">Lihat Detail</button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML('beforeend', row);
+            });
+        }
+
+        function updateStats(data) {
+            statTotal.innerText = data.length;
+            const uniqueForms = [...new Set(data.map(i => i.formId))].length;
+            statForms.innerText = uniqueForms;
+        }
+
+        // DENGARKAN UPDATE DARI SERVER (REALTIME)
+        socket.on('data-updated', (update) => {
+            console.log('Ada update data baru!', update);
+            fetchData(); // Ambil data ulang saat ada perubahan
+
+            // Beri notifikasi visual kecil
+            const nav = document.querySelector('nav');
+            nav.classList.add('bg-green-600');
+            setTimeout(() => nav.classList.remove('bg-green-600'), 1000);
+        });
+
+        // Ambil data pertama kali saat load
+        fetchData();
+    </script>
+</body>
+</html>

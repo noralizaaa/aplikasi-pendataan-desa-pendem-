@@ -1,47 +1,88 @@
 // lib/domain/auth/models/user_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
-/// Representasi model data untuk pengguna aplikasi.
-/// Menyimpan informasi dasar pengguna beserta perannya.
+/// [UserModel] adalah representasi data inti dari setiap pengguna di dalam aplikasi.
+/// 
+/// Model ini menyimpan identitas unik, email, peran (role), serta wilayah tugas (RT/RW) 
+/// yang menjadi dasar sistem keamanan berbasis peran (Role-Based Access Control).
 class UserModel {
-  final String uid;        // ID unik pengguna dari Firebase Authentication
-  final String? email;     // Email pengguna, bisa null (opsional)
-  final String role;       // Peran pengguna, contoh: 'admin' atau 'user'
+  /// ID unik pengguna dari Firebase Authentication.
+  final String uid;        
+  /// Alamat email pengguna (opsional).
+  final String? email;     
+  /// Peran pengguna (misal: 'admin_global', 'admin_desa', 'user').
+  final String role;       
+  /// Nomor RT wilayah tugas (untuk Admin RT/RW dan Petugas).
+  final String? rt;        
+  /// Nomor RW wilayah tugas.
+  final String? rw;        
 
-  /// Konstruktor untuk membuat instance [UserModel].
   UserModel({
     required this.uid,
     this.email,
     required this.role,
+    this.rt,
+    this.rw,
   });
 
-  /// Factory constructor untuk membuat instance [UserModel] dari
-  /// objek [DocumentSnapshot] yang diterima dari Firestore.
-  ///
-  /// [doc] adalah snapshot dokumen pengguna dari Firestore.
-  /// Data di dalamnya diharapkan berupa Map<String, dynamic>.
+  // --- LOGIKA PERAN (ROLE) TERPUSAT ---
+  
+  /// Mengecek apakah pengguna memiliki otoritas administratif (Global, Desa, RW, atau RT).
+  bool get isAdmin {
+    final r = role.toLowerCase().trim();
+    return [
+      'admin', 'global_admin', 'admin_global', 'adminglobal', 
+      'admin_desa', 'admindesa', 'admin desa',
+      'admin_rt', 'adminrt', 'admin rt'
+    ].contains(r) || r.contains('admin');
+  }
+
+  /// Mengecek apakah pengguna adalah Admin Global dengan akses tidak terbatas.
+  bool get isGlobalAdmin {
+    final r = role.toLowerCase().trim();
+    return ['admin', 'global_admin', 'admin_global', 'adminglobal'].contains(r);
+  }
+
+  /// Mengecek apakah pengguna adalah Admin Desa.
+  bool get isVillageAdmin {
+    final r = role.toLowerCase().trim();
+    return ['admin_desa', 'admindesa', 'admin desa'].contains(r);
+  }
+
+  /// Mengecek apakah pengguna adalah Admin RW.
+  bool get isAdminRw {
+    final r = role.toLowerCase().trim();
+    return ['admin_rw', 'adminrw', 'admin rw'].contains(r);
+  }
+
+  /// Mengecek apakah pengguna adalah Admin RT.
+  bool get isAdminRt {
+    final r = role.toLowerCase().trim();
+    return ['admin_rt', 'adminrt', 'admin rt'].contains(r);
+  }
+
+  /// Mengecek apakah admin memiliki akses yang dibatasi wilayah (Desa/RW/RT).
+  bool get isRestrictedAdmin => isVillageAdmin || isAdminRw || isAdminRt;
+
+  /// Factory constructor untuk memetakan dokumen Firestore ke objek [UserModel].
   factory UserModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final Map<String, dynamic>? data = doc.data();
 
-    // Mengembalikan instance UserModel dengan data dari Firestore.
-    // uid diambil dari ID dokumen itu sendiri.
-    // email diambil dari field 'email', bisa null.
-    // role diambil dari field 'role', default ke 'user' jika tidak ada atau null.
     return UserModel(
-      uid: doc.id, // UID diambil dari ID dokumen itu sendiri
+      uid: doc.id, 
       email: data?['email'] as String?,
-      role: data?['role'] as String? ?? 'user', // Default ke 'user' jika field 'role' tidak ada atau null
+      role: data?['role'] as String? ?? 'user', 
+      rt: data?['rt']?.toString(),
+      rw: data?['rw']?.toString(),
     );
   }
 
-  /// Mengubah instance [UserModel] menjadi [Map<String, dynamic>].
-  /// Ini digunakan untuk menulis data objek [UserModel] ke Firestore.
+  /// Mengonversi objek [UserModel] ke dalam format Map untuk disimpan ke Firestore.
   Map<String, dynamic> toFirestore() {
     return {
-      // UID biasanya tidak disimpan sebagai field terpisah di dalam dokumen karena
-      // sudah berfungsi sebagai ID dokumen di Firestore. Namun, bisa ditambahkan jika perlu.
-      // 'uid': uid,
-      if (email != null) 'email': email, // Hanya sertakan email jika tidak null
+      if (email != null) 'email': email,
       'role': role,
+      if (rt != null) 'rt': rt,
+      if (rw != null) 'rw': rw,
     };
   }
 }

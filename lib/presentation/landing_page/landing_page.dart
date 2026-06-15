@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'LandingPage_controller.dart'; // Pastikan controller ini ada
+import 'landing_page_controller.dart'; // Pastikan controller ini ada
 // Impor AppRoutes Anda untuk mengakses konstanta rute login
 import '../../infrastructure/navigation/routes.dart'; // PASTIKAN PATH INI BENAR
 
 // CustomClipper yang sudah disesuaikan agar lengkungan lebih ke bawah
+/// [BottomArcClipper] adalah CustomClipper yang digunakan untuk membuat efek lengkungan
+/// ke arah bawah pada bagian bawah container oranye di Landing Page.
 class BottomArcClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -32,6 +34,10 @@ class BottomArcClipper extends CustomClipper<Path> {
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
+/// [LandingPageScreen] adalah tampilan awal (welcome screen) aplikasi SensusKu.
+/// 
+/// Halaman ini menampilkan logo BPS, judul aplikasi, ilustrasi, dan logo pendukung 
+/// (BPS, Pemkot Batu, UMM) serta tombol navigasi menuju halaman Login.
 class LandingPageScreen extends GetView<LandingPageController> {
   const LandingPageScreen({super.key});
 
@@ -119,7 +125,7 @@ class LandingPageScreen extends GetView<LandingPageController> {
                                     width: mediaSize.width * 0.60, // USER CHANGED THIS
                                     fit: BoxFit.contain,
                                     errorBuilder: (context, error, stackTrace) {
-                                      print("Error loading undraw_mobile-ux_5h2w.png: $error");
+                                      debugPrint("Error loading undraw_mobile-ux_5h2w.png: $error");
                                       return SizedBox(height: mediaSize.width * 0.1);
                                     }
                                 ),
@@ -152,7 +158,7 @@ class LandingPageScreen extends GetView<LandingPageController> {
                                       decoration: BoxDecoration(
                                         // Warna latar belakang yang sedikit berbeda untuk grouping
                                         // Misalnya, putih dengan sedikit opacity atau abu-abu sangat muda
-                                        color: Colors.white.withOpacity(0.16), // Contoh: semi-transparan
+                                        color: Colors.white.withValues(alpha: 0.16), // Contoh: semi-transparan
                                         borderRadius: BorderRadius.circular(12.0),
                                         // Optional: tambahkan border jika diinginkan
                                         // border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
@@ -239,7 +245,7 @@ class LandingPageScreen extends GetView<LandingPageController> {
                           width: mediaSize.width * 0.85,
                           child: ElevatedButton(
                             onPressed: () {
-                              print('Tombol START ditekan, navigasi ke ${AppRoutes.login}...');
+                              debugPrint('Tombol START ditekan, navigasi ke ${AppRoutes.login}...');
                               Get.toNamed(AppRoutes.login);
                             },
                             style: ElevatedButton.styleFrom(
@@ -249,7 +255,7 @@ class LandingPageScreen extends GetView<LandingPageController> {
                                 borderRadius: BorderRadius.circular(13),
                               ),
                               elevation: 4,
-                              shadowColor: Colors.orangeAccent.withOpacity(0.3),
+                              shadowColor: Colors.orangeAccent.withValues(alpha: 0.3),
                             ),
                             child: const Text(
                               "START",

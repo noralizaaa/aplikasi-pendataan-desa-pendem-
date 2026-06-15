@@ -5,14 +5,20 @@ import 'form_account_management_controller.dart';
 import 'managed_account_model.dart';
 import 'package:aplikasi_pendataan_desa/presentation/admin/admin_screen.dart'; // Tambahan untuk warna konsisten
 
+/// [FormAccountManagementPage] adalah halaman UI untuk mengelola hak akses akun pada formulir spesifik.
+/// 
+/// Halaman ini memungkinkan admin untuk melihat daftar user yang memiliki akses 
+/// ke formulir tersebut, serta memberikan otoritas baru kepada user lain.
 class FormAccountManagementPage extends GetView<FormAccountManagementController> {
-  const FormAccountManagementPage({Key? key}) : super(key: key);
+  const FormAccountManagementPage({super.key});
 
-  // Define colors based on the image or your app's theme
+  /// Warna latar belakang halaman.
   static const Color pageBackgroundColor = Color(0xFFF5F5F5);
+  /// Warna utama header (diambil dari tema admin).
   static const Color headerBackgroundColor = AdminScreen.primaryHeaderColor;
   static const Color headerTextColor = Colors.white;
   static const Color searchBarColor = Colors.white;
+  /// Warna ikon pencarian dan elemen aksen.
   static const Color searchIconColor = AdminScreen.accentHeaderColor;
 
   static const Color createNewUserButtonColor = AdminScreen.primaryHeaderColor;
@@ -21,8 +27,10 @@ class FormAccountManagementPage extends GetView<FormAccountManagementController>
   static const Color buttonTextColor = Colors.white;
   static const Color cardBackgroundColor = Colors.white;
   static const Color accountTextColor = Colors.black87;
-  static const Color editButtonColor = Color(0xFF4CAF50); // Green
-  static const Color deleteButtonColor = Color(0xFFF44336); // Red
+  /// Warna ikon edit otoritas.
+  static const Color editButtonColor = Color(0xFF4CAF50); 
+  /// Warna ikon hapus otoritas.
+  static const Color deleteButtonColor = Color(0xFFF44336); 
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +38,7 @@ class FormAccountManagementPage extends GetView<FormAccountManagementController>
       backgroundColor: pageBackgroundColor,
       body: Column(
         children: [
-          _buildHeaderWithSearch(), // Gabungan header + search bar dalam container oranye
+          _buildHeaderWithSearch(context), // Gabungan header + search bar dalam container oranye
           _buildActionButtonsRow(), // Widget untuk tombol-tombol aksi
           Expanded(child: _buildAccountList()),
         ],
@@ -38,7 +46,10 @@ class FormAccountManagementPage extends GetView<FormAccountManagementController>
     );
   }
 
-  Widget _buildHeaderWithSearch() {
+  /// Membangun bagian header yang mencakup judul formulir dan bar pencarian email.
+  /// 
+  /// Header menggunakan gradasi warna oranye dan desain lengkung khas aplikasi admin.
+  Widget _buildHeaderWithSearch(BuildContext context) {
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -67,7 +78,11 @@ class FormAccountManagementPage extends GetView<FormAccountManagementController>
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.black54),
-                onPressed: () => Get.back(),
+                onPressed: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -117,6 +132,10 @@ class FormAccountManagementPage extends GetView<FormAccountManagementController>
   }
 
   // Widget untuk menampung semua tombol aksi
+  /// Membangun barisan tombol aksi untuk menambah otoritas.
+  /// 
+  /// Terdiri dari tombol untuk membuat akun baru dan tombol untuk memilih user 
+  /// yang sudah terdaftar dalam sistem.
   Widget _buildActionButtonsRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -158,6 +177,9 @@ class FormAccountManagementPage extends GetView<FormAccountManagementController>
     );
   }
 
+  /// Membangun daftar akun yang memiliki otoritas untuk formulir ini.
+  /// 
+  /// Menampilkan status loading dan pesan jika tidak ada data yang ditemukan.
   Widget _buildAccountList() {
     return Obx(() {
       if (controller.isLoading.value && controller.accounts.isEmpty) {
@@ -188,6 +210,10 @@ class FormAccountManagementPage extends GetView<FormAccountManagementController>
     });
   }
 
+  /// Membangun item kartu untuk setiap akun terotorisasi.
+  /// 
+  /// Menampilkan email dan role, serta menyediakan tombol untuk mengedit 
+  /// atau menghapus otoritas akun tersebut.
   Widget _buildAccountItem(ManagedAccount account) {
     return Card(
       color: cardBackgroundColor,
@@ -217,7 +243,7 @@ class FormAccountManagementPage extends GetView<FormAccountManagementController>
                     Padding(
                       padding: const EdgeInsets.only(top: 2.0),
                       child: Text(
-                        'Peran: ${account.role.capitalizeFirst ?? account.role}',
+                        'Peran: ${account.role == 'admin_rt' ? 'Admin Monitoring' : (account.role.capitalizeFirst ?? account.role)}',
                         style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                       ),
                     ),

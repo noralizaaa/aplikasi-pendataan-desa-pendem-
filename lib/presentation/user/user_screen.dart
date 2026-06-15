@@ -5,13 +5,22 @@ import 'package:firebase_auth/firebase_auth.dart'; // Diperlukan untuk FirebaseA
 import 'user_controller.dart';
 import 'user_model.dart';
 
+/// [UserScreen] adalah halaman utama bagi pengguna dengan level petugas lapangan.
+/// 
+/// Halaman ini menampilkan daftar formulir pendataan yang diotorisasikan kepada petugas,
+/// serta menyediakan fitur pencarian, pengurutan, dan akses ke profil pribadi.
 class UserScreen extends GetView<UserController> {
-  const UserScreen({Key? key}) : super(key: key);
+  const UserScreen({super.key});
 
+  /// Latar belakang halaman utama user.
   static const Color pageBackgroundColor = Color(0xFFF2FAFF);
+  /// Warna primer untuk bagian header gradasi.
   static const Color primaryHeaderColor = Color(0xFFFFCC80);
+  /// Warna aksen untuk bagian header gradasi.
   static const Color accentHeaderColor = Color(0xFFFF9800);
+  /// Warna standar untuk ikon navigasi.
   static const Color iconColor = Color(0xFFF57C00);
+  /// Warna latar belakang kartu formulir.
   static const Color cardBackgroundColor = Colors.white;
 
   @override
@@ -39,6 +48,9 @@ class UserScreen extends GetView<UserController> {
     );
   }
 
+  /// Membangun bagian header aplikasi yang mencakup sapaan pengguna dan bar pencarian.
+  /// 
+  /// Menggunakan [SliverAppBar] dengan gradasi oranye dan desain lengkung modern.
   Widget _buildHeader(BuildContext context) {
     return SliverAppBar(
       expandedHeight: 200.0,
@@ -52,8 +64,8 @@ class UserScreen extends GetView<UserController> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                accentHeaderColor.withOpacity(1.0),
-                primaryHeaderColor.withOpacity(0.5),
+                accentHeaderColor.withValues(alpha: 1.0),
+                primaryHeaderColor.withValues(alpha: 0.5),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -80,7 +92,7 @@ class UserScreen extends GetView<UserController> {
                             style: TextStyle(
                               fontSize: 25,
                               fontWeight: FontWeight.w400,
-                              color: Colors.white.withOpacity(0.95),
+                              color: Colors.white.withValues(alpha: 0.95),
                             ),
                           ),
                           Obx(() => Text( // Widget ini akan otomatis update saat controller.userName.value berubah
@@ -106,8 +118,8 @@ class UserScreen extends GetView<UserController> {
                       borderRadius: BorderRadius.circular(28),
                       child: CircleAvatar(
                         radius: 28,
-                        backgroundColor: Colors.white.withOpacity(0.5),
-                        child: Icon(Icons.person_outline_rounded, size: 30, color: Colors.deepOrangeAccent.withOpacity(0.9)),
+                        backgroundColor: Colors.white.withValues(alpha: 0.5),
+                        child: Icon(Icons.person_outline_rounded, size: 30, color: Colors.deepOrangeAccent.withValues(alpha: 0.9)),
                       ),
                     ),
                   ],
@@ -119,7 +131,7 @@ class UserScreen extends GetView<UserController> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -144,6 +156,7 @@ class UserScreen extends GetView<UserController> {
     );
   }
 
+  /// Membangun bagian body yang berisi kontrol pengurutan dan daftar kartu formulir.
   Widget _buildBody(BuildContext context) {
     return SliverList(
       delegate: SliverChildListDelegate([
@@ -169,7 +182,7 @@ class UserScreen extends GetView<UserController> {
                   border: Border.all(color: Colors.grey.shade300, width: 0.8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 5,
                       offset: const Offset(0, 2),
                     )
@@ -178,7 +191,7 @@ class UserScreen extends GetView<UserController> {
                 child: DropdownButtonHideUnderline(
                   child: Obx(() => DropdownButton<String>(
                     value: controller.currentSortOrder.value,
-                    icon: Icon(Icons.keyboard_arrow_down_rounded, color: accentHeaderColor, size: 22),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: accentHeaderColor, size: 22),
                     style: const TextStyle(
                         color: Color(0xFF424242), fontSize: 14, fontWeight: FontWeight.w500),
                     items: controller.sortOptions.map((String value) {
@@ -230,6 +243,9 @@ class UserScreen extends GetView<UserController> {
     );
   }
 
+  /// Membangun kartu item individu untuk setiap formulir pendataan yang tersedia.
+  /// 
+  /// Menampilkan judul, kategori, lokasi, dan tanggal pembuatan formulir.
   Widget _buildFormCard(BuildContext context, FormDataModel form) {
     return Card(
       elevation: 2.5,
@@ -238,7 +254,7 @@ class UserScreen extends GetView<UserController> {
       color: cardBackgroundColor,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => Get.toNamed(AppRoutes.LIST_SUBMISSION_FORM, arguments: form.idForm),
+        onTap: () => Get.toNamed(AppRoutes.listSubmissionForm, arguments: form.idForm),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
@@ -311,10 +327,10 @@ class UserScreen extends GetView<UserController> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
+                  color: iconColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.arrow_forward_ios_rounded, color: iconColor, size: 18),
+                child: const Icon(Icons.arrow_forward_ios_rounded, color: iconColor, size: 18),
               ),
             ],
           ),
@@ -323,6 +339,7 @@ class UserScreen extends GetView<UserController> {
     );
   }
 
+  /// Menampilkan pesan placeholder saat tidak ada formulir yang tersedia atau cocok dengan pencarian.
   Widget _buildNoDataMessage() {
     return Center(
       child: Padding(
@@ -361,6 +378,7 @@ class UserScreen extends GetView<UserController> {
     );
   }
 
+  /// Menampilkan pesan peringatan saat pengguna tidak memiliki hak akses atau belum login.
   Widget _buildNoAuthorityMessage() {
     // Widget ini bisa digunakan jika user belum login atau tidak punya hak akses sama sekali
     return Center(

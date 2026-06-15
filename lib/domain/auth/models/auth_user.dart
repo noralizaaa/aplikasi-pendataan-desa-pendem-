@@ -11,6 +11,33 @@ class AuthUser {
 
   final String? roleFromFirestore; // This will receive the role from Firestore's UserModel.role
   final String? programId;
+  final String? villageId;
+  final String? villageName;
+
+  // --- HELPER PERAN TERPUSAT ---
+  bool get isAdmin {
+    final r = (roleFromFirestore ?? '').toLowerCase().trim();
+    return [
+      'admin', 'global_admin', 'admin_global', 'adminglobal', 
+      'admin_desa', 'admindesa', 'admin desa',
+      'admin_rt', 'adminrt', 'admin rt'
+    ].contains(r) || r.contains('admin') || programId == 'admin';
+  }
+
+  bool get isGlobalAdmin {
+    final r = (roleFromFirestore ?? '').toLowerCase().trim();
+    return ['admin', 'global_admin', 'admin_global', 'adminglobal'].contains(r);
+  }
+
+  bool get isVillageAdmin {
+    final r = (roleFromFirestore ?? '').toLowerCase().trim();
+    return ['admin_desa', 'admindesa', 'admin desa'].contains(r);
+  }
+
+  bool get isAdminRt {
+    final r = (roleFromFirestore ?? '').toLowerCase().trim();
+    return ['admin_rt', 'adminrt', 'admin rt'].contains(r);
+  }
 
   AuthUser({
     required this.uid,
@@ -20,6 +47,8 @@ class AuthUser {
     this.photoURL,
     this.roleFromFirestore,
     this.programId,
+    this.villageId,
+    this.villageName,
   });
 
   factory AuthUser.fromFirebaseUser(firebase_auth.User user) {
@@ -41,6 +70,8 @@ class AuthUser {
     String? photoURL,
     String? roleFromFirestore,
     String? programId,
+    String? villageId,
+    String? villageName,
   }) {
     return AuthUser(
       uid: uid ?? this.uid,
@@ -50,6 +81,8 @@ class AuthUser {
       photoURL: photoURL ?? this.photoURL,
       roleFromFirestore: roleFromFirestore ?? this.roleFromFirestore,
       programId: programId ?? this.programId,
+      villageId: villageId ?? this.villageId,
+      villageName: villageName ?? this.villageName,
     );
   }
 }

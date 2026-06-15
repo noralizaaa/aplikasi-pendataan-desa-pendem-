@@ -3,23 +3,30 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:aplikasi_pendataan_desa/presentation/user/user_profile/user_profile_controller.dart';
 
+/// [UserProfileScreen] adalah halaman profil untuk pengguna dengan level User/Petugas.
+/// 
+/// Halaman ini menampilkan informasi identitas petugas seperti foto, nama, dan peran.
+/// Desain antarmuka ini mengadopsi elemen visual dari profil admin untuk menjaga konsistensi,
+/// namun tetap mempertahankan header khas pengguna sensus.
 class UserProfileScreen extends GetView<UserProfileController> {
-  const UserProfileScreen({Key? key}) : super(key: key);
+  const UserProfileScreen({super.key});
 
-  // Warna-warna dari AdminProfilPage untuk konsistensi UI InfoCard
-  static const Color pageBackgroundColor = Color(0xFFEBF4F8); // Latar belakang Admin
-  static const Color headerBackgroundColorForCard = Color(0xFFFFD180); // Oranye muda header Admin (dipakai di card icon bg)
-  static const Color iconColorForCard = Color(0xFFF57C00); // Ikon utama Admin (dipakai di card icon)
+  /// Warna latar belakang halaman.
+  static const Color pageBackgroundColor = Color(0xFFEBF4F8); 
+  /// Warna latar belakang ikon pada kartu informasi.
+  static const Color headerBackgroundColorForCard = Color(0xFFFFD180); 
+  /// Warna utama ikon pada kartu informasi.
+  static const Color iconColorForCard = Color(0xFFF57C00); 
   static const Color cardBackgroundColor = Colors.white;
   static const Color primaryTextColor = Colors.black87;
   static const Color secondaryTextColor = Colors.black54;
   static const Color labelTextColor = Color(0xFF616161);
   static const Color editIconColor = Colors.black54;
 
-  // Warna header asli user profile
+  /// Warna primer untuk gradasi header.
   static const Color primaryHeaderColor = Color(0xFFFFCC80);
+  /// Warna aksen untuk gradasi header.
   static const Color accentHeaderColor = Color(0xFFFF9800);
-
 
   @override
   Widget build(BuildContext context) {
@@ -44,15 +51,19 @@ class UserProfileScreen extends GetView<UserProfileController> {
               elevation: 0,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Get.back(),
+                onPressed: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
               ),
               flexibleSpace: FlexibleSpaceBar(
                 background: Container( // Header tetap menggunakan gaya UserProfile
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        accentHeaderColor.withOpacity(0.8),
-                        primaryHeaderColor.withOpacity(0.5),
+                        accentHeaderColor.withValues(alpha: 0.8),
+                        primaryHeaderColor.withValues(alpha: 0.5),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -68,7 +79,7 @@ class UserProfileScreen extends GetView<UserProfileController> {
                       children: [
                         CircleAvatar(
                           radius: 50,
-                          backgroundColor: Colors.white.withOpacity(0.9),
+                          backgroundColor: Colors.white.withValues(alpha: 0.9),
                           child: ClipOval(
                             child: Image.asset(
                               'assets/images/Profile.png', // Pastikan path asset ini benar
@@ -125,8 +136,8 @@ class UserProfileScreen extends GetView<UserProfileController> {
                     padding: const EdgeInsets.symmetric(horizontal: 16.0), // Padding untuk kartu
                     child: Column(
                       children: [
-                        // Menggunakan _buildInfoCard_AdminStyle yang dimodifikasi
-                        _buildInfoCard_AdminStyle(
+                        // Menggunakan _buildInfoCardAdminStyle yang dimodifikasi
+                        _buildInfoCardAdminStyle(
                           icon: Icons.person_outline, // Ikon dari admin
                           label: 'Username',
                           value: userProfile.username,
@@ -135,7 +146,7 @@ class UserProfileScreen extends GetView<UserProfileController> {
                         ),
                         const SizedBox(height: 16),
                         // Kartu untuk Peran (tidak bisa diedit)
-                        _buildInfoCard_AdminStyle(
+                        _buildInfoCardAdminStyle(
                           icon: Icons.article_outlined, // Ikon dari admin
                           label: 'Peran',
                           value: userProfile.role,
@@ -147,7 +158,7 @@ class UserProfileScreen extends GetView<UserProfileController> {
                           Column(
                             children: [
                               const SizedBox(height: 16),
-                              _buildInfoCard_AdminStyle(
+                              _buildInfoCardAdminStyle(
                                 icon: Icons.code, // Ganti ikon sesuai
                                 label: 'ID Program Terkait',
                                 value: userProfile.programId!,
@@ -194,8 +205,11 @@ class UserProfileScreen extends GetView<UserProfileController> {
     );
   }
 
-  // Widget ini adalah adaptasi dari _buildInfoCard di AdminProfilPage
-  Widget _buildInfoCard_AdminStyle({
+  /// Membangun kartu informasi dengan gaya desain profil Admin.
+  /// 
+  /// Menampilkan ikon, label, dan nilai data, serta menyediakan tombol edit 
+  /// jika [onEdit] tidak null.
+  Widget _buildInfoCardAdminStyle({
     required IconData icon,
     required String label,
     required String value,
@@ -208,7 +222,7 @@ class UserProfileScreen extends GetView<UserProfileController> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
+            color: Colors.grey.withValues(alpha: 0.15),
             spreadRadius: 2,
             blurRadius: 8,
             offset: const Offset(0, 4),
@@ -220,7 +234,7 @@ class UserProfileScreen extends GetView<UserProfileController> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: headerBackgroundColorForCard.withOpacity(0.25),
+              color: headerBackgroundColorForCard.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColorForCard, size: 26),
@@ -232,7 +246,7 @@ class UserProfileScreen extends GetView<UserProfileController> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     color: labelTextColor,
                     fontWeight: FontWeight.w500,
@@ -253,7 +267,7 @@ class UserProfileScreen extends GetView<UserProfileController> {
           ),
           if (onEdit != null)
             IconButton(
-              icon: Icon(Icons.edit_outlined, color: editIconColor, size: 22),
+              icon: const Icon(Icons.edit_outlined, color: editIconColor, size: 22),
               onPressed: onEdit,
               tooltip: 'Edit $label',
               splashRadius: 20,

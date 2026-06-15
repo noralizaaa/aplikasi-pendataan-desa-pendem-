@@ -2,11 +2,22 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:aplikasi_pendataan_desa/domain/auth/models/user_model.dart';
 import './submissions_form_controller.dart';
 
+/// [SubmissionsFormScreen] adalah antarmuka untuk melihat daftar hasil pendataan
+/// (submissions) dari sebuah formulir spesifik.
+/// 
+/// Halaman ini menyediakan fitur:
+/// 1. Pencarian data berdasarkan identitas responden atau pengisi.
+/// 2. Filtering data berdasarkan periode, status, dan wilayah desa.
+/// 3. Pengurutan data (sorting) secara dinamis.
+/// 4. Akses untuk melihat detail, mengedit, dan menghapus data isian.
+/// 5. Tombol aksi ekspor data ke format JSON, CSV, dan Excel.
 class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
-  const SubmissionsFormScreen({Key? key}) : super(key: key);
+  const SubmissionsFormScreen({super.key});
 
+  /// Skema warna konsisten untuk antarmuka daftar submissions.
   static const Color pageBackgroundColor = Color(0xFFF0F4F8);
   static const Color primaryHeaderColor = Color(0xFFFFB74D);
   static const Color accentHeaderColor = Color(0xFFFB8C00);
@@ -21,14 +32,6 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
   @override
   Widget build(BuildContext context) {
     final DateFormat dateFormat = DateFormat('dd MMM yy, HH:mm', 'id_ID');
-    final TextEditingController searchControllerWidget = TextEditingController();
-
-    ever(controller.searchQuery, (String query) {
-      if (searchControllerWidget.text != query) {
-        searchControllerWidget.text = query;
-        searchControllerWidget.selection = TextSelection.fromPosition(TextPosition(offset: searchControllerWidget.text.length));
-      }
-    });
 
     return Scaffold(
       backgroundColor: pageBackgroundColor,
@@ -37,7 +40,11 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22),
           color: Colors.white,
           tooltip: 'Kembali',
-          onPressed: () => Get.back(),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            }
+          },
         ),
         title: Obx(() => Text(
           controller.appBarTitle,
@@ -81,19 +88,11 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             color: Colors.white,
           )),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            tooltip: "Muat Ulang Data",
-            // Perbaikan untuk kondisi onPressed berdasarkan RxBool individu
-            onPressed: (controller.isLoadingStructure.value || controller.isLoadingSubmissions.value)
-                ? null
-                : () => controller.refreshData(),
-          ),
         ],
       ),
       body: Column(
         children: [
-          _buildSearchBarAndFilter(context, searchControllerWidget),
+          _buildSearchBarAndFilter(context, controller.searchController),
           Expanded(
             child: Obx(() {
               if (controller.isLoadingStructure.value && controller.formStructure.value == null && controller.initialFormTitle.value.isEmpty) {
@@ -116,8 +115,7 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
                 color: accentHeaderColor,
                 backgroundColor: Colors.white,
                 child: Obx(() {
-                  // Kondisi loading di sini sudah ditangani di atas, jadi kita bisa langsung cek list.
-                  if (controller.displayedSubmissions.isEmpty && !controller.isLoadingSubmissions.value) { // Pastikan tidak loading sebelum tampilkan pesan kosong
+                  if (controller.displayedSubmissions.isEmpty && !controller.isLoadingSubmissions.value) {
                     return _buildNoSubmissionsMessage(
                       controller.searchQuery.value.isNotEmpty
                           ? 'Tidak ada data cocok dengan pencarian "${controller.searchQuery.value}".'
@@ -125,7 +123,7 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
                     );
                   }
                   return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), // padding atas disesuaikan
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                     itemCount: controller.displayedSubmissions.length,
                     itemBuilder: (context, index) {
                       final displayableSubmission = controller.displayedSubmissions[index];
@@ -141,6 +139,7 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
     );
   }
 
+  /// Membangun item menu untuk pilihan ekspor data.
   PopupMenuEntry<String> _buildPopupMenuItem({
     required String value,
     required String text,
@@ -159,85 +158,210 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
     );
   }
 
+  /// Membangun komponen bar pencarian dan barisan filter (Periode, Status, Desa).
   Widget _buildSearchBarAndFilter(BuildContext context, TextEditingController searchCtrl) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       color: pageBackgroundColor,
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: Material(
-              elevation: 1.5,
-              borderRadius: BorderRadius.circular(10.0),
-              shadowColor: Colors.grey.withOpacity(0.3),
-              child: TextField(
-                controller: searchCtrl,
-                onChanged: (value) => controller.changeSearchQuery(value),
-                style: const TextStyle(color: textColorPrimary, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: 'Cari KRT/NIK/Pengisi...',
-                  hintStyle: TextStyle(color: textColorSecondary.withOpacity(0.8), fontSize: 14.5),
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.only(left: 12, right: 8),
-                    child: Icon(Icons.search_outlined, color: textColorSecondary.withOpacity(0.7), size: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Material(
+                  elevation: 1.5,
+                  borderRadius: BorderRadius.circular(10.0),
+                  shadowColor: Colors.grey.withValues(alpha: 0.3),
+                  child: TextField(
+                    controller: searchCtrl,
+                    onChanged: (value) => controller.changeSearchQuery(value),
+                    style: const TextStyle(color: textColorPrimary, fontSize: 15),
+                    decoration: InputDecoration(
+                      hintText: 'Cari KRT/NIK/Pengisi...',
+                      hintStyle: TextStyle(color: textColorSecondary.withValues(alpha: 0.8), fontSize: 14.5),
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 12, right: 8),
+                        child: Icon(Icons.search_outlined, color: textColorSecondary.withValues(alpha: 0.7), size: 20),
+                      ),
+                      filled: true,
+                      fillColor: searchFieldColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                        borderSide: BorderSide(color: Colors.grey.shade300, width: 0.7),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                        borderSide: BorderSide(color: accentHeaderColor.withValues(alpha: 0.8), width: 1.2),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
                   ),
-                  filled: true,
-                  fillColor: searchFieldColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                    borderSide: BorderSide(color: Colors.grey.shade300, width: 0.7),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                    borderSide: BorderSide(color: accentHeaderColor.withOpacity(0.8), width: 1.2),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Material(
-            elevation: 1.5,
-            borderRadius: BorderRadius.circular(10.0),
-            color: Colors.white,
-            shadowColor: Colors.grey.withOpacity(0.3),
-            child: Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
+              const SizedBox(width: 10),
+              Material(
+                elevation: 1.5,
                 borderRadius: BorderRadius.circular(10.0),
-                border: Border.all(color: Colors.grey.shade300, width: 0.7),
-              ),
-              child: Obx(() => DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: controller.currentSortOrder.value,
-                  icon: Icon(Icons.filter_list_rounded, color: accentHeaderColor.withOpacity(0.9), size: 20),
-                  style: TextStyle(color: textColorPrimary.withOpacity(0.9), fontSize: 13, fontWeight: FontWeight.w500),
-                  items: controller.sortOptions.map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    controller.changeSortOrder(newValue);
-                  },
-                  dropdownColor: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
+                color: Colors.white,
+                shadowColor: Colors.grey.withValues(alpha: 0.3),
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10.0),
+                    border: Border.all(color: Colors.grey.shade300, width: 0.7),
+                  ),
+                  child: Obx(() => DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: controller.currentSortOrder.value,
+                      icon: Icon(Icons.sort_rounded, color: accentHeaderColor.withValues(alpha: 0.9), size: 20),
+                      style: TextStyle(color: textColorPrimary.withValues(alpha: 0.9), fontSize: 13, fontWeight: FontWeight.w500),
+                      items: controller.sortOptions.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        controller.changeSortOrder(newValue);
+                      },
+                      dropdownColor: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  )),
                 ),
-              )),
-            ),
+              ),
+            ],
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(Icons.calendar_month_outlined, color: Colors.grey, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Filter:',
+                style: TextStyle(fontSize: 14, color: Colors.black54),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  height: 42,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Obx(() => DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: controller.selectedPeriodFilter.value,
+                      items: controller.availablePeriods.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value, style: const TextStyle(fontSize: 13)),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          controller.changePeriodFilter(newValue);
+                        }
+                      },
+                    ),
+                  )),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  height: 42,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Obx(() => DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: controller.selectedStatusFilter.value,
+                      items: controller.statusOptions.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value, style: const TextStyle(fontSize: 13)),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          controller.selectedStatusFilter.value = newValue;
+                          controller.refreshData();
+                        }
+                      },
+                    ),
+                  )),
+                ),
+              ),
+            ],
+          ),
+          Obx(() {
+            if (controller.userRole.value == 'global_admin' || controller.userRole.value == 'admin') {
+              return Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_city_outlined, color: Colors.grey, size: 20),
+                    const SizedBox(width: 8),
+                    const Text('Desa:', style: TextStyle(fontSize: 14, color: Colors.black54)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        height: 42,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Obx(() => DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            value: controller.selectedVillageFilter.value,
+                            items: [
+                              const DropdownMenuItem(value: 'Semua', child: Text('Semua Desa', style: TextStyle(fontSize: 13))),
+                              ...controller.availableVillages.map((v) => DropdownMenuItem(
+                                value: v['id'],
+                                child: Text(v['name'] ?? '', style: const TextStyle(fontSize: 13)),
+                              )),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                controller.selectedVillageFilter.value = val;
+                                controller.refreshData();
+                              }
+                            },
+                          ),
+                        )),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }),
         ],
       ),
     );
   }
 
+  /// Membangun kartu informasi individu untuk satu data isian (submission).
+  /// 
+  /// Menampilkan judul (Nama KRT), status, nama petugas, wilayah, dan waktu pengisian.
+  /// Juga menyediakan tombol aksi kontekstual berdasarkan peran admin yang login.
   Widget _buildSubmissionCard(DisplayableSubmission displayableSubmission, DateFormat dateFormat, BuildContext context) {
     final submission = displayableSubmission.originalSubmission;
     final String namaKRT = displayableSubmission.namaKepalaKeluarga;
@@ -245,7 +369,7 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
 
     final String formattedSubmittedAt = dateFormat.format(submission.submittedAt.toDate().toLocal());
     final String? formattedUpdatedAt = submission.updatedAt != null
-        ? dateFormat.format(submission.updatedAt!.toDate().toLocal()) // Gunakan toLocal()
+        ? dateFormat.format(submission.updatedAt!.toDate().toLocal())
         : null;
 
     return Card(
@@ -268,17 +392,43 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          displayableSubmission.displayTitle.isNotEmpty
-                              ? displayableSubmission.displayTitle
-                              : "Data ${submission.formTitle}",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15.5,
-                            color: textColorPrimary,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    displayableSubmission.displayTitle.isNotEmpty
+                                        ? displayableSubmission.displayTitle
+                                        : "Data ${submission.formTitle}",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16.0,
+                                      color: textColorPrimary,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (displayableSubmission.displayDescription.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4.0),
+                                      child: Text(
+                                        displayableSubmission.displayDescription,
+                                        style: TextStyle(
+                                          fontSize: 13.0,
+                                          color: textColorSecondary.withValues(alpha: 0.8),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            _buildStatusBadge(submission.status),
+                          ],
                         ),
                         if (submission.userName.isNotEmpty && !displayableSubmission.displayTitle.contains(submission.userName))
                           Padding(
@@ -287,7 +437,7 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
                               "Pengisi: ${submission.userName}",
                               style: TextStyle(
                                   fontSize: 12.0,
-                                  color: textColorSecondary.withOpacity(0.9),
+                                  color: textColorSecondary.withValues(alpha: 0.9),
                                   fontStyle: FontStyle.italic
                               ),
                               maxLines: 1,
@@ -297,24 +447,43 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
                       ],
                     ),
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(width: 8),
-                      _actionButtonSmall(
-                        tooltip: 'Edit Isian',
-                        icon: Icons.edit_rounded,
-                        color: editButtonColor,
-                        onPressed: () => controller.editSubmission(submission),
-                      ),
-                      _actionButtonSmall(
-                        tooltip: 'Hapus Isian',
-                        icon: Icons.delete_forever_rounded,
-                        color: deleteButtonColor,
-                        onPressed: () => controller.deleteSubmission(submission, displayableSubmission.displayTitle),
-                      ),
-                    ],
-                  )
+                  Obx(() {
+                    final role = controller.userRole.value.toLowerCase().trim();
+                    final userModel = UserModel(uid: '', role: role);
+                    
+                    // Admin RT hanya bisa LIHAT (Read-Only), tidak bisa hapus/edit
+                    final bool isReadOnlyUser = userModel.isAdminRt;
+                    final List<String> canModifyRoles = ['global_admin', 'admin', 'admin_desa', 'admindesa'];
+                    final bool canModify = canModifyRoles.contains(role);
+                    
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(width: 8),
+                        if (isReadOnlyUser)
+                          _actionButtonSmall(
+                            tooltip: 'Lihat Detail',
+                            icon: Icons.visibility_rounded,
+                            color: Colors.blue.shade600,
+                            onPressed: () => controller.editSubmission(submission),
+                          ),
+                        if (canModify) ...[
+                          _actionButtonSmall(
+                            tooltip: 'Edit Isian',
+                            icon: Icons.edit_rounded,
+                            color: editButtonColor,
+                            onPressed: () => controller.editSubmission(submission),
+                          ),
+                          _actionButtonSmall(
+                            tooltip: 'Hapus Isian',
+                            icon: Icons.delete_forever_rounded,
+                            color: deleteButtonColor,
+                            onPressed: () => controller.deleteSubmission(submission, displayableSubmission.displayTitle),
+                          ),
+                        ],
+                      ],
+                    );
+                  })
                 ],
               ),
 
@@ -332,6 +501,13 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
               ],
 
               if (namaKRT.isNotEmpty || nikKRT.isNotEmpty || !displayableSubmission.displayTitle.contains(submission.formTitle) ) const SizedBox(height: 10),
+              
+              if (submission.villageName != null) 
+                _buildInfoRow(Icons.location_city, "Desa", submission.villageName!),
+              _buildInfoRow(Icons.date_range, "Periode", submission.period ?? "N/A"),
+              if (submission.isAutoGenerated)
+                _buildInfoRow(Icons.auto_awesome, "Sumber", "Auto Duplicate dari ${submission.duplicatedFromPeriod}"),
+
               Divider(color: Colors.grey.shade200, thickness: 0.8),
               const SizedBox(height: 8),
 
@@ -362,6 +538,7 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
     );
   }
 
+  /// Membangun baris informasi (Ikon + Label + Nilai) di dalam kartu submission.
   Widget _buildInfoRow(IconData icon, String label, String value, {bool isHighlight = false}) {
     if (value.trim().isEmpty) return const SizedBox.shrink();
     return Padding(
@@ -369,7 +546,7 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 17, color: isHighlight ? accentHeaderColor.withOpacity(0.8) : iconColorGeneral),
+          Icon(icon, size: 17, color: isHighlight ? accentHeaderColor.withValues(alpha: 0.8) : iconColorGeneral),
           const SizedBox(width: 8),
           Text(
             "$label: ",
@@ -396,6 +573,7 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
     );
   }
 
+  /// Membangun informasi metadata kecil (misal: Tanggal Isi/Update) dengan ikon.
   Widget _buildMetaInfo({required IconData icon, required String text, String? tooltip, bool isUpdate = false}) {
     return Tooltip(
       message: tooltip ?? text,
@@ -420,6 +598,7 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
     );
   }
 
+  /// Membangun tombol aksi kecil melingkar (Edit, Hapus, Lihat) dengan tooltip.
   Widget _actionButtonSmall({
     required String tooltip,
     required IconData icon,
@@ -434,8 +613,8 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(20),
-          splashColor: color.withOpacity(0.3),
-          highlightColor: color.withOpacity(0.2),
+          splashColor: color.withValues(alpha: 0.3),
+          highlightColor: color.withValues(alpha: 0.2),
           child: Padding(
             padding: const EdgeInsets.all(7.0),
             child: Icon(icon, color: color, size: 20),
@@ -445,6 +624,7 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
     );
   }
 
+  /// Membangun tampilan pesan saat tidak ada data isian yang ditemukan atau cocok dengan filter.
   Widget _buildNoSubmissionsMessage(String message) {
     return LayoutBuilder(
         builder: (context, constraints) {
@@ -463,11 +643,11 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
                       Text(
                         message,
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: textColorPrimary.withOpacity(0.85)),
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: textColorPrimary.withValues(alpha: 0.85)),
                       ),
                       const SizedBox(height: 10),
                       if (controller.searchQuery.value.isNotEmpty)
-                        Text(
+                        const Text(
                           "Coba kata kunci lain atau bersihkan pencarian.",
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 14, color: textColorSecondary, height: 1.5),
@@ -479,6 +659,36 @@ class SubmissionsFormScreen extends GetView<SubmissionsFormController> {
             ),
           );
         }
+    );
+  }
+
+  /// Membangun label (badge) status isian dengan warna yang sesuai (Draft, Submitted, Locked).
+  Widget _buildStatusBadge(String status) {
+    Color color;
+    switch (status.toLowerCase()) {
+      case 'draft':
+        color = Colors.grey;
+        break;
+      case 'submitted':
+        color = Colors.green;
+        break;
+      case 'locked':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.blue;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+      ),
     );
   }
 }

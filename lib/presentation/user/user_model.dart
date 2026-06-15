@@ -1,43 +1,56 @@
 // lib/presentation/user/user_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// [FormDataModel] merepresentasikan metadata ringkas dari sebuah formulir pendataan.
+/// 
+/// Model ini digunakan pada halaman utama level Pengguna (Petugas) untuk menampilkan
+/// daftar formulir yang tersedia untuk diisi atau dikelola.
 class FormDataModel {
-  final String idForm;          // Akan menjadi ID dokumen dari adminForms
-  final String nama;            // Akan dipetakan dari field 'title' di Firestore
-  final String deskripsi;       // Akan dipetakan dari field 'description' di Firestore
-  final String lokasi;          // Beri nilai default jika tidak ada
-  final String category;        // Beri nilai default jika tidak ada
-  final Timestamp? createdAt;   // Dari field 'createdAt' di Firestore
-  final List<dynamic>? sections; // Untuk menyimpan data 'sections' jika perlu
+  /// ID unik formulir yang diambil dari ID dokumen koleksi `adminForms`.
+  final String idForm;          
+  /// Nama atau judul formulir (dipetakan dari field `title`).
+  final String nama;            
+  /// Deskripsi singkat mengenai isi atau tujuan formulir (dipetakan dari field `description`).
+  final String deskripsi;       
+  /// Informasi wilayah cakupan formulir.
+  final String lokasi;          
+  /// Kategori program pendataan (misal: 'Kesehatan', 'Ekonomi', 'Umum').
+  final String category;        
+  /// Waktu pembuatan formulir.
+  final Timestamp? createdAt;   
+  /// Struktur seksi pertanyaan di dalam formulir (opsional pada level daftar).
+  final List<dynamic>? sections; 
 
   FormDataModel({
     required this.idForm,
     required this.nama,
     required this.deskripsi,
-    this.lokasi = 'Lokasi Tidak Ditentukan', // Nilai default
-    this.category = 'Umum',                 // Nilai default
+    this.lokasi = 'Lokasi Tidak Ditentukan', 
+    this.category = 'Umum',                 
     this.createdAt,
     this.sections,
   });
 
-  // Factory constructor untuk membuat instance dari Map (data Firestore)
-  // dan ID dokumen (yang akan menjadi idForm)
+  /// Factory constructor untuk membuat instance [FormDataModel] dari data Firestore.
+  /// 
+  /// [data] adalah Map berisi field dokumen, dan [documentId] adalah ID dokumen tersebut.
   factory FormDataModel.fromMap(Map<String, dynamic> data, String documentId) {
     return FormDataModel(
-      idForm: documentId, // Gunakan ID dokumen sebagai idForm
-      nama: data['title'] as String? ?? 'Tanpa Judul', // Ambil dari field 'title'
-      deskripsi: data['description'] as String? ?? '', // Ambil dari field 'description'
-      lokasi: data['lokasi'] as String? ?? 'Lokasi Tidak Ditentukan', // Jika ada field 'lokasi' di data
-      category: data['category'] as String? ?? 'Umum',         // Jika ada field 'category' di data
-      createdAt: data['createdAt'] as Timestamp?,       // Ambil dari field 'createdAt'
-      sections: data['sections'] as List<dynamic>?,      // Ambil dari field 'sections'
+      idForm: documentId, 
+      nama: data['title'] as String? ?? 'Tanpa Judul', 
+      deskripsi: data['description'] as String? ?? '', 
+      lokasi: data['lokasi'] as String? ?? 'Lokasi Tidak Ditentukan', 
+      category: data['category'] as String? ?? 'Umum',         
+      createdAt: data['createdAt'] as Timestamp?,       
+      sections: data['sections'] as List<dynamic>?,      
     );
   }
 
-  // Method toMap (opsional untuk tampilan pengguna, tapi baik untuk dimiliki)
+  /// Mengonversi objek [FormDataModel] ke dalam format Map.
+  /// 
+  /// Berguna untuk keperluan serialisasi data atau pemetaan lokal.
   Map<String, dynamic> toMap() {
     return {
-      // idForm biasanya adalah ID dokumen, tidak disimpan sebagai field saat menulis ke Firestore
       'title': nama,
       'description': deskripsi,
       'lokasi': lokasi,

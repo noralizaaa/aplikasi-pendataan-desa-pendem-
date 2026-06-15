@@ -5,23 +5,34 @@ import 'all_account_controller.dart'; // Controller baru
 import 'admin_account_model.dart'; // Menggunakan AdminAccountModel
 import 'package:aplikasi_pendataan_desa/presentation/admin/admin_screen.dart'; // Untuk warna konsisten
 
+/// [AllAccountPage] adalah halaman UI untuk mengelola seluruh akun pengguna dalam sistem.
+/// 
+/// Halaman ini menyediakan antarmuka untuk:
+/// 1. Melihat daftar seluruh pengguna (berdasarkan role admin yang login).
+/// 2. Melakukan pencarian akun berdasarkan nama atau email.
+/// 3. Menavigasi ke dialog pembuatan akun baru.
+/// 4. Mengedit atau menghapus akun pengguna yang ada.
 class AllAccountPage extends GetView<AllAccountController> {
-  const AllAccountPage({Key? key}) : super(key: key);
+  const AllAccountPage({super.key});
 
-  // Define colors based on the image or your app's theme
-  static const Color pageBackgroundColor = Color(0xFFF5F5F5); // Light grey
-  static const Color headerBackgroundColor = AdminScreen.primaryHeaderColor; // Orange from AdminScreen
+  /// Warna latar belakang halaman.
+  static const Color pageBackgroundColor = Color(0xFFF5F5F5); 
+  /// Warna utama header (diambil dari tema admin).
+  static const Color headerBackgroundColor = AdminScreen.primaryHeaderColor; 
   static const Color headerTextColor = Colors.white;
   static const Color searchBarColor = Colors.white;
-  static const Color searchIconColor = AdminScreen.accentHeaderColor; // Yellowish from AdminScreen
+  /// Warna ikon pencarian dan tombol aksi utama.
+  static const Color searchIconColor = AdminScreen.accentHeaderColor; 
 
-  // Warna Tombol Aksi
-  static const Color createNewUserButtonColor = AdminScreen.primaryHeaderColor; // Tombol utama untuk buat akun baru
+  /// Warna tombol untuk membuat user baru.
+  static const Color createNewUserButtonColor = AdminScreen.primaryHeaderColor; 
   static const Color buttonTextColor = Colors.white;
   static const Color cardBackgroundColor = Colors.white;
   static const Color accountTextColor = Colors.black87;
-  static const Color editButtonColor = Color(0xFF4CAF50); // Green (slightly darker for contrast)
-  static const Color deleteButtonColor = Color(0xFFF44336); // Red (slightly darker for contrast)
+  /// Warna ikon edit akun.
+  static const Color editButtonColor = Color(0xFF4CAF50); 
+  /// Warna ikon hapus akun.
+  static const Color deleteButtonColor = Color(0xFFF44336); 
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +40,7 @@ class AllAccountPage extends GetView<AllAccountController> {
       backgroundColor: pageBackgroundColor,
       body: Column(
         children: [
-          _buildHeaderWithSearch(), // Gabungan header + search bar dalam satu container oranye
+          _buildHeaderWithSearch(context), // Gabungan header + search bar dalam satu container oranye
           _buildActionButton(), // Only one button for creating new user
           Expanded(child: _buildAccountList()),
         ],
@@ -38,11 +49,15 @@ class AllAccountPage extends GetView<AllAccountController> {
   }
 
   // Gabungan header + search bar, supaya search bar di dalam container oranye dengan gradasi dan lengkungan kanan bawah
-  Widget _buildHeaderWithSearch() {
+  /// Membangun bagian header yang mencakup judul halaman dan bar pencarian.
+  /// 
+  /// Menggunakan dekorasi gradasi oranye dan lengkungan pada sisi bawah kanan 
+  /// untuk konsistensi desain modern aplikasi.
+  Widget _buildHeaderWithSearch(BuildContext context) {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
@@ -50,7 +65,7 @@ class AllAccountPage extends GetView<AllAccountController> {
             Color(0xFFFFD180), // Warna oranye muda
           ],
         ),
-        borderRadius: const BorderRadius.only(
+        borderRadius: BorderRadius.only(
           bottomRight: Radius.circular(60),
         ),
       ),
@@ -67,7 +82,11 @@ class AllAccountPage extends GetView<AllAccountController> {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.black54),
-                onPressed: () => Get.back(),
+                onPressed: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
               ),
               const SizedBox(width: 8),
               const Expanded(
@@ -117,6 +136,7 @@ class AllAccountPage extends GetView<AllAccountController> {
     );
   }
 
+  /// Membangun tombol aksi utama untuk membuka dialog pembuatan akun baru.
   Widget _buildActionButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -137,6 +157,9 @@ class AllAccountPage extends GetView<AllAccountController> {
     );
   }
 
+  /// Membangun daftar akun menggunakan [ListView.builder].
+  /// 
+  /// Menangani status pemuatan (loading) dan tampilan pesan jika data tidak ditemukan.
   Widget _buildAccountList() {
     return Obx(() {
       if (controller.isLoading.value && controller.allAccounts.isEmpty) {
@@ -168,6 +191,10 @@ class AllAccountPage extends GetView<AllAccountController> {
     });
   }
 
+  /// Membangun item kartu individu untuk setiap akun pengguna.
+  /// 
+  /// Menampilkan informasi nama, email, dan role, serta menyediakan 
+  /// tombol aksi cepat untuk edit dan hapus.
   Widget _buildAccountItem(AdminAccountModel account) {
     return Card(
       color: cardBackgroundColor,
@@ -205,7 +232,7 @@ class AllAccountPage extends GetView<AllAccountController> {
                     Padding(
                       padding: const EdgeInsets.only(top: 2.0),
                       child: Text(
-                        'Peran: ${account.role.capitalizeFirst ?? account.role}',
+                        'Peran: ${account.role == 'admin_rt' ? 'Admin Monitoring' : (account.role.capitalizeFirst ?? account.role)}',
                         style:
                         TextStyle(fontSize: 12, color: Colors.grey.shade700),
                       ),
@@ -217,13 +244,13 @@ class AllAccountPage extends GetView<AllAccountController> {
               children: [
                 IconButton(
                   tooltip: 'Edit Akun',
-                  icon: Icon(Icons.edit, color: editButtonColor),
+                  icon: const Icon(Icons.edit, color: editButtonColor),
                   onPressed: () => controller.editAccount(account),
                 ),
                 const SizedBox(width: 4),
                 IconButton(
                   tooltip: 'Hapus Akun',
-                  icon: Icon(Icons.delete, color: deleteButtonColor),
+                  icon: const Icon(Icons.delete, color: deleteButtonColor),
                   onPressed: () => controller.deleteAccount(account),
                 ),
               ],

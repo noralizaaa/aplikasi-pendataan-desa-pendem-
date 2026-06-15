@@ -1,7 +1,8 @@
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../infrastructure/navigation/routes.dart'; // Make sure this path is correct
+import '../../infrastructure/navigation/routes.dart'; 
+import '../../domain/auth/models/user_model.dart';
 
 class SplashController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -19,7 +20,7 @@ class SplashController extends GetxController {
       print('SplashController: Checking login status');
 
       // Wait for 2 seconds for the splash screen
-      await Future.delayed(const Duration(seconds: 4));
+      await Future.delayed(const Duration(seconds: 2));
 
       // Check if there is a currently logged-in user in Firebase Auth
       User? currentUser = _auth.currentUser;
@@ -53,17 +54,20 @@ class SplashController extends GetxController {
           print('SplashController: isLogin status: $isLogin');
 
           if (isLogin) {
-            // User is still in logged-in status, navigate based on role
-            String role = userData['role'] ?? 'user'; // Default to 'user' if role is not set
-            String? programId = userData['programId']; // programId can be null
+            // Menggunakan helper terpusat untuk navigasi
+            final userModel = UserModel(
+              uid: currentUser.uid, 
+              email: currentUser.email, 
+              role: userData['role'] as String? ?? 'user'
+            );
 
-            print('SplashController: User is logged in. Role: $role, ProgramId: $programId');
+            print('SplashController: Deciding navigation for role: "${userModel.role}"');
 
-            if (role == 'admin' || programId == 'admin') { // Consider if 'admin' in programId is a valid check
-              print('SplashController: Navigating to Admin Page');
+            if (userModel.isAdmin) {
+              print('SplashController: Result: ADMIN. Navigating to Admin Page');
               Get.offAllNamed(AppRoutes.adminPage);
             } else {
-              print('SplashController: Navigating to User Page');
+              print('SplashController: Result: USER. Navigating to User Page');
               Get.offAllNamed(AppRoutes.userPage);
             }
           } else {

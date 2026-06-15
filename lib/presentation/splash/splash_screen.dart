@@ -5,16 +5,16 @@ import 'splash_controller.dart'; // Pastikan path ini benar
 
 // Warna untuk lapisan kaca - putih dengan opacity
 // Sesuaikan opacity ini untuk kekuatan efek kaca
-final Color glassLayerColor = Colors.white.withOpacity(0.35); // Contoh: 35% opacity
+final Color glassLayerColor = Colors.white.withValues(alpha: 0.35); // Contoh: 35% opacity
 // Warna untuk border tipis pada kaca (opsional, tapi bisa mempercantik)
-final Color glassBorderColor = Colors.white.withOpacity(0.5);
+final Color glassBorderColor = Colors.white.withValues(alpha: 0.5);
 
 class SplashScreen extends GetView<SplashController> {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    print('SplashScreen: Building UI with White Background, Glassmorphism Effect, and Leaf Decorations');
+    debugPrint('SplashScreen: Building UI with White Background, Glassmorphism Effect, and Leaf Decorations');
     // Initialize controller if not already done by GetX binding
     Get.find<SplashController>();
 
@@ -68,7 +68,7 @@ class SplashScreen extends GetView<SplashController> {
                 height: leafSize,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
-                  print("Error loading DaunSS.png (top-left): $error");
+                  debugPrint("Error loading DaunSS.png (top-left): $error");
                   return const SizedBox.shrink();
                 },
               ),
@@ -90,7 +90,7 @@ class SplashScreen extends GetView<SplashController> {
                   height: leafSize,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
-                    print("Error loading DaunSS.png (top-right): $error");
+                    debugPrint("Error loading DaunSS.png (top-right): $error");
                     return const SizedBox.shrink();
                   },
                 ),
@@ -113,7 +113,7 @@ class SplashScreen extends GetView<SplashController> {
                   height: leafSize,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
-                    print("Error loading DaunSS.png (bottom-left): $error");
+                    debugPrint("Error loading DaunSS.png (bottom-left): $error");
                     return const SizedBox.shrink();
                   },
                 ),
@@ -136,7 +136,7 @@ class SplashScreen extends GetView<SplashController> {
                   height: leafSize,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
-                    print("Error loading DaunSS.png (bottom-right): $error");
+                    debugPrint("Error loading DaunSS.png (bottom-right): $error");
                     return const SizedBox.shrink();
                   },
                 ),
@@ -186,7 +186,7 @@ class SplashScreen extends GetView<SplashController> {
                   height: 200,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
-                    print("Error loading splashpage_1.png: $error");
+                    debugPrint("Error loading splashpage_1.png: $error");
                     return const Icon(Icons.broken_image, size: 100, color: Colors.black54);
                   }
               ),
@@ -204,7 +204,7 @@ class SplashScreen extends GetView<SplashController> {
                     width: 250,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
-                      print("Error loading splashpage.png: $error");
+                      debugPrint("Error loading splashpage.png: $error");
                       return const Icon(Icons.broken_image, size: 50, color: Colors.black54);
                     }
                 ),
@@ -223,7 +223,7 @@ class FadeInAnimation extends StatefulWidget {
   const FadeInAnimation({super.key, required this.child});
 
   @override
-  _FadeInAnimationState createState() => _FadeInAnimationState();
+  State<FadeInAnimation> createState() => _FadeInAnimationState();
 }
 
 class _FadeInAnimationState extends State<FadeInAnimation> with SingleTickerProviderStateMixin {
@@ -241,7 +241,7 @@ class _FadeInAnimationState extends State<FadeInAnimation> with SingleTickerProv
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
     _animationController.forward();
-    print('FadeInAnimation: Animation started for a child widget');
+    debugPrint('FadeInAnimation: Animation started for a child widget');
   }
 
   @override

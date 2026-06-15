@@ -1,14 +1,14 @@
 // lib/routes/app_routes.dart
 
-import 'package:aplikasi_pendataan_desa/presentation/LandingPage/LandingPage_controller.dart';
-import 'package:aplikasi_pendataan_desa/presentation/LandingPage/LandingPage.dart';
+import 'package:aplikasi_pendataan_desa/presentation/landing_page/landing_page_controller.dart';
+import 'package:aplikasi_pendataan_desa/presentation/landing_page/landing_page.dart';
 import 'package:aplikasi_pendataan_desa/presentation/login/login_screen.dart';
 import 'package:aplikasi_pendataan_desa/presentation/login/login_controller.dart';
 import 'package:aplikasi_pendataan_desa/presentation/splash/splash_screen.dart';
-import 'package:aplikasi_pendataan_desa/presentation/user/InputFormUser/Input_User_Screen.dart';
-import 'package:aplikasi_pendataan_desa/presentation/user/InputFormUser/input_user_controller.dart';
-import 'package:aplikasi_pendataan_desa/presentation/user/ListSubmissionForm/list_submission_form_controller.dart';
-import 'package:aplikasi_pendataan_desa/presentation/user/ListSubmissionForm/list_submission_form_screen.dart';
+import 'package:aplikasi_pendataan_desa/presentation/user/input_form_user/input_user_screen.dart';
+import 'package:aplikasi_pendataan_desa/presentation/user/input_form_user/input_user_controller.dart';
+import 'package:aplikasi_pendataan_desa/presentation/user/list_submission_form/list_submission_form_controller.dart';
+import 'package:aplikasi_pendataan_desa/presentation/user/list_submission_form/list_submission_form_screen.dart';
 import 'package:aplikasi_pendataan_desa/presentation/user/user_controller.dart';
 import 'package:aplikasi_pendataan_desa/presentation/user/user_screen.dart';
 import 'package:aplikasi_pendataan_desa/presentation/admin/admin_screen.dart';
@@ -30,6 +30,7 @@ import '../../presentation/admin/Admin_Profile/all_account_controller.dart';
 
 // --- NEW IMPORT: SubmissionsFormController ---
 import '../../presentation/admin/submissions_form/submissions_form_controller.dart';
+import '../../presentation/admin/village_management/village_management_controller.dart';
 
 
 // Import untuk Page
@@ -39,6 +40,7 @@ import '../../presentation/admin/formpage/form_builder/admin_form_builder_page.d
 import '../../presentation/admin/profil/admin_profil_page.dart';
 // --- NEW IMPORT: AllAccountPage ---
 import '../../presentation/admin/Admin_Profile/all_account_page.dart';
+import '../../presentation/admin/village_management/village_management_page.dart';
 
 // --- NEW IMPORT: SubmissionsFormScreen ---
 import '../../presentation/admin/submissions_form/submissions_form_screen.dart';
@@ -162,14 +164,21 @@ class SubmissionsFormBinding extends Bindings {
     Get.lazyPut<SubmissionsFormController>(() => SubmissionsFormController());
   }
 }
+
+class VillageManagementBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<VillageManagementController>(() => VillageManagementController());
+  }
+}
 // --- END NEW BINDING ---
 
 // Enum untuk lingkungan (opsional, tapi baik untuk konfigurasi)
-enum Environments { DEVELOPMENT, QAS, PRODUCTION }
+enum Environments { development, qas, production }
 
 class ConfigEnvironments {
   static Map<String, String> getEnvironments() {
-    return {'env': Environments.DEVELOPMENT.name};
+    return {'env': Environments.development.name};
   }
 }
 
@@ -181,13 +190,13 @@ class EnvironmentsBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var env = ConfigEnvironments.getEnvironments()['env'];
-    if (env == null || env == Environments.PRODUCTION.name) {
+    if (env == null || env == Environments.production.name) {
       return SizedBox(child: child);
     }
     return Banner(
       location: BannerLocation.topStart,
       message: env,
-      color: env == Environments.QAS.name ? Colors.blue : Colors.purple,
+      color: env == Environments.qas.name ? Colors.blue : Colors.purple,
       child: child,
     );
   }
@@ -212,11 +221,12 @@ class AppRoutes {
   static const String adminAccount = '/admin-account'; // Standalone Admin Account Page / Kategori Manajemen Akun
   static const String formAccountManagement = '/form-account-management'; // Page for managing accounts of a specific form
   static const String allAccountManagement = '/all_account_management'; // --- NEW ROUTE ---
-  static const INPUT_FORM_USER = '/input-form-user';
-  static const LIST_SUBMISSION_FORM = '/list-submission-form';
+  static const String allVillageManagement = '/all_village_management';
+  static const String inputFormUser = '/input-form-user';
+  static const String listSubmissionForm = '/list-submission-form';
 
   // --- NEW ROUTE NAME ---
-  static const String SUBMISSIONS_FORM = '/submissions-form';
+  static const String submissionsForm = '/submissions-form';
 
 
   static String initialRoute = splash;
@@ -279,18 +289,23 @@ class AppRoutes {
       binding: AllAccountBinding(),
     ),
     GetPage(
-      name: AppRoutes.INPUT_FORM_USER,
+      name: AppRoutes.allVillageManagement,
+      page: () => const VillageManagementPage(),
+      binding: VillageManagementBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.inputFormUser,
       page: () => const InputUserScreen(),
       binding: InputUserBinding(),
     ),
     GetPage(
-      name: AppRoutes.LIST_SUBMISSION_FORM,
+      name: AppRoutes.listSubmissionForm,
       page: () => const ListSubmissionFormScreen(),
       binding: ListSubmissionFormBinding(),
     ),
     // --- NEW GETPAGE ENTRY: SubmissionsFormScreen ---
     GetPage(
-      name: AppRoutes.SUBMISSIONS_FORM,
+      name: AppRoutes.submissionsForm,
       page: () => const SubmissionsFormScreen(),
       binding: SubmissionsFormBinding(),
     ),

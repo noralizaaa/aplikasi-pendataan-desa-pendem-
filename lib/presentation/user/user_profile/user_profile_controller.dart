@@ -8,13 +8,23 @@ import 'package:aplikasi_pendataan_desa/presentation/user/user_profile/user_prof
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+/// [UserProfileController] mengelola profil pribadi dari pengguna dengan role User/Petugas.
+/// 
+/// Controller ini bertanggung jawab untuk:
+/// 1. Memuat data profil user dari Firestore atau argumen navigasi.
+/// 2. Menangani perubahan username melalui dialog input.
+/// 3. Menentukan peran (role) secara dinamis berdasarkan Program ID.
+/// 4. Mengelola proses keluar log (logout) dari aplikasi.
 class UserProfileController extends GetxController {
+  /// Objek reaktif yang menampung data profil pengguna.
   final Rx<UserProfile?> userProfile = Rx<UserProfile?>(null);
+  /// Kontroler teks untuk input pengeditan username.
   final TextEditingController usernameController = TextEditingController();
   int _pendataCounter = 0; // Tetap ada jika _generateDefaultUsername masih digunakan
 
   late FirebaseAuth _auth;
   late FirebaseFirestore _firestore;
+  /// Status loading pemuatan data profil.
   final RxBool isLoading = true.obs;
 
   static const Color dialogBackgroundColor = Color(0xFFFFF3E0);
@@ -25,17 +35,24 @@ class UserProfileController extends GetxController {
     super.onInit();
     _auth = FirebaseAuth.instance;
     _firestore = FirebaseFirestore.instance;
-    print("[UserProfileController] onInit called.");
+    debugPrint("[UserProfileController] onInit called.");
     _loadUserProfile();
   }
 
   @override
   void onClose() {
-    print("[UserProfileController] onClose called.");
+    debugPrint("[UserProfileController] onClose called.");
     usernameController.dispose();
     super.onClose();
   }
 
+  /// Memuat profil pengguna dari Firebase Auth dan Firestore.
+  /// 
+  /// Alur pemuatan:
+  /// 1. Mencoba mengambil username dan role dari argumen navigasi (Get.arguments).
+  /// 2. Jika user login, ambil detail dari dokumen 'users' di Firestore.
+  /// 3. Melakukan sinkronisasi role berdasarkan 'programId' yang terkait.
+  /// 4. Memberikan fallback ke display name email jika data Firestore tidak ada.
   Future<void> _loadUserProfile() async {
     isLoading.value = true;
     User? currentUser = _auth.currentUser;
@@ -131,11 +148,13 @@ class UserProfileController extends GetxController {
     isLoading.value = false;
   }
 
+  /// Menghasilkan username default jika tidak ditemukan identitas di server.
   String _generateDefaultUsername() {
     _pendataCounter++;
     return 'Pendata $_pendataCounter';
   }
 
+  /// Mengambil peran otoritas default dari dokumen sistem '000' di Firestore.
   Future<String?> _fetchDefaultAuthorityRole() async {
     try {
       DocumentSnapshot defaultRoleDoc = await FirebaseFirestore.instance.collection('forms').doc('000').get();
@@ -152,6 +171,7 @@ class UserProfileController extends GetxController {
     }
   }
 
+  /// Menampilkan dialog untuk mengubah username.
   void promptEditUsernameDialog() {
     if (userProfile.value != null) {
       usernameController.text = userProfile.value!.username;
@@ -183,7 +203,11 @@ class UserProfileController extends GetxController {
         actionsPadding: const EdgeInsets.all(12),
         actions: [
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () {
+              if (Get.isDialogOpen == true) {
+                Get.back();
+              }
+            },
             style: TextButton.styleFrom(
               foregroundColor: Colors.grey.shade700,
               shape: RoundedRectangleBorder(
@@ -198,7 +222,9 @@ class UserProfileController extends GetxController {
               final currentUsername = userProfile.value?.username ?? '';
 
               if (newUsername.isNotEmpty && newUsername != currentUsername) {
-                Get.back();
+                if (Get.isDialogOpen == true) {
+                  Get.back();
+                }
                 saveUsername(); // Panggil saveUsername setelah dialog ditutup
               } else if (newUsername.isEmpty) {
                 Get.snackbar(
@@ -209,7 +235,9 @@ class UserProfileController extends GetxController {
                   colorText: Colors.white,
                 );
               } else {
-                Get.back();
+                if (Get.isDialogOpen == true) {
+                  Get.back();
+                }
               }
             },
             style: ElevatedButton.styleFrom(
@@ -227,6 +255,7 @@ class UserProfileController extends GetxController {
     );
   }
 
+  /// Menyimpan perubahan username ke Firestore dan memperbarui state lokal.
   void saveUsername() async {
     final newUsername = usernameController.text.trim();
     User? currentUser = _auth.currentUser;
@@ -289,6 +318,9 @@ class UserProfileController extends GetxController {
     }
   }
 
+  /// Menangani proses logout dengan dialog konfirmasi.
+  /// 
+  /// Menghapus sesi Firebase Auth dan mengarahkan kembali ke halaman login.
   Future<void> logout() async {
     // ... (kode logout Anda sudah baik, tidak perlu diubah terkait masalah ini)
     Get.dialog(
@@ -330,7 +362,11 @@ class UserProfileController extends GetxController {
                 children: [
                   Expanded(
                     child: TextButton(
-                      onPressed: () => Get.back(),
+                      onPressed: () {
+                        if (Get.isDialogOpen == true) {
+                          Get.back();
+                        }
+                      },
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         foregroundColor: Colors.black54,
@@ -346,7 +382,9 @@ class UserProfileController extends GetxController {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
-                        Get.back(); // Tutup dialog konfirmasi
+                        if (Get.isDialogOpen == true) {
+                          Get.back(); // Tutup dialog konfirmasi
+                        }
                         isLoading.value = true;
                         try {
                           await _auth.signOut();

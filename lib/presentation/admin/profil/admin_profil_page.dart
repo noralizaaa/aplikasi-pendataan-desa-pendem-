@@ -3,25 +3,30 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'admin_profil_controller.dart'; // Pastikan controller ini sudah memiliki fungsi edit
 
+/// [AdminProfilPage] adalah halaman antarmuka untuk profil pribadi pengguna Admin.
+/// 
+/// Halaman ini menampilkan informasi dasar admin seperti foto profil, nama, dan peran,
+/// serta menyediakan akses untuk mengubah nama pengguna dan tombol keluar (logout).
 class AdminProfilPage extends GetView<AdminProfilController> {
-  const AdminProfilPage({Key? key}) : super(key: key);
+  const AdminProfilPage({super.key});
 
-  // Definisi warna
-  static const Color pageBackgroundColor = Color(0xFFEBF4F8); // Latar belakang sedikit kebiruan/abu
-  static const Color headerBackgroundColor = Color(0xFFFFD180); // Oranye muda untuk header (sesuai gambar)
-  static const Color headerTextColor = Colors.black87; // Teks di header (Hello, Admin)
-  static const Color iconColor = Color(0xFFF57C00); // Ikon utama (misal di kartu)
+  /// Warna latar belakang halaman.
+  static const Color pageBackgroundColor = Color(0xFFEBF4F8); 
+  /// Warna oranye muda untuk gradasi header.
+  static const Color headerBackgroundColor = Color(0xFFFFD180); 
+  static const Color headerTextColor = Colors.black87; 
+  /// Warna oranye utama untuk ikon.
+  static const Color iconColor = Color(0xFFF57C00); 
   static const Color cardBackgroundColor = Colors.white;
   static const Color logoutButtonTextColor = Color(0xFFF57C00);
   static const Color logoutButtonBorderColor = Color(0xFFF57C00);
   static const Color primaryTextColor = Colors.black87;
   static const Color secondaryTextColor = Colors.black54;
   static const Color labelTextColor = Color(0xFF616161);
-  static const Color editIconColor = Colors.black54; // Warna untuk ikon edit
+  static const Color editIconColor = Colors.black54; 
 
   @override
   Widget build(BuildContext context) {
-    // Controller akan di-inject melalui binding yang sudah Anda atur di AppRoutes
     return Scaffold(
       backgroundColor: pageBackgroundColor,
       body: Obx(() {
@@ -29,16 +34,16 @@ class AdminProfilPage extends GetView<AdminProfilController> {
           return const Center(child: CircularProgressIndicator(color: headerBackgroundColor));
         }
         if (!controller.isLoading.value && controller.adminProfile.value == null && controller.currentUserId.value.isEmpty) {
-          return Center(
+          return const Center(
             child: Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: EdgeInsets.all(20.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.sentiment_dissatisfied_outlined, color: Colors.grey, size: 60),
-                  const SizedBox(height: 16),
+                  Icon(Icons.sentiment_dissatisfied_outlined, color: Colors.grey, size: 60),
+                  SizedBox(height: 16),
                   Text('Tidak dapat memuat data profil.', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: primaryTextColor)),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text('Pastikan Anda telah login.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: secondaryTextColor)),
                 ],
               ),
@@ -53,8 +58,8 @@ class AdminProfilPage extends GetView<AdminProfilController> {
             physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
               children: [
-                _buildUserStyleHeader(context), // Header disamakan seperti UI user
-                _buildProfileContent(context), // Konten lainnya
+                _buildUserStyleHeader(context), 
+                _buildProfileContent(context), 
               ],
             ),
           ),
@@ -63,7 +68,10 @@ class AdminProfilPage extends GetView<AdminProfilController> {
     );
   }
 
-  // Header bergaya user, tidak menggunakan SliverAppBar
+  /// Membangun bagian header halaman dengan gaya profil user.
+  /// 
+  /// Mencakup gradasi warna oranye, tombol kembali, foto profil melingkar, 
+  /// dan ucapan sapaan nama admin.
   Widget _buildUserStyleHeader(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -72,11 +80,11 @@ class AdminProfilPage extends GetView<AdminProfilController> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFFFFAB40).withOpacity(1.0), // Warna oranye lebih tua untuk gradasi
-            Color(0xFFFFD180).withOpacity(0.5), // Warna oranye muda
+            const Color(0xFFFFAB40).withValues(alpha: 1.0), 
+            const Color(0xFFFFD180).withValues(alpha: 0.5), 
           ],
         ),
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           bottomRight: Radius.circular(100),
         ),
       ),
@@ -88,13 +96,17 @@ class AdminProfilPage extends GetView<AdminProfilController> {
             alignment: Alignment.topLeft,
             child: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.black54),
-              onPressed: () => Get.back(),
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              },
             ),
           ),
           const SizedBox(height: 8),
           CircleAvatar(
             radius: 50,
-            backgroundColor: Colors.white.withOpacity(0.9),
+            backgroundColor: Colors.white.withValues(alpha: 0.9),
             child: ClipOval(
               child: (controller.displayPhotoUrl.value.isNotEmpty &&
                   Uri.tryParse(controller.displayPhotoUrl.value)?.hasAbsolutePath == true)
@@ -127,19 +139,19 @@ class AdminProfilPage extends GetView<AdminProfilController> {
     );
   }
 
-
+  /// Membangun isi utama profil berupa daftar kartu informasi akun.
   Widget _buildProfileContent(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 20.0), // Jarak dari header
+      padding: const EdgeInsets.only(top: 20.0), 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24.0),
             child: Text(
               "Informasi Akun",
               style: TextStyle(
-                fontSize: 22, // Ukuran font lebih besar untuk judul section
+                fontSize: 22, 
                 fontWeight: FontWeight.bold,
                 color: primaryTextColor,
               ),
@@ -147,27 +159,27 @@ class AdminProfilPage extends GetView<AdminProfilController> {
           ),
           const SizedBox(height: 20),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0), // Padding untuk kartu
+            padding: const EdgeInsets.symmetric(horizontal: 16.0), 
             child: _buildInfoCard(
-              icon: Icons.person_outline, // Ikon sesuai gambar
+              icon: Icons.person_outline, 
               label: "Username",
               value: controller.displayUsername.value,
-              onEdit: () => controller.promptEditUsername(), // Panggil fungsi edit username
+              onEdit: () => controller.promptEditUsername(), 
             ),
           ),
           const SizedBox(height: 16),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0), // Padding untuk kartu
+            padding: const EdgeInsets.symmetric(horizontal: 16.0), 
             child: _buildInfoCard(
-              icon: Icons.article_outlined, // Ikon sesuai gambar
+              icon: Icons.article_outlined, 
               label: "Peran",
-              value: controller.displayRole.value,
-              onEdit: null, // Tidak ada fungsi edit untuk peran, ikon edit tidak akan tampil
+              value: controller.displayRole.value == 'admin_rt' ? 'Admin Monitoring' : (controller.displayRole.value.replaceAll('_', ' ').capitalizeFirst ?? controller.displayRole.value),
+              onEdit: null, 
             ),
           ),
           const SizedBox(height: 40),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0), // Padding untuk tombol logout
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0), 
             child: _buildLogoutButton(context),
           ),
         ],
@@ -175,20 +187,23 @@ class AdminProfilPage extends GetView<AdminProfilController> {
     );
   }
 
+  /// Membangun kartu informasi yang berisi ikon, label, dan nilai data.
+  /// 
+  /// Dilengkapi dengan tombol edit opsional jika [onEdit] diberikan.
   Widget _buildInfoCard({
     required IconData icon,
     required String label,
     required String value,
-    VoidCallback? onEdit, // Ubah menjadi VoidCallback? (nullable)
+    VoidCallback? onEdit, 
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardBackgroundColor,
-        borderRadius: BorderRadius.circular(16), // Border radius lebih besar
+        borderRadius: BorderRadius.circular(16), 
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
+            color: Colors.grey.withValues(alpha: 0.15),
             spreadRadius: 2,
             blurRadius: 8,
             offset: const Offset(0, 4),
@@ -197,10 +212,10 @@ class AdminProfilPage extends GetView<AdminProfilController> {
       ),
       child: Row(
         children: [
-          Container( // Latar belakang ikon
+          Container( 
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: headerBackgroundColor.withOpacity(0.25), // Warna dari header tapi lebih transparan
+              color: headerBackgroundColor.withValues(alpha: 0.25), 
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor, size: 26),
@@ -212,7 +227,7 @@ class AdminProfilPage extends GetView<AdminProfilController> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     color: labelTextColor,
                     fontWeight: FontWeight.w500,
@@ -230,10 +245,9 @@ class AdminProfilPage extends GetView<AdminProfilController> {
               ],
             ),
           ),
-          // Tampilkan IconButton hanya jika onEdit tidak null
           if (onEdit != null)
             IconButton(
-              icon: Icon(Icons.edit_outlined, color: editIconColor, size: 22), // Ikon edit
+              icon: const Icon(Icons.edit_outlined, color: editIconColor, size: 22), 
               onPressed: onEdit,
               tooltip: 'Edit $label',
               splashRadius: 20,
@@ -243,6 +257,7 @@ class AdminProfilPage extends GetView<AdminProfilController> {
     );
   }
 
+  /// Membangun tombol Logout yang bergaya Outline Button.
   Widget _buildLogoutButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
@@ -253,13 +268,13 @@ class AdminProfilPage extends GetView<AdminProfilController> {
         style: ElevatedButton.styleFrom(
           backgroundColor: cardBackgroundColor,
           foregroundColor: logoutButtonTextColor,
-          padding: const EdgeInsets.symmetric(vertical: 16), // Padding sedikit dikurangi
+          padding: const EdgeInsets.symmetric(vertical: 16), 
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12), // Border radius disamakan
+            borderRadius: BorderRadius.circular(12),
             side: const BorderSide(color: logoutButtonBorderColor, width: 1.5),
           ),
           elevation: 2,
-          shadowColor: logoutButtonBorderColor.withOpacity(0.3),
+          shadowColor: logoutButtonBorderColor.withValues(alpha: 0.3),
         ),
         child: const Text(
           "LOG OUT",
