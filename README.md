@@ -216,15 +216,6 @@ To contribute code:
 4.  **Push** to the branch (`git push origin feature/AmazingFeature`).
 5.  **Open a Pull Request**.
 
-### Top Contributors
-
-A huge thank you to our top contributors who have significantly shaped SensusKu:
-
-* **Noraliza Putri Nabila**: Spearheaded core development, including the dynamic form builder, admin dashboard, robust authentication system, and comprehensive data export functionalities.
-* **Nur Fitrah Wahyuni**: Contributed significantly to form input enhancements, reliable login state tracking, and overall UI/UX improvements.
-* **Felda Mufarihati**: Focused on enhancing critical UI elements, refining the splash screen, and improving submission history features.
-
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## License
